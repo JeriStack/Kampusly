@@ -147,3 +147,44 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# ---------------------------------------------------------------------------
+# PHP / Composer (backend)
+# ---------------------------------------------------------------------------
+/backend/vendor/
+composer.phar
+
+# PHP tooling caches
+.php-cs-fixer.cache
+.phpunit.result.cache
+.phpunit.cache/
+/backend/.phpunit.result.cache
+
+# Backend runtime storage (keep the directories, ignore their contents)
+/backend/storage/logs/*
+/backend/storage/cache/*
+/backend/storage/tmp/*
+/backend/storage/uploads/*
+!/backend/storage/logs/.gitignore
+!/backend/storage/cache/.gitignore
+!/backend/storage/tmp/.gitignore
+!/backend/storage/uploads/.gitignore
+
+# Generated API docs / build artifacts
+/backend/docs/swagger-ui/
+
+# ---------------------------------------------------------------------------
+# Docker / local overrides
+# ---------------------------------------------------------------------------
+docker-compose.override.yml
+
+# ---------------------------------------------------------------------------
+# Editors / OS
+# ---------------------------------------------------------------------------
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+.DS_Store
+Thumbs.db
