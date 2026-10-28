@@ -1,0 +1,62 @@
+name: Repository & Infrastructure Hygiene
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'fix/**'
+      - 'hotfix/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene-and-infra:
+    name: Secret Hygiene, Docker Compose & Nginx Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify prohibited environment and secret files are not tracked
+        run: |
+          TRACKED_SECRETS=$(git ls-files | grep -E '(^|/)\.env($|\.(?!example$))|\.(pem|key|p12|pfx)$|(^|/)vendor/|(^|/)node_modules/' || true)
+          if [ -n "$TRACKED_SECRETS" ]; then
+            echo "::error::Prohibited environment, secret, or dependency files are tracked in Git:"
+            echo "$TRACKED_SECRETS"
+            exit 1
+          fi
+          echo "[OK] No prohibited environment files or secret artifacts are tracked."
+
+      - name: Verify required environment templates exist
+        run: |
+          test -f .env.example
+          test -f backend/.env.example
+          test -f frontend/.env.example
+          echo "[OK] All .env.example templates exist."
+
+      - name: Validate Docker Compose configuration
+        run: |
+          cp .env.example .env
+          docker compose config -q
+          rm -f .env
+          echo "[OK] docker-compose.yml validated successfully."
+
+      - name: Validate Nginx configuration syntax
+        run: |
+          docker run --rm \
+            --add-host php:127.0.0.1 \
+            -v "${GITHUB_WORKSPACE}/infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro" \
+            -v "${GITHUB_WORKSPACE}/infrastructure/nginx/conf.d:/etc/nginx/conf.d:ro" \
+            -v "${GITHUB_WORKSPACE}/infrastructure/nginx/snippets:/etc/nginx/snippets:ro" \
+            -v "${GITHUB_WORKSPACE}/backend/public:/var/www/backend/public:ro" \
+            nginx:1.27-alpine nginx -t
+          echo "[OK] Nginx configuration syntax validated."
+
