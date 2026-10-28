@@ -15,8 +15,8 @@ Kampusly uses a **short-lived feature branch workflow** targeting `main` through
 | Branch Pattern | Purpose | Base Branch | Merge Target |
 | :--- | :--- | :--- | :--- |
 | `main` | Stable, reviewed, release-ready code. Protected branch; direct pushes are prohibited. | — | — |
-| `develop` *(optional)* | Optional integration branch used only when staging a multi-feature milestone before cutting a release to `main`. | `main` | `main` |
-| `feature/<scope>-<slug>` | Individual feature implementation (e.g., `feature/schedules-conflict-engine`, `feature/auth-session-login`). | `main` | `main` (or `develop`) |
+| `develop` / `development` | Active integration and development branches used to stage and test ongoing work before merging into `main`. | `main` | `main` |
+| `feature/<scope>-<slug>` | Individual feature implementation (e.g., `feature/schedules-conflict-engine`, `feature/auth-session-login`). | `development` / `develop` / `main` | `development` / `develop` / `main` |
 | `fix/<scope>-<slug>` | Non-urgent bug fixes during development (e.g., `fix/navbar-mobile-backdrop`). | `main` | `main` |
 | `hotfix/<scope>-<slug>` | Urgent fixes to released code on `main` (e.g., `hotfix/api-cors-origin`). | `main` | `main` |
 | `docs/<slug>` | Documentation, architecture diagrams, or OpenAPI specification updates. | `main` | `main` |

@@ -5,16 +5,15 @@ on:
     branches:
       - main
       - develop
+      - development
       - 'feature/**'
       - 'fix/**'
       - 'hotfix/**'
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/frontend-ci.yml'
   pull_request:
     branches:
       - main
       - develop
+      - development
 
 permissions:
   contents: read
@@ -58,4 +57,3 @@ jobs:
           VITE_APP_NAME: Kampusly
           VITE_API_BASE_URL: /api/v1
         run: npm run build
-

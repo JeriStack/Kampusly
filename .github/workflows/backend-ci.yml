@@ -5,17 +5,15 @@ on:
     branches:
       - main
       - develop
+      - development
       - 'feature/**'
       - 'fix/**'
       - 'hotfix/**'
-    paths:
-      - 'backend/**'
-      - 'docs/phase-2/phase-2-api-contract.yaml'
-      - '.github/workflows/backend-ci.yml'
   pull_request:
     branches:
       - main
       - develop
+      - development
 
 permissions:
   contents: read
@@ -69,4 +67,3 @@ jobs:
           grep -q '/health/live:' docs/phase-2/phase-2-api-contract.yaml
           grep -q '/health/ready:' docs/phase-2/phase-2-api-contract.yaml
           echo "[OK] OpenAPI 3.1 contract verified."
-
