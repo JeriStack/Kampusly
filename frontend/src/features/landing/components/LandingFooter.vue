@@ -11,7 +11,7 @@ const year = new Date().getFullYear()
     <div class="mx-auto max-w-content px-4 py-14 sm:px-6 lg:px-8">
       <div class="grid gap-10 md:grid-cols-12">
         <!-- Brand -->
-        <div class="md:col-span-5">
+        <div class="flex flex-col items-center text-center md:col-span-5 md:items-start md:text-left">
           <KampuslyLogo />
           <p class="mt-3 max-w-xs text-justify text-sm leading-relaxed text-muted">
             A web-based class schedule management and notification system.
@@ -52,7 +52,7 @@ const year = new Date().getFullYear()
       </div>
 
       <div
-        class="mt-12 flex flex-col gap-3 border-t border-hairline-soft pt-6 text-sm text-subtle sm:flex-row sm:items-center sm:justify-between"
+        class="mt-12 flex flex-col gap-3 border-t border-hairline-soft pt-6 text-center text-sm text-subtle sm:flex-row sm:items-center sm:justify-between sm:text-left"
       >
         <p>&copy; {{ year }} Kampusly. All rights reserved.</p>
         <p>
