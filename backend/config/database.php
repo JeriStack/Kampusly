@@ -12,7 +12,7 @@ return [
     'username' => EnvLoader::getString('DB_USERNAME', 'kampusly_app'),
     'password' => EnvLoader::getString('DB_PASSWORD', ''),
     'charset' => 'utf8mb4',
-    'collation' => 'utf8mb4_0900_ai_ci',
+    'collation' => 'utf8mb4_unicode_ci',
     'timezone' => '+08:00',
     'options' => [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,

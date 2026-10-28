@@ -13,6 +13,8 @@ final class JsonResponse
     /** @var array<string, string> */
     private array $headers;
     private ?string $requestId;
+    private string $contentType;
+    private ?string $rawBody = null;
 
     /**
      * @param array<string, mixed> $data
@@ -22,12 +24,32 @@ final class JsonResponse
         array $data,
         int $statusCode = 200,
         array $headers = [],
-        ?string $requestId = null
+        ?string $requestId = null,
+        string $contentType = 'application/json; charset=utf-8'
     ) {
         $this->data = $data;
         $this->statusCode = $statusCode;
         $this->headers = $headers;
         $this->requestId = $requestId;
+        $this->contentType = $contentType;
+    }
+
+    /**
+     * Create a response with a raw body and custom Content-Type (e.g., OpenAPI YAML or Swagger UI HTML).
+     *
+     * @param array<string, string> $headers
+     */
+    public static function raw(
+        string $rawBody,
+        string $contentType,
+        int $statusCode = 200,
+        array $headers = [],
+        ?string $requestId = null
+    ): self {
+        $instance = new self([], $statusCode, $headers, $requestId, $contentType);
+        $instance->rawBody = $rawBody;
+
+        return $instance;
     }
 
     /**
@@ -36,6 +58,16 @@ final class JsonResponse
     public function getData(): array
     {
         return $this->data;
+    }
+
+    public function getRawBody(): ?string
+    {
+        return $this->rawBody;
+    }
+
+    public function getContentType(): string
+    {
+        return $this->contentType;
     }
 
     public function getStatusCode(): int
@@ -60,6 +92,10 @@ final class JsonResponse
 
     public function toJson(): string
     {
+        if ($this->rawBody !== null) {
+            return $this->rawBody;
+        }
+
         $encoded = json_encode(
             $this->data,
             JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
@@ -72,7 +108,7 @@ final class JsonResponse
     {
         if (!headers_sent()) {
             http_response_code($this->statusCode);
-            header('Content-Type: application/json; charset=utf-8');
+            header('Content-Type: ' . $this->contentType);
             header('X-Content-Type-Options: nosniff');
             header('Cache-Control: no-store, no-cache, must-revalidate');
 
@@ -92,4 +128,3 @@ final class JsonResponse
         echo $this->toJson();
     }
 }
-

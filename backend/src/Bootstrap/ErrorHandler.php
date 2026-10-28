@@ -6,6 +6,7 @@ namespace Kampusly\Bootstrap;
 
 use Kampusly\Shared\Domain\Exception\ApplicationException;
 use Kampusly\Shared\Domain\Exception\MethodNotAllowedException;
+use Kampusly\Shared\Domain\Exception\RateLimitExceededException;
 use Kampusly\Shared\Infrastructure\Http\HttpRequest;
 use Kampusly\Shared\Infrastructure\Http\JsonResponse;
 use Kampusly\Shared\Infrastructure\Logging\LoggerFactory;
@@ -39,9 +40,18 @@ final class ErrorHandler
                 $payload['errors'] = $fieldErrors;
             }
 
+            foreach ($exception->getMetadata() as $metaKey => $metaValue) {
+                if (!array_key_exists($metaKey, $payload)) {
+                    $payload[$metaKey] = $metaValue;
+                }
+            }
+
             $headers = [];
             if ($exception instanceof MethodNotAllowedException) {
                 $headers['Allow'] = implode(', ', $exception->getAllowedMethods());
+            }
+            if ($exception instanceof RateLimitExceededException) {
+                $headers['Retry-After'] = (string) $exception->getRetryAfterSeconds();
             }
 
             if ($status >= 500) {
@@ -75,4 +85,3 @@ final class ErrorHandler
         return new JsonResponse($payload, 500, [], $requestId);
     }
 }
-

@@ -3,95 +3,61 @@
 declare(strict_types=1);
 
 use Kampusly\Bootstrap\ApplicationFactory;
+use Kampusly\Bootstrap\Config;
+use Kampusly\Shared\Infrastructure\Database\MigrationRunner;
 use Kampusly\Shared\Infrastructure\Database\PdoConnectionFactory;
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
 
-$statusOnly = in_array('--status', $argv ?? [], true);
+$args = $argv ?? [];
+$statusOnly = in_array('--status', $args, true);
+$rollback = in_array('--rollback', $args, true);
+$force = in_array('--force', $args, true);
 $migrationsDir = dirname(__DIR__) . '/database/migrations';
 
 try {
     $app = ApplicationFactory::create(dirname(__DIR__));
+    /** @var Config $config */
+    $config = $app->getContainer()->get(Config::class);
     /** @var PdoConnectionFactory $pdoFactory */
     $pdoFactory = $app->getContainer()->get(PdoConnectionFactory::class);
 
     $pdoFactory->ensureDatabaseExists();
     $pdo = $pdoFactory->getConnection();
-
-    $pdo->exec(
-        'CREATE TABLE IF NOT EXISTS `schema_migrations` (
-            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            `version` VARCHAR(128) NOT NULL,
-            `description` VARCHAR(255) NOT NULL,
-            `checksum` CHAR(64) NOT NULL,
-            `executed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            `execution_time_ms` INT UNSIGNED NOT NULL DEFAULT 0,
-            PRIMARY KEY (`id`),
-            UNIQUE KEY `uq_schema_migrations_version` (`version`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
-    );
-
-    $appliedStmt = $pdo->query(
-        'SELECT `version`, `checksum`, `executed_at` FROM `schema_migrations` ORDER BY `version` ASC'
-    );
-    $appliedRows = $appliedStmt !== false ? $appliedStmt->fetchAll() : [];
-
-    $appliedMap = [];
-    foreach ($appliedRows as $row) {
-        if (is_array($row) && isset($row['version'])) {
-            $appliedMap[(string) $row['version']] = $row;
-        }
-    }
-
-    $files = glob($migrationsDir . '/*.sql');
-    if ($files === false) {
-        $files = [];
-    }
-    sort($files);
+    $runner = new MigrationRunner($pdo, $migrationsDir);
 
     if ($statusOnly) {
         fwrite(STDOUT, "Kampusly Database Migration Status:\n");
-        foreach ($files as $file) {
-            $version = pathinfo($file, PATHINFO_FILENAME);
-            $state = isset($appliedMap[$version]) ? 'APPLIED' : 'PENDING';
-            fwrite(STDOUT, sprintf("  [%s] %s\n", $state, $version));
+        foreach ($runner->status() as $entry) {
+            fwrite(STDOUT, sprintf("  [%s] %s\n", $entry['state'], $entry['version']));
         }
         exit(0);
     }
 
-    $appliedCount = 0;
-    foreach ($files as $file) {
-        $version = pathinfo($file, PATHINFO_FILENAME);
-        $sql = file_get_contents($file);
-        if ($sql === false) {
-            throw new RuntimeException(sprintf('Unable to read migration file: %s', $version));
+    if ($rollback) {
+        if ($config->getString('app.env') === 'production' && !$force) {
+            fwrite(STDERR, "[ABORTED] Migration rollback in production requires --force.\n");
+            exit(1);
         }
 
-        $checksum = hash('sha256', str_replace("\r\n", "\n", $sql));
-        if (isset($appliedMap[$version])) {
-            continue;
+        $rolledBack = $runner->rollback(1);
+        if ($rolledBack === []) {
+            fwrite(STDOUT, "No applied feature migrations available to roll back.\n");
+            exit(0);
         }
 
-        $startTime = microtime(true);
-        $pdo->exec($sql);
-        $elapsedMs = (int) round((microtime(true) - $startTime) * 1000);
-
-        $insertStmt = $pdo->prepare(
-            'INSERT INTO `schema_migrations` (`version`, `description`, `checksum`, `execution_time_ms`)
-             VALUES (:version, :description, :checksum, :execution_time_ms)'
-        );
-        $insertStmt->execute([
-            ':version' => $version,
-            ':description' => str_replace('_', ' ', $version),
-            ':checksum' => $checksum,
-            ':execution_time_ms' => $elapsedMs,
-        ]);
-
-        fwrite(STDOUT, sprintf("[APPLIED] %s (%d ms)\n", $version, $elapsedMs));
-        $appliedCount++;
+        foreach ($rolledBack as $version) {
+            fwrite(STDOUT, sprintf("[ROLLED BACK] %s\n", $version));
+        }
+        exit(0);
     }
 
-    if ($appliedCount === 0) {
+    $applied = $runner->migrate();
+    foreach ($applied as $item) {
+        fwrite(STDOUT, sprintf("[APPLIED] %s (%d ms)\n", $item['version'], $item['execution_time_ms']));
+    }
+
+    if ($applied === []) {
         fwrite(STDOUT, "Database 'kampusly' is ready and all migrations are up to date.\n");
     }
     exit(0);

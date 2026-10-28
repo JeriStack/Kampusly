@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kampusly\Shared\Infrastructure\Http;
 
+use Kampusly\Shared\Domain\Exception\UnsupportedMediaTypeException;
 use Kampusly\Shared\Domain\Exception\ValidationException;
 
 final class HttpRequest
@@ -19,6 +20,9 @@ final class HttpRequest
 
     /** @var array<string, mixed> */
     private array $body;
+
+    /** @var array<string, mixed> */
+    private array $attributes = [];
     private string $requestId;
 
     /**
@@ -75,18 +79,36 @@ final class HttpRequest
         if (in_array(strtoupper($method), ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
             $rawBody = file_get_contents('php://input');
             if (is_string($rawBody) && trim($rawBody) !== '') {
+                $contentType = strtolower($headers['content-type'] ?? '');
+                if ($contentType !== '' && !str_starts_with($contentType, 'application/json')) {
+                    throw new UnsupportedMediaTypeException();
+                }
+
                 $decoded = json_decode($rawBody, true);
-                if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+                if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded) || array_is_list($decoded)) {
                     throw new ValidationException(
                         ['body' => ['Request body must be a valid JSON object.']],
                         'Malformed JSON request body.'
                     );
                 }
+                /** @var array<string, mixed> $decoded */
                 $body = $decoded;
             }
         }
 
         return new self($method, $path, $_GET, $headers, $body, $requestId);
+    }
+
+    public function enforceJsonContentType(): void
+    {
+        if (!in_array($this->method, ['POST', 'PUT', 'PATCH'], true)) {
+            return;
+        }
+
+        $contentType = strtolower((string) ($this->headers['content-type'] ?? ''));
+        if ($contentType !== '' && !str_starts_with($contentType, 'application/json')) {
+            throw new UnsupportedMediaTypeException();
+        }
     }
 
     public function getMethod(): string
@@ -105,6 +127,30 @@ final class HttpRequest
     public function getQueryParams(): array
     {
         return $this->query;
+    }
+
+    public function getQueryString(string $name, ?string $default = null): ?string
+    {
+        $val = $this->query[$name] ?? null;
+        if (!is_string($val)) {
+            return $default;
+        }
+
+        $trimmed = trim($val);
+        return $trimmed !== '' ? $trimmed : $default;
+    }
+
+    public function getQueryInt(string $name, ?int $default = null): ?int
+    {
+        $val = $this->query[$name] ?? null;
+        if (is_int($val)) {
+            return $val;
+        }
+        if (is_string($val) && preg_match('/^-?\d+$/', trim($val)) === 1) {
+            return (int) trim($val);
+        }
+
+        return $default;
     }
 
     public function getHeader(string $name, ?string $default = null): ?string
@@ -126,9 +172,20 @@ final class HttpRequest
         return $this->requestId;
     }
 
+    public function withAttribute(string $name, mixed $value): self
+    {
+        $clone = clone $this;
+        $clone->attributes[$name] = $value;
+        return $clone;
+    }
+
+    public function getAttribute(string $name, mixed $default = null): mixed
+    {
+        return $this->attributes[$name] ?? $default;
+    }
+
     private static function generateRequestId(): string
     {
         return 'req_' . bin2hex(random_bytes(8));
     }
 }
-

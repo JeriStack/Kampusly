@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kampusly\Tests\Support;
 
 use Closure;
+use Countable;
 use RuntimeException;
 use Throwable;
 
@@ -66,6 +67,48 @@ abstract class TestCase
         }
     }
 
+    protected function assertNull(mixed $actual, string $message = 'Expected value to be null.'): void
+    {
+        $this->assertionCount++;
+        if ($actual !== null) {
+            throw new RuntimeException($message);
+        }
+    }
+
+    protected function assertNotNull(mixed $actual, string $message = 'Expected value not to be null.'): void
+    {
+        $this->assertionCount++;
+        if ($actual === null) {
+            throw new RuntimeException($message);
+        }
+    }
+
+    /**
+     * @param Countable|array<mixed, mixed> $countable
+     */
+    protected function assertCount(int $expectedCount, Countable|array $countable, string $message = ''): void
+    {
+        $this->assertionCount++;
+        $actualCount = count($countable);
+        if ($expectedCount !== $actualCount) {
+            $detail = $message !== ''
+                ? $message
+                : sprintf('Failed asserting that actual size %d matches expected %d.', $actualCount, $expectedCount);
+            throw new RuntimeException($detail);
+        }
+    }
+
+    protected function assertStringContainsString(string $needle, string $haystack, string $message = ''): void
+    {
+        $this->assertionCount++;
+        if (!str_contains($haystack, $needle)) {
+            $detail = $message !== ''
+                ? $message
+                : sprintf('Failed asserting that "%s" contains "%s".', $haystack, $needle);
+            throw new RuntimeException($detail);
+        }
+    }
+
     /**
      * @param array<mixed, mixed> $array
      */
@@ -108,4 +151,3 @@ abstract class TestCase
         );
     }
 }
-

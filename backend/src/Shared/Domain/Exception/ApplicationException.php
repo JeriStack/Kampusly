@@ -15,20 +15,26 @@ class ApplicationException extends RuntimeException
     /** @var array<string, list<string>> */
     protected array $fieldErrors;
 
+    /** @var array<string, mixed> */
+    protected array $metadata;
+
     /**
      * @param array<string, list<string>> $fieldErrors
+     * @param array<string, mixed> $metadata
      */
     public function __construct(
         string $message,
         string $errorCode = 'APPLICATION_ERROR',
         int $httpStatus = 400,
         array $fieldErrors = [],
-        ?Throwable $previous = null
+        ?Throwable $previous = null,
+        array $metadata = []
     ) {
         parent::__construct($message, 0, $previous);
         $this->errorCode = $errorCode;
         $this->httpStatus = $httpStatus;
         $this->fieldErrors = $fieldErrors;
+        $this->metadata = $metadata;
     }
 
     public function getErrorCode(): string
@@ -48,5 +54,12 @@ class ApplicationException extends RuntimeException
     {
         return $this->fieldErrors;
     }
-}
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function getMetadata(): array
+    {
+        return $this->metadata;
+    }
+}

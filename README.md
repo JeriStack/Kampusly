@@ -160,23 +160,27 @@ docker compose down -v
 
 ---
 
-## 7. Database Initialization & Migrations
+## 7. Database Initialization, Migrations & Seeders
 
-When the `mysql` container starts for the first time, `/docker-entrypoint-initdb.d/01-init-kampusly.sql` automatically configures `utf8mb4_0900_ai_ci` and initializes the `schema_migrations` tracking table.
+When the `mysql` container starts for the first time, `/docker-entrypoint-initdb.d/01-init-kampusly.sql` automatically configures `utf8mb4_unicode_ci` and initializes the `schema_migrations` tracking table.
 
-To inspect or apply migrations via the backend CLI runner:
+To inspect, apply, roll back migrations, or run development seeders:
 
 ```bash
 # Inside Docker
 docker compose exec php composer migrate -- --status
 docker compose exec php composer migrate
+docker compose exec php composer migrate -- --rollback
+docker compose exec php composer seed
 
 # Or directly on the host CLI
 composer --working-dir=backend migrate -- --status
 composer --working-dir=backend migrate
+composer --working-dir=backend migrate -- --rollback
+composer --working-dir=backend seed
 ```
 
-See [`backend/database/README.md`](./backend/database/README.md) for naming conventions, PDO configuration, and seeding policies.
+See [`backend/database/README.md`](./backend/database/README.md) for full table schemas, foreign key rules, PDO configuration, and seeding policies.
 
 ---
 
@@ -188,8 +192,11 @@ All development ports bind to `127.0.0.1` by default:
 | :--- | :--- | :--- |
 | **Frontend (Vite Dev)** | `http://localhost:5173` | Vue 3 SPA (landing page, theme toggle, `/login` route) |
 | **API Gateway (Nginx)** | `http://localhost:8080/api/v1` | Reverse proxy to PHP-FPM (`backend/public/index.php`) |
+| **Interactive API Docs** | `http://localhost:8080/api/v1/docs` | Swagger UI referencing versioned OpenAPI 3.1 specification |
+| **OpenAPI 3.1 Contract** | `http://localhost:8080/api/v1/openapi.yaml` | Machine-readable OpenAPI 3.1.0 contract |
 | **API Liveness Probe** | `http://localhost:8080/api/v1/health/live` | Returns `200 OK` `{ "status": "ok", "service": "kampusly-api" }` |
 | **API Readiness Probe** | `http://localhost:8080/api/v1/health/ready` | Verifies PDO MySQL `SELECT 1` connectivity (`200` or `503`) |
+| **Conflict Validation** | `http://localhost:8080/api/v1/schedules/validate-conflicts` | Detects room, instructor, and section schedule conflicts |
 | **MySQL 8.4** | `127.0.0.1:3306` | Database `kampusly` |
 | **Mailpit Web UI** | `http://localhost:8025` | Local SMTP capture UI (SMTP port `127.0.0.1:1025`) |
 
@@ -242,3 +249,4 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for full branching, review, conflict 
 - **Phase 1 — Foundation:** [`docs/requirements/`](./docs/requirements) (`functional-requirements.md`, `non-functional-requirements.md`, `acceptance-criteria.md`)
 - **Phase 2 — UI/UX & System Design:** [`docs/phase-2/`](./docs/phase-2) (`phase-2-design-system.md`, `phase-2-ui-ux-specification.md`, `phase-2-uml-diagrams.md`, `phase-2-database-design.md`, `phase-2-api-contract.yaml`, `phase-2-system-architecture.md`, `phase-2-traceability-matrix.md`)
 - **Phase 3 — Runbooks & Contribution:** [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`docs/runbooks/local-setup.md`](./docs/runbooks/local-setup.md), [`backend/database/README.md`](./backend/database/README.md)
+- **Phase 4 — Database & Backend Foundation:** [`backend/database/README.md`](./backend/database/README.md), [`docs/api/openapi.yaml`](./docs/api/openapi.yaml) (OpenAPI 3.1 contract and Swagger UI at `/api/v1/docs`)

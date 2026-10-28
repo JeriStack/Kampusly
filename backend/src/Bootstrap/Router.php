@@ -15,12 +15,18 @@ final class Router
     private string $prefix;
 
     /**
+     * @var list<Closure(HttpRequest, Closure(HttpRequest): JsonResponse): JsonResponse>
+     */
+    private array $globalMiddleware = [];
+
+    /**
      * @var list<array{
      *   method: string,
      *   pattern: string,
      *   regex: string,
      *   paramNames: list<string>,
-     *   handler: Closure(HttpRequest, array<string, string>): JsonResponse
+     *   handler: Closure(HttpRequest, array<string, string>): JsonResponse,
+     *   middleware: list<Closure(HttpRequest, Closure(HttpRequest): JsonResponse): JsonResponse>
      * }>
      */
     private array $routes = [];
@@ -31,49 +37,65 @@ final class Router
     }
 
     /**
-     * @param Closure(HttpRequest, array<string, string>): JsonResponse $handler
+     * Register a global middleware applied to every matched route.
+     *
+     * @param Closure(HttpRequest, Closure(HttpRequest): JsonResponse): JsonResponse $middleware
      */
-    public function get(string $path, Closure $handler): void
+    public function addMiddleware(Closure $middleware): void
     {
-        $this->addRoute('GET', $path, $handler);
+        $this->globalMiddleware[] = $middleware;
     }
 
     /**
      * @param Closure(HttpRequest, array<string, string>): JsonResponse $handler
+     * @param list<Closure(HttpRequest, Closure(HttpRequest): JsonResponse): JsonResponse> $middleware
      */
-    public function post(string $path, Closure $handler): void
+    public function get(string $path, Closure $handler, array $middleware = []): void
     {
-        $this->addRoute('POST', $path, $handler);
+        $this->addRoute('GET', $path, $handler, $middleware);
     }
 
     /**
      * @param Closure(HttpRequest, array<string, string>): JsonResponse $handler
+     * @param list<Closure(HttpRequest, Closure(HttpRequest): JsonResponse): JsonResponse> $middleware
      */
-    public function put(string $path, Closure $handler): void
+    public function post(string $path, Closure $handler, array $middleware = []): void
     {
-        $this->addRoute('PUT', $path, $handler);
+        $this->addRoute('POST', $path, $handler, $middleware);
     }
 
     /**
      * @param Closure(HttpRequest, array<string, string>): JsonResponse $handler
+     * @param list<Closure(HttpRequest, Closure(HttpRequest): JsonResponse): JsonResponse> $middleware
      */
-    public function patch(string $path, Closure $handler): void
+    public function put(string $path, Closure $handler, array $middleware = []): void
     {
-        $this->addRoute('PATCH', $path, $handler);
+        $this->addRoute('PUT', $path, $handler, $middleware);
     }
 
     /**
      * @param Closure(HttpRequest, array<string, string>): JsonResponse $handler
+     * @param list<Closure(HttpRequest, Closure(HttpRequest): JsonResponse): JsonResponse> $middleware
      */
-    public function delete(string $path, Closure $handler): void
+    public function patch(string $path, Closure $handler, array $middleware = []): void
     {
-        $this->addRoute('DELETE', $path, $handler);
+        $this->addRoute('PATCH', $path, $handler, $middleware);
     }
 
     /**
      * @param Closure(HttpRequest, array<string, string>): JsonResponse $handler
+     * @param list<Closure(HttpRequest, Closure(HttpRequest): JsonResponse): JsonResponse> $middleware
      */
-    public function addRoute(string $method, string $path, Closure $handler): void
+    public function delete(string $path, Closure $handler, array $middleware = []): void
+    {
+        $this->addRoute('DELETE', $path, $handler, $middleware);
+    }
+
+    /**
+     * @param Closure(HttpRequest, array<string, string>): JsonResponse $handler
+     * @param list<Closure(HttpRequest, Closure(HttpRequest): JsonResponse): JsonResponse> $middleware
+     */
+    public function addRoute(string $method, string $path, Closure $handler, array $middleware = []): void
     {
         $normalizedPath = $this->normalizePath($this->prefix . '/' . ltrim($path, '/'));
         if ($path === '' || $path === '/') {
@@ -98,6 +120,7 @@ final class Router
             'regex' => $regex,
             'paramNames' => $paramNames,
             'handler' => $handler,
+            'middleware' => $middleware,
         ];
     }
 
@@ -117,6 +140,8 @@ final class Router
                 continue;
             }
 
+            $request->enforceJsonContentType();
+
             $params = [];
             foreach ($route['paramNames'] as $name) {
                 if (isset($matches[$name])) {
@@ -125,7 +150,17 @@ final class Router
             }
 
             $handler = $route['handler'];
-            return $handler($request, $params);
+            $corePipeline = static fn (HttpRequest $req): JsonResponse => $handler($req, $params);
+
+            $pipeline = array_merge($this->globalMiddleware, $route['middleware']);
+            $next = $corePipeline;
+            for ($i = count($pipeline) - 1; $i >= 0; $i--) {
+                $mw = $pipeline[$i];
+                $currentNext = $next;
+                $next = static fn (HttpRequest $req): JsonResponse => $mw($req, $currentNext);
+            }
+
+            return $next($request);
         }
 
         if ($allowedForPath !== []) {
@@ -144,4 +179,3 @@ final class Router
         return $trimmed === '//' ? '/' : $trimmed;
     }
 }
-
