@@ -1,0 +1,48 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+  }
+
+  /* Honor users who prefer reduced motion. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Consistent, visible keyboard focus across interactive elements. */
+  :where(a, button, [tabindex]):focus-visible {
+    @apply outline-none ring-2 ring-action ring-offset-2 ring-offset-canvas;
+    border-radius: 0.375rem;
+  }
+}
+
+@layer components {
+  /* Skip link revealed on keyboard focus for screen-reader / keyboard users. */
+  .skip-link {
+    @apply sr-only;
+  }
+
+  .skip-link:focus {
+    @apply not-sr-only fixed left-4 top-4 z-50 rounded-md bg-action px-4 py-2 text-sm font-semibold text-white shadow-card;
+  }
+}
