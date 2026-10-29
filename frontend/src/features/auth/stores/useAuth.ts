@@ -24,14 +24,23 @@ export interface AuthUser {
   status: AccountStatus
   avatar_url: string | null
   profile: AuthUserProfile
+  student_profile?: Record<string, unknown> | null
+  instructor_profile?: Record<string, unknown> | null
   last_login_at: string | null
   created_at: string
   updated_at: string
 }
 
 export interface AuthPayload {
-  user: AuthUser
-  csrf_token: string
+  user?: AuthUser
+  id?: number
+  full_name?: string
+  name?: string
+  email?: string
+  role?: UserRole
+  status?: AccountStatus
+  csrf_token?: string
+  [key: string]: unknown
 }
 
 export interface LoginCredentials {
@@ -43,6 +52,43 @@ export interface ChangePasswordPayload {
   current_password: string
   new_password: string
   new_password_confirmation: string
+}
+
+function normalizeAuthUser(raw: Record<string, unknown>): AuthUser {
+  const source = (typeof raw.user === 'object' && raw.user !== null ? raw.user : raw) as Record<string, unknown>
+  return {
+    id: Number(source.id ?? 0),
+    name: String(source.name ?? source.full_name ?? 'User'),
+    email: String(source.email ?? ''),
+    role: (source.role as UserRole) ?? 'student',
+    status: (source.status as AccountStatus) ?? 'active',
+    avatar_url: typeof source.avatar_url === 'string' ? source.avatar_url : null,
+    profile: (typeof source.profile === 'object' && source.profile !== null
+      ? source.profile
+      : {
+          ...((source.student_profile as Record<string, unknown>) ?? {}),
+          ...((source.instructor_profile as Record<string, unknown>) ?? {}),
+        }) as AuthUserProfile,
+    student_profile: (source.student_profile as Record<string, unknown>) ?? null,
+    instructor_profile: (source.instructor_profile as Record<string, unknown>) ?? null,
+    last_login_at: typeof source.last_login_at === 'string' ? source.last_login_at : null,
+    created_at: typeof source.created_at === 'string' ? source.created_at : '',
+    updated_at: typeof source.updated_at === 'string' ? source.updated_at : '',
+  }
+}
+
+function extractCsrfToken(raw: Record<string, unknown>): string | null {
+  if (typeof raw.csrf_token === 'string' && raw.csrf_token) {
+    return raw.csrf_token
+  }
+  if (
+    typeof raw.user === 'object' &&
+    raw.user !== null &&
+    typeof (raw.user as Record<string, unknown>).csrf_token === 'string'
+  ) {
+    return (raw.user as Record<string, unknown>).csrf_token as string
+  }
+  return null
 }
 
 // Global reactive auth state across the application
@@ -83,13 +129,16 @@ export function useAuth() {
 
     initPromise = (async () => {
       try {
-        const response = await apiClient.get<{ data: AuthPayload }>(API_ENDPOINTS.auth.me)
-        if (response?.data?.user) {
-          user.value = response.data.user
-          csrfToken.value = response.data.csrf_token
-          setCsrfToken(response.data.csrf_token)
+        const response = await apiClient.get<{ data: Record<string, unknown> }>(API_ENDPOINTS.auth.me)
+        const payload = response?.data
+        if (payload && (payload.id !== undefined || payload.user !== undefined)) {
+          const normalized = normalizeAuthUser(payload)
+          const token = extractCsrfToken(payload)
+          user.value = normalized
+          csrfToken.value = token
+          if (token) setCsrfToken(token)
           status.value = 'authenticated'
-          return user.value
+          return normalized
         }
         user.value = null
         csrfToken.value = null
@@ -116,17 +165,19 @@ export function useAuth() {
     lastError.value = null
 
     try {
-      const response = await apiClient.post<{ data: AuthPayload }>(
+      const response = await apiClient.post<{ data: Record<string, unknown> }>(
         API_ENDPOINTS.auth.login,
         credentials
       )
 
-      const authData = response.data
-      user.value = authData.user
-      csrfToken.value = authData.csrf_token
-      setCsrfToken(authData.csrf_token)
+      const payload = response.data
+      const normalized = normalizeAuthUser(payload)
+      const token = extractCsrfToken(payload)
+      user.value = normalized
+      csrfToken.value = token
+      if (token) setCsrfToken(token)
       status.value = 'authenticated'
-      return authData.user
+      return normalized
     } catch (err) {
       status.value = 'unauthenticated'
       if (err instanceof ApiError) {
@@ -173,4 +224,3 @@ export function useAuth() {
     changePassword,
   }
 }
-

@@ -3,7 +3,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuth } from '@/features/auth/stores/useAuth'
 import KampuslyLogo from '@/components/common/KampuslyLogo.vue'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
-import AppIcon from '@/components/common/AppIcon.vue'
+import AppIcon, { type IconName } from '@/components/common/AppIcon.vue'
 
 defineProps<{
   title: string
@@ -14,10 +14,10 @@ const route = useRoute()
 const router = useRouter()
 const { user, logout } = useAuth()
 
-const tabs = [
-  { name: 'Dashboard', path: '/admin/dashboard', icon: 'dashboard' },
-  { name: 'Students', path: '/admin/students', icon: 'users' },
-  { name: 'Instructors', path: '/admin/instructors', icon: 'user' },
+const tabs: { name: string; path: string; icon: IconName }[] = [
+  { name: 'Dashboard', path: '/admin/dashboard', icon: 'admin' },
+  { name: 'Students', path: '/admin/students', icon: 'student' },
+  { name: 'Instructors', path: '/admin/instructors', icon: 'instructor' },
   { name: 'Subjects', path: '/admin/subjects', icon: 'book' },
   { name: 'Rooms', path: '/admin/rooms', icon: 'grid' },
   { name: 'Sections', path: '/admin/sections', icon: 'layers' },

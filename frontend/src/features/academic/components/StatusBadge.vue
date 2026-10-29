@@ -24,6 +24,24 @@ const badgeClasses = computed(() => {
       return 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-400'
   }
 })
+
+const dotColorClass = computed(() => {
+  switch (normalized.value) {
+    case 'active':
+    case 'available':
+      return 'bg-emerald-500'
+    case 'inactive':
+    case 'archived':
+      return 'bg-slate-400'
+    case 'maintenance':
+    case 'suspended':
+      return 'bg-amber-500'
+    case 'graduated':
+      return 'bg-blue-500'
+    default:
+      return 'bg-slate-400'
+  }
+})
 </script>
 
 <template>
@@ -35,15 +53,8 @@ const badgeClasses = computed(() => {
   >
     <span
       class="h-1.5 w-1.5 rounded-full"
-      :class="{
-        'bg-emerald-500': normalized === 'active' || normalized === 'available',
-        'bg-slate-400': normalized === 'inactive' || normalized === 'archived',
-        'bg-amber-500': normalized === 'maintenance' || normalized === 'suspended',
-        'bg-blue-500': normalized === 'graduated',
-        'bg-slate-400': !['active', 'available', 'inactive', 'archived', 'maintenance', 'suspended', 'graduated'].includes(normalized),
-      }"
+      :class="dotColorClass"
     />
     <span>{{ status || 'Unknown' }}</span>
   </span>
 </template>
-

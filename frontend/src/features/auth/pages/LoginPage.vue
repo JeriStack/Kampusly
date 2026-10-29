@@ -47,6 +47,8 @@ async function handleSubmit(): Promise<void> {
   } catch (err) {
     if (err instanceof ApiError) {
       errorMessage.value = err.message
+    } else if (err instanceof Error) {
+      errorMessage.value = err.message
     } else {
       errorMessage.value = 'Unable to sign in. Please verify your connection.'
     }

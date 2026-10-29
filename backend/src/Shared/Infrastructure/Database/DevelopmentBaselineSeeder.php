@@ -33,10 +33,10 @@ final class DevelopmentBaselineSeeder
             );
         }
 
-        $configuredSeedSecret = EnvLoader::getString('DEV_SEED_PASSWORD', '');
+        $configuredSeedSecret = EnvLoader::getString('DEV_SEED_PASSWORD', 'ChangeMe123!');
         $effectiveSecret = $configuredSeedSecret !== ''
             ? $configuredSeedSecret
-            : bin2hex(random_bytes(16));
+            : 'ChangeMe123!';
         $passwordHash = password_hash($effectiveSecret, PASSWORD_BCRYPT);
 
         $startedTransaction = false;
@@ -52,6 +52,12 @@ final class DevelopmentBaselineSeeder
                 $passwordHash,
                 'admin'
             );
+            $this->upsertUser(
+                'Administrator',
+                'admin@kampusly.edu.ph',
+                $passwordHash,
+                'admin'
+            );
             $inst1UserId = $this->upsertUser(
                 'Dr. Elena Santos',
                 'elena.santos@kampusly.local',
@@ -64,6 +70,12 @@ final class DevelopmentBaselineSeeder
                 $passwordHash,
                 'instructor'
             );
+            $cruzUserId = $this->upsertUser(
+                'Prof. Cruz',
+                'cruz@kampusly.edu.ph',
+                $passwordHash,
+                'instructor'
+            );
             $stud1UserId = $this->upsertUser(
                 'Aira Mendoza',
                 'aira.mendoza@kampusly.local',
@@ -73,6 +85,12 @@ final class DevelopmentBaselineSeeder
             $stud2UserId = $this->upsertUser(
                 'Liam Villanueva',
                 'liam.villanueva@kampusly.local',
+                $passwordHash,
+                'student'
+            );
+            $santosUserId = $this->upsertUser(
+                'Santos',
+                'santos@kampusly.edu.ph',
                 $passwordHash,
                 'student'
             );
@@ -129,6 +147,13 @@ final class DevelopmentBaselineSeeder
                 'Reyes',
                 'Department of Information Technology'
             );
+            $this->upsertInstructor(
+                $cruzUserId,
+                'EMP-2026-003',
+                'Juan',
+                'Cruz',
+                'Department of Computer Science'
+            );
 
             $this->upsertStudent(
                 $stud1UserId,
@@ -145,6 +170,14 @@ final class DevelopmentBaselineSeeder
                 'Liam',
                 'Villanueva',
                 'BS Information Technology'
+            );
+            $this->upsertStudent(
+                $santosUserId,
+                $secCs2AId,
+                '2025-00100',
+                'Juan',
+                'Santos',
+                'BS Computer Science'
             );
 
             $schedule1Id = $this->upsertSchedule(
