@@ -21,5 +21,10 @@ interface SubjectRepositoryInterface
     ): PaginatedResult;
 
     public function create(Subject $subject): Subject;
-}
 
+    public function update(Subject $subject): Subject;
+
+    public function delete(int $id): bool;
+
+    public function hasSchedules(int $subjectId): bool;
+}

@@ -105,5 +105,40 @@ final class PdoSubjectRepository implements SubjectRepositoryInterface
         $id = (int) $this->pdo->lastInsertId();
         return $this->findById($id) ?? $subject;
     }
-}
 
+    public function update(Subject $subject): Subject
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE `subjects`
+             SET `subject_code` = :subject_code,
+                 `subject_name` = :subject_name,
+                 `description` = :description,
+                 `units` = :units,
+                 `status` = :status
+             WHERE `id` = :id'
+        );
+        $stmt->execute([
+            ':id' => $subject->getId(),
+            ':subject_code' => $subject->getSubjectCode(),
+            ':subject_name' => $subject->getSubjectName(),
+            ':description' => $subject->getDescription(),
+            ':units' => $subject->getUnits(),
+            ':status' => $subject->getStatus()->value,
+        ]);
+
+        return $this->findById((int) $subject->getId()) ?? $subject;
+    }
+
+    public function delete(int $id): bool
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM `subjects` WHERE `id` = :id');
+        return $stmt->execute([':id' => $id]);
+    }
+
+    public function hasSchedules(int $subjectId): bool
+    {
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM `schedules` WHERE `subject_id` = :id');
+        $stmt->execute([':id' => $subjectId]);
+        return ((int) $stmt->fetchColumn()) > 0;
+    }
+}

@@ -28,6 +28,8 @@ interface UserRepositoryInterface
 
     public function updateStatus(int $userId, AccountStatus $status): void;
 
+    public function updateProfile(int $userId, string $fullName, string $email): void;
+
     public function updateLastLogin(int $userId): void;
 
     /**

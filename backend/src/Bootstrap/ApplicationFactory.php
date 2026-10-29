@@ -6,13 +6,21 @@ namespace Kampusly\Bootstrap;
 
 use Closure;
 use Kampusly\Academic\Application\Service\AcademicCatalogService;
+use Kampusly\Academic\Application\Service\InstructorManagementService;
+use Kampusly\Academic\Application\Service\StudentManagementService;
+use Kampusly\Academic\Domain\Repository\InstructorRepositoryInterface;
 use Kampusly\Academic\Domain\Repository\RoomRepositoryInterface;
 use Kampusly\Academic\Domain\Repository\SectionRepositoryInterface;
+use Kampusly\Academic\Domain\Repository\StudentRepositoryInterface;
 use Kampusly\Academic\Domain\Repository\SubjectRepositoryInterface;
+use Kampusly\Academic\Infrastructure\Persistence\PdoInstructorRepository;
 use Kampusly\Academic\Infrastructure\Persistence\PdoRoomRepository;
 use Kampusly\Academic\Infrastructure\Persistence\PdoSectionRepository;
+use Kampusly\Academic\Infrastructure\Persistence\PdoStudentRepository;
 use Kampusly\Academic\Infrastructure\Persistence\PdoSubjectRepository;
 use Kampusly\Academic\Presentation\Http\Controller\AcademicCatalogController;
+use Kampusly\Academic\Presentation\Http\Controller\InstructorController;
+use Kampusly\Academic\Presentation\Http\Controller\StudentController;
 use Kampusly\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
 use Kampusly\Announcements\Infrastructure\Persistence\PdoAnnouncementRepository;
 use Kampusly\ClassNotices\Application\Service\ClassNoticeFoundationService;
@@ -264,6 +272,57 @@ final class ApplicationFactory
             AcademicCatalogController::class,
             static fn (Container $c): AcademicCatalogController => new AcademicCatalogController(
                 $c->get(AcademicCatalogService::class)
+            )
+        );
+
+        $container->singleton(
+            StudentRepositoryInterface::class,
+            static fn (Container $c): StudentRepositoryInterface => new PdoStudentRepository(
+                $c->get(PdoConnectionFactory::class)->getConnection()
+            )
+        );
+
+        $container->singleton(
+            InstructorRepositoryInterface::class,
+            static fn (Container $c): InstructorRepositoryInterface => new PdoInstructorRepository(
+                $c->get(PdoConnectionFactory::class)->getConnection()
+            )
+        );
+
+        $container->singleton(
+            StudentManagementService::class,
+            static fn (Container $c): StudentManagementService => new StudentManagementService(
+                $c->get(StudentRepositoryInterface::class),
+                $c->get(SectionRepositoryInterface::class),
+                $c->get(UserRepositoryInterface::class),
+                $c->get(PasswordHasher::class),
+                $c->get(TransactionManagerInterface::class),
+                $c->get(AuditLoggerInterface::class)
+            )
+        );
+
+        $container->singleton(
+            InstructorManagementService::class,
+            static fn (Container $c): InstructorManagementService => new InstructorManagementService(
+                $c->get(InstructorRepositoryInterface::class),
+                $c->get(UserRepositoryInterface::class),
+                $c->get(PasswordHasher::class),
+                $c->get(TransactionManagerInterface::class),
+                $c->get(AuditLoggerInterface::class)
+            )
+        );
+
+        $container->singleton(
+            StudentController::class,
+            static fn (Container $c): StudentController => new StudentController(
+                $c->get(StudentManagementService::class)
+            )
+        );
+
+        $container->singleton(
+            InstructorController::class,
+            static fn (Container $c): InstructorController => new InstructorController(
+                $c->get(InstructorManagementService::class)
             )
         );
 

@@ -167,6 +167,16 @@ final class HttpRequest
         return $this->body;
     }
 
+    /**
+     * Alias for getBody() adhering to PSR-7 request naming conventions.
+     *
+     * @return array<string, mixed>
+     */
+    public function getParsedBody(): array
+    {
+        return $this->body;
+    }
+
     public function getRequestId(): string
     {
         return $this->requestId;

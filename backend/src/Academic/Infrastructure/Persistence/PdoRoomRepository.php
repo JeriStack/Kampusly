@@ -111,5 +111,40 @@ final class PdoRoomRepository implements RoomRepositoryInterface
         $id = (int) $this->pdo->lastInsertId();
         return $this->findById($id) ?? $room;
     }
-}
 
+    public function update(Room $room): Room
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE `rooms`
+             SET `room_code` = :room_code,
+                 `room_name` = :room_name,
+                 `building` = :building,
+                 `capacity` = :capacity,
+                 `status` = :status
+             WHERE `id` = :id'
+        );
+        $stmt->execute([
+            ':id' => $room->getId(),
+            ':room_code' => $room->getRoomCode(),
+            ':room_name' => $room->getRoomName(),
+            ':building' => $room->getBuilding(),
+            ':capacity' => $room->getCapacity(),
+            ':status' => $room->getStatus()->value,
+        ]);
+
+        return $this->findById((int) $room->getId()) ?? $room;
+    }
+
+    public function delete(int $id): bool
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM `rooms` WHERE `id` = :id');
+        return $stmt->execute([':id' => $id]);
+    }
+
+    public function hasSchedules(int $roomId): bool
+    {
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM `schedules` WHERE `room_id` = :id');
+        $stmt->execute([':id' => $roomId]);
+        return ((int) $stmt->fetchColumn()) > 0;
+    }
+}

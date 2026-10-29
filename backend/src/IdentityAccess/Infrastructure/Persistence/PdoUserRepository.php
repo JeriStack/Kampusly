@@ -135,6 +135,18 @@ final class PdoUserRepository implements UserRepositoryInterface
         ]);
     }
 
+    public function updateProfile(int $userId, string $fullName, string $email): void
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE `users` SET `full_name` = :name, `email` = :email, `updated_at` = CURRENT_TIMESTAMP WHERE `id` = :id'
+        );
+        $stmt->execute([
+            ':name' => trim($fullName),
+            ':email' => strtolower(trim($email)),
+            ':id' => $userId,
+        ]);
+    }
+
     public function updateLastLogin(int $userId): void
     {
         $stmt = $this->pdo->prepare(

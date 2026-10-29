@@ -33,6 +33,9 @@ final class InMemoryUserRepository implements UserRepositoryInterface
             $prop->setValue($user, $id);
 
             $this->users[$id] = $user;
+            if ($id >= $this->nextId) {
+                $this->nextId = $id + 1;
+            }
         }
     }
 
@@ -131,6 +134,18 @@ final class InMemoryUserRepository implements UserRepositoryInterface
             $reflection = new \ReflectionClass($user);
             $prop = $reflection->getProperty('status');
             $prop->setValue($user, $status);
+        }
+    }
+
+    public function updateProfile(int $userId, string $fullName, string $email): void
+    {
+        $user = $this->findById($userId);
+        if ($user !== null) {
+            $reflection = new \ReflectionClass($user);
+            $propName = $reflection->getProperty('fullName');
+            $propName->setValue($user, $fullName);
+            $propEmail = $reflection->getProperty('email');
+            $propEmail->setValue($user, $email);
         }
     }
 

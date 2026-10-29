@@ -118,6 +118,15 @@ final class RequestValidator
         return $this->requireInt($field, 1);
     }
 
+    public function optionalInt(string $field, ?int $min = null, ?int $max = null): self
+    {
+        if (!array_key_exists($field, $this->input) || $this->input[$field] === null || $this->input[$field] === '') {
+            return $this;
+        }
+
+        return $this->requireInt($field, $min, $max);
+    }
+
     /**
      * @param list<string> $allowedValues
      */

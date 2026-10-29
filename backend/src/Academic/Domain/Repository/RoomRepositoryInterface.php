@@ -22,5 +22,10 @@ interface RoomRepositoryInterface
     ): PaginatedResult;
 
     public function create(Room $room): Room;
-}
 
+    public function update(Room $room): Room;
+
+    public function delete(int $id): bool;
+
+    public function hasSchedules(int $roomId): bool;
+}

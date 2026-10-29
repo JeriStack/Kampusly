@@ -28,6 +28,23 @@ final class PdoSectionRepository implements SectionRepositoryInterface
         return is_array($row) ? Section::fromDatabaseRow($row) : null;
     }
 
+    public function findByNameAndTerm(string $sectionName, string $schoolYear, string $semester): ?Section
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT * FROM `sections`
+             WHERE `section_name` = :name AND `school_year` = :sy AND `semester` = :sem
+             LIMIT 1'
+        );
+        $stmt->execute([
+            ':name' => trim($sectionName),
+            ':sy' => trim($schoolYear),
+            ':sem' => trim($semester),
+        ]);
+        $row = $stmt->fetch();
+
+        return is_array($row) ? Section::fromDatabaseRow($row) : null;
+    }
+
     public function paginate(
         PaginationQuery $pagination,
         ?string $schoolYear = null,
@@ -66,7 +83,11 @@ final class PdoSectionRepository implements SectionRepositoryInterface
         $countStmt->execute($params);
         $total = (int) $countStmt->fetchColumn();
 
-        $sql = "SELECT * FROM `sections` {$whereSql} ORDER BY `section_name` ASC LIMIT :limit OFFSET :offset";
+        $sql = "SELECT s.*, (SELECT COUNT(*) FROM `students` st WHERE st.section_id = s.id) AS enrolled_students_count
+                FROM `sections` s
+                {$whereSql}
+                ORDER BY s.`section_name` ASC
+                LIMIT :limit OFFSET :offset";
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value, PDO::PARAM_STR);
@@ -79,7 +100,9 @@ final class PdoSectionRepository implements SectionRepositoryInterface
         $items = [];
         foreach ($rows as $row) {
             if (is_array($row)) {
-                $items[] = Section::fromDatabaseRow($row)->toArray();
+                $sectionData = Section::fromDatabaseRow($row)->toArray();
+                $sectionData['enrolled_students_count'] = (int) ($row['enrolled_students_count'] ?? 0);
+                $items[] = $sectionData;
             }
         }
 
@@ -109,5 +132,83 @@ final class PdoSectionRepository implements SectionRepositoryInterface
         $id = (int) $this->pdo->lastInsertId();
         return $this->findById($id) ?? $section;
     }
-}
 
+    public function update(Section $section): Section
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE `sections`
+             SET `section_name` = :section_name,
+                 `program` = :program,
+                 `year_level` = :year_level,
+                 `school_year` = :school_year,
+                 `semester` = :semester,
+                 `status` = :status
+             WHERE `id` = :id'
+        );
+        $stmt->execute([
+            ':id' => $section->getId(),
+            ':section_name' => $section->getSectionName(),
+            ':program' => $section->getProgram(),
+            ':year_level' => $section->getYearLevel(),
+            ':school_year' => $section->getSchoolYear(),
+            ':semester' => $section->getSemester()->value,
+            ':status' => $section->getStatus()->value,
+        ]);
+
+        return $this->findById((int) $section->getId()) ?? $section;
+    }
+
+    public function delete(int $id): bool
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM `sections` WHERE `id` = :id');
+        return $stmt->execute([':id' => $id]);
+    }
+
+    public function hasSchedules(int $sectionId): bool
+    {
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM `schedules` WHERE `section_id` = :id');
+        $stmt->execute([':id' => $sectionId]);
+        return ((int) $stmt->fetchColumn()) > 0;
+    }
+
+    public function hasStudents(int $sectionId): bool
+    {
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM `students` WHERE `section_id` = :id');
+        $stmt->execute([':id' => $sectionId]);
+        return ((int) $stmt->fetchColumn()) > 0;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function findStudents(int $sectionId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT s.id, s.student_number, s.first_name, s.last_name, s.program, u.email, u.status
+             FROM `students` s
+             INNER JOIN `users` u ON u.id = s.user_id
+             WHERE s.section_id = :section_id
+             ORDER BY s.last_name ASC, s.first_name ASC'
+        );
+        $stmt->execute([':section_id' => $sectionId]);
+        $rows = $stmt->fetchAll();
+
+        $students = [];
+        foreach ($rows as $row) {
+            if (is_array($row)) {
+                $students[] = [
+                    'id' => (int) $row['id'],
+                    'student_number' => (string) $row['student_number'],
+                    'first_name' => (string) $row['first_name'],
+                    'last_name' => (string) $row['last_name'],
+                    'full_name' => trim((string) $row['first_name'] . ' ' . (string) $row['last_name']),
+                    'program' => (string) $row['program'],
+                    'email' => (string) $row['email'],
+                    'status' => (string) $row['status'],
+                ];
+            }
+        }
+
+        return $students;
+    }
+}
