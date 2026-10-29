@@ -55,12 +55,16 @@ final class CorsMiddleware
         }
 
         $normalizedOrigin = rtrim($origin, '/');
-        if ($normalizedOrigin !== $this->allowedOrigin) {
+        $isLocalDev = in_array($normalizedOrigin, ['http://localhost:5173', 'http://127.0.0.1:5173'], true);
+
+        if (!$isLocalDev && $normalizedOrigin !== $this->allowedOrigin) {
             return $response;
         }
 
+        $effectiveOrigin = $isLocalDev ? $normalizedOrigin : $this->allowedOrigin;
+
         $updated = $response
-            ->withHeader('Access-Control-Allow-Origin', $this->allowedOrigin)
+            ->withHeader('Access-Control-Allow-Origin', $effectiveOrigin)
             ->withHeader('Access-Control-Allow-Methods', implode(', ', $this->allowedMethods))
             ->withHeader('Access-Control-Allow-Headers', implode(', ', $this->allowedHeaders))
             ->withHeader('Vary', 'Origin');

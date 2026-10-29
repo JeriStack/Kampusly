@@ -458,7 +458,7 @@ paths:
   /admin/dashboard-summary:
     get:
       tags: [Admin]
-      summary: Operational counts and summary for Administrator Dashboard (Role: admin)
+      summary: "Operational counts and summary for Administrator Dashboard (Role: admin)"
       security:
         - sessionCookie: []
       responses:
@@ -490,7 +490,7 @@ paths:
   /students:
     get:
       tags: [Students]
-      summary: Paginated list of students (Role: admin, or instructor for assigned section_id)
+      summary: "Paginated list of students (Role: admin, or instructor for assigned section_id)"
       security:
         - sessionCookie: []
       parameters:
@@ -505,7 +505,7 @@ paths:
           description: Paginated student list
     post:
       tags: [Students]
-      summary: Create student account and profile (Role: admin)
+      summary: "Create student account and profile (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -535,7 +535,7 @@ paths:
   /students/{id}:
     get:
       tags: [Students]
-      summary: Get student details (Role: admin, or own student profile)
+      summary: "Get student details (Role: admin, or own student profile)"
       security:
         - sessionCookie: []
       parameters:
@@ -548,7 +548,7 @@ paths:
         '403': { description: Forbidden }
     patch:
       tags: [Students]
-      summary: Update student profile, section linkage, or account status (Role: admin)
+      summary: "Update student profile, section linkage, or account status (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -563,7 +563,7 @@ paths:
   /instructors:
     get:
       tags: [Instructors]
-      summary: Paginated list of instructors (Role: admin)
+      summary: "Paginated list of instructors (Role: admin)"
       security:
         - sessionCookie: []
       parameters:
@@ -574,7 +574,7 @@ paths:
         '200': { description: Paginated instructor list }
     post:
       tags: [Instructors]
-      summary: Create instructor account and profile (Role: admin)
+      summary: "Create instructor account and profile (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -598,7 +598,7 @@ paths:
   /instructors/{id}:
     get:
       tags: [Instructors]
-      summary: View instructor profile (Role: admin, or own instructor)
+      summary: "View instructor profile (Role: admin, or own instructor)"
       security:
         - sessionCookie: []
       parameters:
@@ -610,7 +610,7 @@ paths:
         '200': { description: Instructor profile }
     patch:
       tags: [Instructors]
-      summary: Update instructor profile or status (Role: admin)
+      summary: "Update instructor profile or status (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -647,7 +647,7 @@ paths:
                   meta: { $ref: '#/components/schemas/PaginationMeta' }
     post:
       tags: [Academic]
-      summary: Create subject (Role: admin)
+      summary: "Create subject (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -684,7 +684,7 @@ paths:
         '403': { description: Forbidden if student/instructor not associated with subject }
     patch:
       tags: [Academic]
-      summary: Update subject or status (Role: admin)
+      summary: "Update subject or status (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -711,7 +711,7 @@ paths:
         '200': { description: Room list }
     post:
       tags: [Academic]
-      summary: Create room (Role: admin)
+      summary: "Create room (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -734,7 +734,7 @@ paths:
   /rooms/{id}:
     patch:
       tags: [Academic]
-      summary: Update room details or status (Role: admin)
+      summary: "Update room details or status (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -761,7 +761,7 @@ paths:
         '200': { description: Section list }
     post:
       tags: [Academic]
-      summary: Create section (Role: admin)
+      summary: "Create section (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -785,7 +785,7 @@ paths:
   /sections/{id}:
     patch:
       tags: [Academic]
-      summary: Update section or status (Role: admin)
+      summary: "Update section or status (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -800,7 +800,7 @@ paths:
   /schedules:
     get:
       tags: [Schedules]
-      summary: Filter and paginate master schedules (Role: admin)
+      summary: "Filter and paginate master schedules (Role: admin)"
       security:
         - sessionCookie: []
       parameters:
@@ -841,7 +841,7 @@ paths:
                   meta: { $ref: '#/components/schemas/PaginationMeta' }
     post:
       tags: [Schedules]
-      summary: Create schedule with transactional room/instructor/section conflict detection (Role: admin)
+      summary: "Create schedule with transactional room/instructor/section conflict detection (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -886,7 +886,7 @@ paths:
   /schedules/conflicts:
     get:
       tags: [Schedules]
-      summary: Preview schedule conflicts before saving (Role: admin)
+      summary: "Preview schedule conflicts before saving (Role: admin)"
       security:
         - sessionCookie: []
       parameters:
@@ -927,7 +927,7 @@ paths:
         '200': { description: Schedule detail }
     patch:
       tags: [Schedules]
-      summary: Update schedule or transition status (draft/published/cancelled) with conflict check (Role: admin)
+      summary: "Update schedule or transition status (draft/published/cancelled) with conflict check (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -977,7 +977,7 @@ paths:
   /my/schedule.pdf:
     get:
       tags: [Schedules]
-      summary: Download personal schedule as formatted offline PDF (Role: student)
+      summary: "Download personal schedule as formatted offline PDF (Role: student)"
       security:
         - sessionCookie: []
       responses:
@@ -1017,7 +1017,7 @@ paths:
                   meta: { $ref: '#/components/schemas/PaginationMeta' }
     post:
       tags: [Announcements]
-      summary: Create draft or published subject announcement (Role: assigned instructor or admin)
+      summary: "Create draft or published subject announcement (Role: assigned instructor or admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -1046,7 +1046,7 @@ paths:
   /announcements/{id}:
     patch:
       tags: [Announcements]
-      summary: Update, archive, or withdraw announcement (Role: authoring instructor or admin)
+      summary: "Update, archive, or withdraw announcement (Role: authoring instructor or admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -1077,7 +1077,7 @@ paths:
   /schedules/{id}/notices:
     post:
       tags: [ClassNotices]
-      summary: Submit class notice for an assigned schedule (Role: assigned instructor or admin)
+      summary: "Submit class notice for an assigned schedule (Role: assigned instructor or admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -1163,7 +1163,7 @@ paths:
   /class-notices/{id}/approve:
     post:
       tags: [ClassNotices]
-      summary: Approve pending class notice and notify affected students and instructor (Role: admin)
+      summary: "Approve pending class notice and notify affected students and instructor (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -1178,7 +1178,7 @@ paths:
   /class-notices/{id}/reject:
     post:
       tags: [ClassNotices]
-      summary: Reject pending class notice with required reason (Role: admin)
+      summary: "Reject pending class notice with required reason (Role: admin)"
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -1202,7 +1202,7 @@ paths:
   /class-notices/{id}/withdraw:
     post:
       tags: [ClassNotices]
-      summary: Withdraw a class notice (Role: authoring instructor or admin)
+      summary: "Withdraw a class notice (Role: authoring instructor or admin)"
       security:
         - sessionCookie: []
           csrfHeader: []

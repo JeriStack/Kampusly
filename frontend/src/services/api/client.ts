@@ -32,6 +32,16 @@ export interface ApiReadyHealthResponse {
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
+let currentCsrfToken: string | null = null
+
+export function setCsrfToken(token: string | null): void {
+  currentCsrfToken = token
+}
+
+export function getCsrfToken(): string | null {
+  return currentCsrfToken
+}
+
 /**
  * Perform a typed HTTP request against the Kampusly REST API (`/api/v1`).
  */
@@ -60,8 +70,9 @@ export async function apiRequest<TResponse>(
     }
   }
 
-  if (csrfToken && MUTATING_METHODS.has(method)) {
-    headers.set('X-CSRF-Token', csrfToken)
+  const activeCsrfToken = csrfToken ?? currentCsrfToken
+  if (activeCsrfToken && MUTATING_METHODS.has(method)) {
+    headers.set('X-CSRF-Token', activeCsrfToken)
   }
 
   const response = await fetch(url, {
@@ -97,6 +108,14 @@ export async function apiRequest<TResponse>(
       {},
       response.headers.get('X-Request-Id'),
     )
+  }
+
+  // Auto-capture CSRF token from response if present
+  if (parsed && typeof parsed === 'object' && 'data' in (parsed as Record<string, unknown>)) {
+    const dataObj = (parsed as { data: Record<string, unknown> }).data
+    if (dataObj && typeof dataObj === 'object' && typeof dataObj.csrf_token === 'string') {
+      setCsrfToken(dataObj.csrf_token)
+    }
   }
 
   return parsed as TResponse

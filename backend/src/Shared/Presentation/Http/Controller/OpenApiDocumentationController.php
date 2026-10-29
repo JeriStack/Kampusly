@@ -38,7 +38,11 @@ final class OpenApiDocumentationController
             $content,
             'application/yaml; charset=utf-8',
             200,
-            ['Cache-Control' => 'public, max-age=3600'],
+            [
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
+            ],
             $request->getRequestId()
         );
     }
@@ -48,7 +52,8 @@ final class OpenApiDocumentationController
         $this->assertDocumentationAccessAllowed();
 
         $apiPrefix = $this->config->getString('app.api_prefix', '/api/v1');
-        $specUrl = rtrim($apiPrefix, '/') . '/openapi.yaml';
+        $mtime = is_file($this->specFilePath) ? filemtime($this->specFilePath) : time();
+        $specUrl = rtrim($apiPrefix, '/') . '/openapi.yaml?v=' . $mtime;
         $appName = htmlspecialchars($this->config->getString('app.name', 'Kampusly'), ENT_QUOTES, 'UTF-8');
 
         $html = <<<HTML
@@ -79,7 +84,7 @@ final class OpenApiDocumentationController
 <body>
   <div class="kampusly-banner">
     <h1>{$appName} REST API Reference</h1>
-    <span>Phase 4 Foundation — OpenAPI 3.1</span>
+    <span>Phase 5 — OpenAPI 3.1</span>
   </div>
   <div id="swagger-ui"></div>
   <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js" charset="UTF-8"></script>

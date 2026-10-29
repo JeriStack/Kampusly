@@ -3,7 +3,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 const devProxyTarget =
-  process.env.VITE_DEV_API_PROXY_TARGET || 'http://localhost:8080'
+  process.env.VITE_DEV_API_PROXY_TARGET || 'http://127.0.0.1:8000'
 
 // https://vite.dev/config/
 export default defineConfig({

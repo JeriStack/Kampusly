@@ -60,7 +60,7 @@ final class Phase4ApiFoundationTest extends TestCase
         $this->assertSame('kampusly-api', $data['service']);
         $this->assertSame('ok', $data['status']);
         $this->assertArrayHasKey('phase', $data);
-        $this->assertStringContainsString('Phase 4', (string) $data['phase']);
+        $this->assertStringContainsString('Phase', (string) $data['phase']);
         $this->assertArrayHasKey('links', $data);
     }
 

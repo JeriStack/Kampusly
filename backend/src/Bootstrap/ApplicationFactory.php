@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kampusly\Bootstrap;
 
+use Closure;
 use Kampusly\Academic\Application\Service\AcademicCatalogService;
 use Kampusly\Academic\Domain\Repository\RoomRepositoryInterface;
 use Kampusly\Academic\Domain\Repository\SectionRepositoryInterface;
@@ -17,8 +18,17 @@ use Kampusly\Announcements\Infrastructure\Persistence\PdoAnnouncementRepository;
 use Kampusly\ClassNotices\Application\Service\ClassNoticeFoundationService;
 use Kampusly\ClassNotices\Domain\Repository\ClassNoticeRepositoryInterface;
 use Kampusly\ClassNotices\Infrastructure\Persistence\PdoClassNoticeRepository;
+use Kampusly\IdentityAccess\Application\Service\AuthenticationService;
+use Kampusly\IdentityAccess\Application\Service\UserAdministrationService;
+use Kampusly\IdentityAccess\Domain\Policy\AdminPolicy;
+use Kampusly\IdentityAccess\Domain\Policy\InstructorPolicy;
+use Kampusly\IdentityAccess\Domain\Policy\StudentPolicy;
 use Kampusly\IdentityAccess\Domain\Repository\UserRepositoryInterface;
+use Kampusly\IdentityAccess\Domain\Service\PasswordHasher;
 use Kampusly\IdentityAccess\Infrastructure\Persistence\PdoUserRepository;
+use Kampusly\IdentityAccess\Presentation\Http\Controller\AdminDashboardController;
+use Kampusly\IdentityAccess\Presentation\Http\Controller\AuthController;
+use Kampusly\IdentityAccess\Presentation\Http\Controller\UserController;
 use Kampusly\Notifications\Domain\Repository\NotificationRepositoryInterface;
 use Kampusly\Notifications\Infrastructure\Persistence\PdoNotificationRepository;
 use Kampusly\Scheduling\Application\Service\ScheduleFoundationService;
@@ -31,9 +41,15 @@ use Kampusly\Shared\Application\Contract\TransactionManagerInterface;
 use Kampusly\Shared\Infrastructure\Database\PdoConnectionFactory;
 use Kampusly\Shared\Infrastructure\Database\PdoTransactionManager;
 use Kampusly\Shared\Infrastructure\Health\HealthCheckService;
+use Kampusly\Shared\Infrastructure\Http\AuthenticateMiddleware;
 use Kampusly\Shared\Infrastructure\Http\CorsMiddleware;
+use Kampusly\Shared\Infrastructure\Http\CsrfManager;
+use Kampusly\Shared\Infrastructure\Http\CsrfMiddleware;
 use Kampusly\Shared\Infrastructure\Http\HttpRequest;
 use Kampusly\Shared\Infrastructure\Http\JsonResponse;
+use Kampusly\Shared\Infrastructure\Http\PhpSessionManager;
+use Kampusly\Shared\Infrastructure\Http\RateLimiter;
+use Kampusly\Shared\Infrastructure\Http\SessionInterface;
 use Kampusly\Shared\Infrastructure\Logging\LoggerFactory;
 use Kampusly\Shared\Infrastructure\Logging\PdoAuditLogger;
 use Kampusly\Shared\Presentation\Http\Controller\OpenApiDocumentationController;
@@ -121,9 +137,94 @@ final class ApplicationFactory
         );
 
         $container->singleton(
+            SessionInterface::class,
+            static fn (Container $c): SessionInterface => new PhpSessionManager(
+                $c->get(Config::class)->getArray('security')
+            )
+        );
+
+        $container->singleton(
+            CsrfManager::class,
+            static fn (Container $c): CsrfManager => new CsrfManager(
+                $c->get(SessionInterface::class)
+            )
+        );
+
+        $container->singleton(
+            RateLimiter::class,
+            static fn (): RateLimiter => new RateLimiter(
+                $rootDir . '/storage/cache/rate_limits'
+            )
+        );
+
+        $container->singleton(
+            PasswordHasher::class,
+            static fn (): PasswordHasher => new PasswordHasher()
+        );
+
+        $container->singleton(
+            AdminPolicy::class,
+            static fn (): AdminPolicy => new AdminPolicy()
+        );
+
+        $container->singleton(
+            InstructorPolicy::class,
+            static fn (): InstructorPolicy => new InstructorPolicy()
+        );
+
+        $container->singleton(
+            StudentPolicy::class,
+            static fn (): StudentPolicy => new StudentPolicy()
+        );
+
+        $container->singleton(
             UserRepositoryInterface::class,
             static fn (Container $c): UserRepositoryInterface => new PdoUserRepository(
                 $c->get(PdoConnectionFactory::class)->getConnection()
+            )
+        );
+
+        $container->singleton(
+            AuthenticationService::class,
+            static fn (Container $c): AuthenticationService => new AuthenticationService(
+                $c->get(UserRepositoryInterface::class),
+                $c->get(PasswordHasher::class),
+                $c->get(SessionInterface::class),
+                $c->get(CsrfManager::class),
+                $c->get(RateLimiter::class),
+                $c->get(AuditLoggerInterface::class)
+            )
+        );
+
+        $container->singleton(
+            UserAdministrationService::class,
+            static fn (Container $c): UserAdministrationService => new UserAdministrationService(
+                $c->get(UserRepositoryInterface::class),
+                $c->get(PasswordHasher::class),
+                $c->get(AdminPolicy::class),
+                $c->get(AuditLoggerInterface::class)
+            )
+        );
+
+        $container->singleton(
+            AuthController::class,
+            static fn (Container $c): AuthController => new AuthController(
+                $c->get(AuthenticationService::class)
+            )
+        );
+
+        $container->singleton(
+            UserController::class,
+            static fn (Container $c): UserController => new UserController(
+                $c->get(UserAdministrationService::class)
+            )
+        );
+
+        $container->singleton(
+            AdminDashboardController::class,
+            static fn (Container $c): AdminDashboardController => new AdminDashboardController(
+                $c->get(PdoConnectionFactory::class)->getConnection(),
+                $c->get(AdminPolicy::class)
             )
         );
 
@@ -238,6 +339,16 @@ final class ApplicationFactory
         );
 
         $router = new Router($config->getString('app.api_prefix', '/api/v1'));
+
+        // Register global CSRF protection middleware for mutating requests
+        $router->addMiddleware(static function (HttpRequest $request, Closure $next) use ($container): JsonResponse {
+            /** @var CsrfManager $csrfManager */
+            $csrfManager = $container->get(CsrfManager::class);
+            $csrfMiddleware = new CsrfMiddleware($csrfManager);
+
+            return $csrfMiddleware->handle($request, $next);
+        });
+
         $routesFile = $rootDir . '/routes/api.php';
         if (is_file($routesFile)) {
             $registerRoutes = require $routesFile;

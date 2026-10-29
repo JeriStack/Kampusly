@@ -6,12 +6,35 @@ use Kampusly\Academic\Presentation\Http\Controller\AcademicCatalogController;
 use Kampusly\Bootstrap\Config;
 use Kampusly\Bootstrap\Container;
 use Kampusly\Bootstrap\Router;
+use Kampusly\IdentityAccess\Domain\Repository\UserRepositoryInterface;
+use Kampusly\IdentityAccess\Presentation\Http\Controller\AdminDashboardController;
+use Kampusly\IdentityAccess\Presentation\Http\Controller\AuthController;
+use Kampusly\IdentityAccess\Presentation\Http\Controller\UserController;
 use Kampusly\Scheduling\Presentation\Http\Controller\ScheduleFoundationController;
+use Kampusly\Shared\Infrastructure\Http\AuthenticateMiddleware;
+use Kampusly\Shared\Infrastructure\Http\AuthorizeRoleMiddleware;
 use Kampusly\Shared\Infrastructure\Http\HttpRequest;
 use Kampusly\Shared\Infrastructure\Http\JsonResponse;
+use Kampusly\Shared\Infrastructure\Http\SessionInterface;
 use Kampusly\Shared\Presentation\Http\Controller\OpenApiDocumentationController;
 
 return static function (Router $router, Container $container): void {
+    $authenticate = static function (HttpRequest $request, Closure $next) use ($container): JsonResponse {
+        /** @var AuthenticateMiddleware $authMiddleware */
+        $authMiddleware = new AuthenticateMiddleware(
+            $container->get(SessionInterface::class),
+            $container->get(UserRepositoryInterface::class)
+        );
+        return $authMiddleware->handle($request, $next);
+    };
+
+    $authorizeRoles = static function (array $roles): Closure {
+        return static function (HttpRequest $request, Closure $next) use ($roles): JsonResponse {
+            $middleware = new AuthorizeRoleMiddleware($roles);
+            return $middleware->handle($request, $next);
+        };
+    };
+
     $router->get('/', static function (HttpRequest $request) use ($container): JsonResponse {
         /** @var Config $config */
         $config = $container->get(Config::class);
@@ -24,13 +47,18 @@ return static function (Router $router, Container $container): void {
                 'version' => $config->getString('app.version', '0.1.0'),
                 'api_prefix' => $config->getString('app.api_prefix', '/api/v1'),
                 'status' => 'ok',
-                'phase' => 'Phase 4: Database and Backend Foundation',
+                'phase' => 'Phase 5: Authentication and Authorization',
                 'links' => [
                     'health' => '/api/v1/health',
                     'live' => '/api/v1/health/live',
                     'ready' => '/api/v1/health/ready',
                     'docs' => '/api/v1/docs',
                     'openapi' => '/api/v1/openapi.yaml',
+                    'auth_login' => '/api/v1/auth/login',
+                    'auth_logout' => '/api/v1/auth/logout',
+                    'auth_me' => '/api/v1/auth/me',
+                    'users' => '/api/v1/users',
+                    'admin_dashboard_summary' => '/api/v1/admin/dashboard-summary',
                     'subjects' => '/api/v1/subjects',
                     'rooms' => '/api/v1/rooms',
                     'sections' => '/api/v1/sections',
@@ -60,6 +88,64 @@ return static function (Router $router, Container $container): void {
         $healthRoutes($router, $container);
     }
 
+    // Authentication endpoints
+    $router->post('/auth/login', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var AuthController $authController */
+        $authController = $container->get(AuthController::class);
+        return $authController->login($request);
+    });
+
+    $router->post('/auth/logout', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var AuthController $authController */
+        $authController = $container->get(AuthController::class);
+        return $authController->logout($request);
+    }, [$authenticate]);
+
+    $router->get('/auth/me', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var AuthController $authController */
+        $authController = $container->get(AuthController::class);
+        return $authController->me($request);
+    }, [$authenticate]);
+
+    $router->post('/auth/change-password', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var AuthController $authController */
+        $authController = $container->get(AuthController::class);
+        return $authController->changePassword($request);
+    }, [$authenticate]);
+
+    // User management endpoints
+    $router->get('/users', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var UserController $userController */
+        $userController = $container->get(UserController::class);
+        return $userController->listUsers($request);
+    }, [$authenticate, $authorizeRoles(['admin'])]);
+
+    $router->post('/users', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var UserController $userController */
+        $userController = $container->get(UserController::class);
+        return $userController->createUser($request);
+    }, [$authenticate, $authorizeRoles(['admin'])]);
+
+    $router->get('/users/{id}', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+        /** @var UserController $userController */
+        $userController = $container->get(UserController::class);
+        return $userController->getUser($request, $params);
+    }, [$authenticate]);
+
+    $router->patch('/users/{id}/status', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+        /** @var UserController $userController */
+        $userController = $container->get(UserController::class);
+        return $userController->updateStatus($request, $params);
+    }, [$authenticate, $authorizeRoles(['admin'])]);
+
+    // Admin dashboard summary
+    $router->get('/admin/dashboard-summary', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var AdminDashboardController $adminController */
+        $adminController = $container->get(AdminDashboardController::class);
+        return $adminController->dashboardSummary($request);
+    }, [$authenticate, $authorizeRoles(['admin'])]);
+
+    // Academic & Scheduling endpoints
     $router->get('/subjects', static function (HttpRequest $request) use ($container): JsonResponse {
         /** @var AcademicCatalogController $academicController */
         $academicController = $container->get(AcademicCatalogController::class);

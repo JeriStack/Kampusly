@@ -6,6 +6,14 @@ use Kampusly\Bootstrap\ApplicationFactory;
 use Kampusly\Shared\Infrastructure\Http\HttpRequest;
 use Kampusly\Shared\Infrastructure\Http\JsonResponse;
 
+// Built-in PHP CLI server router support (serves static files if they exist on disk)
+if (php_sapi_name() === 'cli-server') {
+    $uri = urldecode((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH));
+    if ($uri !== '/' && is_file(__DIR__ . $uri)) {
+        return false;
+    }
+}
+
 $autoloadPath = dirname(__DIR__) . '/vendor/autoload.php';
 if (!is_file($autoloadPath)) {
     http_response_code(500);

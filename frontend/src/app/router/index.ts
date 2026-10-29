@@ -3,6 +3,7 @@ import {
   createWebHistory,
   type RouteRecordRaw,
 } from 'vue-router'
+import { authNavigationGuard } from './guards'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -12,12 +13,43 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Kampusly — Your Campus. Your Classes. Your Time.' },
   },
   {
-    // Placeholder target for Access / Log In CTAs. The authenticated area and
-    // real login screen are built separately from the public landing page.
     path: '/login',
     name: 'login',
-    component: () => import('@/features/auth/pages/LoginPlaceholder.vue'),
-    meta: { title: 'Log in — Kampusly' },
+    component: () => import('@/features/auth/pages/LoginPage.vue'),
+    meta: {
+      title: 'Sign in — Kampusly',
+      requiresGuest: true,
+    },
+  },
+  {
+    path: '/admin/dashboard',
+    name: 'admin-dashboard',
+    component: () => import('@/features/admin/pages/AdminDashboard.vue'),
+    meta: {
+      title: 'Admin Dashboard — Kampusly',
+      requiresAuth: true,
+      allowedRoles: ['admin'],
+    },
+  },
+  {
+    path: '/instructor/dashboard',
+    name: 'instructor-dashboard',
+    component: () => import('@/features/instructor/pages/InstructorDashboard.vue'),
+    meta: {
+      title: 'Instructor Dashboard — Kampusly',
+      requiresAuth: true,
+      allowedRoles: ['instructor'],
+    },
+  },
+  {
+    path: '/student/dashboard',
+    name: 'student-dashboard',
+    component: () => import('@/features/student/pages/StudentDashboard.vue'),
+    meta: {
+      title: 'Student Dashboard — Kampusly',
+      requiresAuth: true,
+      allowedRoles: ['student'],
+    },
   },
   {
     path: '/:pathMatch(.*)*',
@@ -39,9 +71,12 @@ export const router = createRouter({
   },
 })
 
+router.beforeEach(authNavigationGuard)
+
 router.afterEach((to) => {
   const title = to.meta.title
   if (typeof title === 'string') {
     document.title = title
   }
 })
+

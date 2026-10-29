@@ -30,12 +30,37 @@ export function buildApiUrl(path: string, baseUrl?: string): string {
 }
 
 /**
- * Centralized API endpoint definitions aligned with `docs/phase-2/phase-2-api-contract.yaml`.
+ * Centralized API endpoint definitions aligned with `docs/phase-2/phase-2-api-contract.yaml`
+ * and backend route definitions.
  */
 export const API_ENDPOINTS = {
   root: '/',
   health: {
     live: '/health/live',
     ready: '/health/ready',
+  },
+  auth: {
+    login: '/auth/login',
+    logout: '/auth/logout',
+    me: '/auth/me',
+    changePassword: '/auth/change-password',
+  },
+  users: {
+    list: '/users',
+    create: '/users',
+    get: (id: number | string) => `/users/${id}`,
+    updateStatus: (id: number | string) => `/users/${id}/status`,
+  },
+  admin: {
+    dashboardSummary: '/admin/dashboard-summary',
+  },
+  academic: {
+    subjects: '/subjects',
+    rooms: '/rooms',
+    sections: '/sections',
+  },
+  scheduling: {
+    schedules: '/schedules',
+    validateConflicts: '/schedules/validate-conflicts',
   },
 } as const

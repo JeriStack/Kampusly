@@ -130,37 +130,44 @@ final class Router
         $path = $this->normalizePath($request->getPath());
         $allowedForPath = [];
 
-        foreach ($this->routes as $route) {
-            if (preg_match($route['regex'], $path, $matches) !== 1) {
-                continue;
-            }
+        $pathsToTry = [$path];
+        if (!str_starts_with($path, $this->prefix . '/') && $path !== $this->prefix) {
+            $pathsToTry[] = $this->normalizePath($this->prefix . $path);
+        }
 
-            if ($route['method'] !== $method) {
-                $allowedForPath[] = $route['method'];
-                continue;
-            }
-
-            $request->enforceJsonContentType();
-
-            $params = [];
-            foreach ($route['paramNames'] as $name) {
-                if (isset($matches[$name])) {
-                    $params[$name] = $matches[$name];
+        foreach ($pathsToTry as $candidatePath) {
+            foreach ($this->routes as $route) {
+                if (preg_match($route['regex'], $candidatePath, $matches) !== 1) {
+                    continue;
                 }
+
+                if ($route['method'] !== $method) {
+                    $allowedForPath[] = $route['method'];
+                    continue;
+                }
+
+                $request->enforceJsonContentType();
+
+                $params = [];
+                foreach ($route['paramNames'] as $name) {
+                    if (isset($matches[$name])) {
+                        $params[$name] = $matches[$name];
+                    }
+                }
+
+                $handler = $route['handler'];
+                $corePipeline = static fn (HttpRequest $req): JsonResponse => $handler($req, $params);
+
+                $pipeline = array_merge($this->globalMiddleware, $route['middleware']);
+                $next = $corePipeline;
+                for ($i = count($pipeline) - 1; $i >= 0; $i--) {
+                    $mw = $pipeline[$i];
+                    $currentNext = $next;
+                    $next = static fn (HttpRequest $req): JsonResponse => $mw($req, $currentNext);
+                }
+
+                return $next($request);
             }
-
-            $handler = $route['handler'];
-            $corePipeline = static fn (HttpRequest $req): JsonResponse => $handler($req, $params);
-
-            $pipeline = array_merge($this->globalMiddleware, $route['middleware']);
-            $next = $corePipeline;
-            for ($i = count($pipeline) - 1; $i >= 0; $i--) {
-                $mw = $pipeline[$i];
-                $currentNext = $next;
-                $next = static fn (HttpRequest $req): JsonResponse => $mw($req, $currentNext);
-            }
-
-            return $next($request);
         }
 
         if ($allowedForPath !== []) {
