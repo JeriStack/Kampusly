@@ -8,6 +8,7 @@ export interface DemoUser {
   initials: string
   title: string
   section?: string
+  active?: boolean
 }
 
 export interface DemoClass {
@@ -30,6 +31,26 @@ export interface DemoNotification {
   time: string
   unread: boolean
   type: 'schedule' | 'announcement' | 'notice'
+  audience?: UserRole[]
+}
+
+export interface DemoAnnouncement {
+  id: number
+  title: string
+  body: string
+  category: string
+  date: string
+  audience: string
+  author: string
+}
+
+export interface DemoClassNotice {
+  id: number
+  subject: string
+  type: string
+  message: string
+  status: 'Published'
+  date: string
 }
 
 export const demoUsers: DemoUser[] = [
@@ -146,6 +167,27 @@ export const initialNotifications: DemoNotification[] = [
     time: 'Monday',
     unread: false,
     type: 'announcement',
+  },
+]
+
+export const initialAnnouncements: DemoAnnouncement[] = [
+  {
+    id: 1,
+    title: 'Midterm week is coming up',
+    body: 'Take a moment to review the academic calendar and plan ahead. Reach out to your instructors if you have questions about your classes.',
+    category: 'Academic calendar',
+    date: 'Oct 10, 2026',
+    audience: 'All students',
+    author: 'Academic office',
+  },
+  {
+    id: 2,
+    title: 'Welcome to a new semester',
+    body: 'Your class schedule and campus announcements are in one place. Check in here to stay up to date as the semester gets underway.',
+    category: 'Campus news',
+    date: 'Oct 08, 2026',
+    audience: 'All students',
+    author: 'Academic office',
   },
 ]
 

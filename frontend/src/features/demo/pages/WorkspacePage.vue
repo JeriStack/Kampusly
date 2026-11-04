@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import {
   demoUsers,
+  initialAnnouncements,
   initialClasses,
   initialNotifications,
   roleNames,
+  type DemoAnnouncement,
   type DemoClass,
+  type DemoClassNotice,
   type DemoNotification,
   type DemoUser,
   type UserRole,
@@ -18,14 +21,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   'sign-out': []
   'switch-user': [user: DemoUser]
-  'open-schedule-form': []
-  'open-announcement-form': []
-  'open-academic-form': []
-  'open-user-form': []
-  'open-notice-form': []
 }>()
 
 type PageId = 'dashboard' | 'schedule' | 'announcements' | 'class-notices' | 'academic' | 'users' | 'notifications'
+type ModalId = 'schedule' | 'announcement' | 'academic' | 'user' | 'notice-review'
 
 interface NavItem {
   id: PageId
@@ -33,11 +32,43 @@ interface NavItem {
   icon: string
 }
 
+interface AcademicRecord {
+  category: string
+  name: string
+}
+
 const page = ref<PageId>('dashboard')
 const mobileMenuOpen = ref(false)
 const profileMenuOpen = ref(false)
 const classes = ref<DemoClass[]>(initialClasses.map((item) => ({ ...item })))
 const notifications = ref<DemoNotification[]>(initialNotifications.map((item) => ({ ...item })))
+const announcements = ref<DemoAnnouncement[]>(initialAnnouncements.map((item) => ({ ...item })))
+const classNotices = ref<DemoClassNotice[]>([])
+const accounts = ref<DemoUser[]>(demoUsers.map((item) => ({ ...item })))
+const academicRecords = ref<AcademicRecord[]>([
+  { category: 'Subjects', name: '86 active courses' },
+  { category: 'Rooms', name: '32 campus rooms' },
+  { category: 'Sections', name: '36 active sections' },
+  { category: 'Instructors', name: '42 teaching staff' },
+])
+const activeModal = ref<ModalId | null>(null)
+const formError = ref('')
+const toastMessage = ref('')
+const scheduleForm = reactive({
+  code: '',
+  subject: '',
+  day: 'Monday',
+  start: '08:30',
+  end: '10:00',
+  room: '',
+  instructor: 'Jordan Rivera',
+  section: 'BSCS · 2A',
+})
+const announcementForm = reactive({ title: '', category: 'Campus news', body: '' })
+const academicForm = reactive({ category: 'Subjects', name: '' })
+const userForm = reactive({ name: '', email: '', role: 'student' as UserRole, section: '' })
+const noticeForm = reactive({ classId: '', type: '', message: '' })
+const pendingNotice = ref<{ subject: string; section: string; type: string; message: string } | null>(null)
 
 const navigation: Record<UserRole, NavItem[]> = {
   student: [
@@ -74,22 +105,325 @@ const pageTitles: Record<PageId, string> = {
 const demoRoles: UserRole[] = ['student', 'instructor', 'administrator']
 
 const navItems = computed(() => navigation[props.user.role])
-const unreadCount = computed(() => notifications.value.filter((item) => item.unread).length)
+const visibleNotifications = computed(() =>
+  notifications.value.filter((item) => !item.audience || item.audience.includes(props.user.role)),
+)
+const unreadCount = computed(() => visibleNotifications.value.filter((item) => item.unread).length)
 const todayClasses = computed(() => {
   const roleClasses =
-    props.user.role === 'instructor'
-      ? classes.value.filter((item) => item.instructor === props.user.name)
-      : classes.value
+    props.user.role === 'administrator'
+      ? classes.value
+      : props.user.role === 'instructor'
+        ? classes.value.filter((item) => item.instructor === props.user.name)
+        : classes.value.filter((item) => item.section === props.user.section)
   return roleClasses.filter((item) => item.day === 'Monday' && item.status !== 'Cancelled')
 })
+const scheduleRows = computed(() => {
+  if (props.user.role === 'administrator') {
+    return classes.value
+  }
+  if (props.user.role === 'instructor') {
+    return classes.value.filter((item) => item.instructor === props.user.name && item.status !== 'Cancelled')
+  }
+  return classes.value.filter((item) => item.section === props.user.section && item.status !== 'Cancelled')
+})
+const assignedClasses = computed(() =>
+  classes.value.filter((item) => item.instructor === props.user.name && item.status !== 'Cancelled'),
+)
 const greeting = computed(() => {
   const firstName = props.user.name.split(' ')[0]
   return `Good morning, ${firstName}`
 })
+const academicCategories = ['Subjects', 'Rooms', 'Sections', 'Instructors']
+const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
 function openPage(id: PageId) {
   page.value = id
   mobileMenuOpen.value = false
+}
+
+function openModal(id: ModalId) {
+  formError.value = ''
+  activeModal.value = id
+}
+
+function closeModal() {
+  activeModal.value = null
+  formError.value = ''
+}
+
+function dismissToast() {
+  toastMessage.value = ''
+}
+
+function markAllRead() {
+  notifications.value = notifications.value.map((item) =>
+    !item.audience || item.audience.includes(props.user.role)
+      ? { ...item, unread: false }
+      : item,
+  )
+}
+
+function addNotification(
+  title: string,
+  detail: string,
+  type: DemoNotification['type'],
+  audience?: UserRole[],
+) {
+  notifications.value.unshift({
+    id: Math.max(0, ...notifications.value.map((item) => item.id)) + 1,
+    title,
+    detail,
+    time: 'Just now',
+    unread: true,
+    type,
+    audience,
+  })
+}
+
+function minutesSinceMidnight(time: string) {
+  const [hours, minutes] = time.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+function scheduleConflict() {
+  const start = minutesSinceMidnight(scheduleForm.start)
+  const end = minutesSinceMidnight(scheduleForm.end)
+
+  if (end <= start) {
+    return 'End time must be later than the start time.'
+  }
+
+  const overlap = classes.value.find((item) => {
+    if (item.status === 'Cancelled' || item.day !== scheduleForm.day) {
+      return false
+    }
+
+    return start < minutesSinceMidnight(item.end) && end > minutesSinceMidnight(item.start)
+  })
+
+  if (!overlap) {
+    return ''
+  }
+
+  if (overlap.room.toLowerCase() === scheduleForm.room.trim().toLowerCase()) {
+    return `${overlap.room} is already booked for ${overlap.code} from ${overlap.start} to ${overlap.end} on ${overlap.day}.`
+  }
+
+  if (overlap.instructor.toLowerCase() === scheduleForm.instructor.trim().toLowerCase()) {
+    return `${overlap.instructor} is already teaching ${overlap.code} from ${overlap.start} to ${overlap.end} on ${overlap.day}.`
+  }
+
+  return `${overlap.section} already has ${overlap.code} from ${overlap.start} to ${overlap.end} on ${overlap.day}.`
+}
+
+function saveSchedule(status: DemoClass['status']) {
+  if (
+    !scheduleForm.code.trim() ||
+    !scheduleForm.subject.trim() ||
+    !scheduleForm.room.trim() ||
+    !scheduleForm.instructor ||
+    !scheduleForm.section ||
+    !scheduleForm.start ||
+    !scheduleForm.end
+  ) {
+    formError.value = 'Complete every required schedule field before saving.'
+    return
+  }
+
+  const conflict = scheduleConflict()
+
+  if (conflict) {
+    formError.value = conflict
+    return
+  }
+
+  const schedule: DemoClass = {
+    id: Math.max(0, ...classes.value.map((item) => item.id)) + 1,
+    code: scheduleForm.code.trim(),
+    subject: scheduleForm.subject.trim(),
+    day: scheduleForm.day,
+    start: scheduleForm.start,
+    end: scheduleForm.end,
+    room: scheduleForm.room.trim(),
+    instructor: scheduleForm.instructor,
+    section: scheduleForm.section,
+    status,
+  }
+
+  classes.value.push(schedule)
+
+  if (status === 'Published') {
+    addNotification(
+      `New class · ${schedule.code}`,
+      `${schedule.subject} is scheduled ${schedule.day} at ${schedule.start} in ${schedule.room}.`,
+      'schedule',
+      ['student'],
+    )
+  }
+
+  toastMessage.value =
+    status === 'Published'
+      ? 'Schedule published. Affected students were notified in this demo.'
+      : 'Schedule saved as a draft.'
+  closeModal()
+}
+
+function publishSchedule(schedule: DemoClass) {
+  if (
+    schedule.status !== 'Draft' ||
+    !window.confirm(`Publish ${schedule.code} for ${schedule.section}?`)
+  ) {
+    return
+  }
+
+  schedule.status = 'Published'
+  addNotification(
+    `New class · ${schedule.code}`,
+    `${schedule.subject} is scheduled ${schedule.day} at ${schedule.start} in ${schedule.room}.`,
+    'schedule',
+    ['student'],
+  )
+  toastMessage.value = 'Schedule published. Affected students were notified in this demo.'
+}
+
+function cancelSchedule(schedule: DemoClass) {
+  if (schedule.status !== 'Published' || !window.confirm(`Cancel ${schedule.code} on ${schedule.day}?`)) {
+    return
+  }
+
+  schedule.status = 'Cancelled'
+  addNotification(
+    `Class cancelled · ${schedule.code}`,
+    `${schedule.subject} on ${schedule.day} has been cancelled.`,
+    'schedule',
+    ['student'],
+  )
+  toastMessage.value = 'Schedule cancelled. Affected students were notified in this demo.'
+}
+
+function saveAnnouncement() {
+  const announcement: DemoAnnouncement = {
+    id: Math.max(0, ...announcements.value.map((item) => item.id)) + 1,
+    title: announcementForm.title.trim(),
+    body: announcementForm.body.trim(),
+    category: announcementForm.category,
+    date: 'Oct 12, 2026',
+    audience: 'All students',
+    author: props.user.name,
+  }
+
+  announcements.value.unshift(announcement)
+  addNotification(
+    announcement.title,
+    `${announcement.category} · ${announcement.body}`,
+    'announcement',
+    ['student'],
+  )
+  toastMessage.value = 'Announcement published. Students were notified in this demo.'
+  announcementForm.title = ''
+  announcementForm.body = ''
+  closeModal()
+}
+
+function saveAcademicRecord() {
+  academicRecords.value.push({
+    category: academicForm.category,
+    name: academicForm.name.trim(),
+  })
+
+  toastMessage.value = `${academicForm.category.slice(0, -1)} record added to this demo.`
+  academicForm.name = ''
+  closeModal()
+}
+
+function saveUser() {
+  const email = userForm.email.trim().toLowerCase()
+
+  if (accounts.value.some((item) => item.email.toLowerCase() === email)) {
+    formError.value = 'A demo account with this email already exists.'
+    return
+  }
+
+  const name = userForm.name.trim()
+  accounts.value.push({
+    email,
+    name,
+    role: userForm.role,
+    initials: name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? '')
+      .join(''),
+    title: roleNames[userForm.role],
+    section: userForm.section.trim() || undefined,
+    active: true,
+  })
+  toastMessage.value = 'Demo user added to the sample account list.'
+  userForm.name = ''
+  userForm.email = ''
+  userForm.section = ''
+  closeModal()
+}
+
+function toggleAccountStatus(account: DemoUser) {
+  if (account.email === props.user.email) {
+    toastMessage.value = 'Switch to another demo role before deactivating this account.'
+    return
+  }
+
+  const nextStatus = account.active === false ? 'reactivate' : 'deactivate'
+
+  if (!window.confirm(`Confirm ${nextStatus} for ${account.name}?`)) {
+    return
+  }
+
+  account.active = account.active === false
+  toastMessage.value = `${account.name} is now ${account.active ? 'active' : 'inactive'} in the demo account list.`
+}
+
+function reviewNotice() {
+  const selectedClass = classes.value.find(
+    (item) => item.id === Number(noticeForm.classId) && item.instructor === props.user.name,
+  )
+
+  if (!selectedClass) {
+    formError.value = 'Choose a class assigned to your instructor account.'
+    return
+  }
+
+  pendingNotice.value = {
+    subject: selectedClass.subject,
+    section: selectedClass.section,
+    type: noticeForm.type,
+    message: noticeForm.message.trim(),
+  }
+  openModal('notice-review')
+}
+
+function publishNotice() {
+  if (!pendingNotice.value) {
+    return
+  }
+
+  classNotices.value.unshift({
+    id: Math.max(0, ...classNotices.value.map((item) => item.id)) + 1,
+    ...pendingNotice.value,
+    status: 'Published',
+    date: 'Just now',
+  })
+  addNotification(
+    `Class update · ${pendingNotice.value.subject}`,
+    pendingNotice.value.message,
+    'notice',
+    ['student'],
+  )
+  toastMessage.value = 'Class notice published. Affected students were notified in this demo.'
+  pendingNotice.value = null
+  noticeForm.classId = ''
+  noticeForm.type = ''
+  noticeForm.message = ''
+  closeModal()
 }
 
 function switchRole(role: UserRole) {
@@ -102,7 +436,7 @@ function switchRole(role: UserRole) {
   const demoUser = demoUsers.find((candidate) => candidate.email === email)
 
   if (demoUser) {
-    emit('switch-user', demoUser)
+    emit('switch-user', accounts.value.find((account) => account.email === demoUser.email) ?? demoUser)
     page.value = 'dashboard'
     profileMenuOpen.value = false
     mobileMenuOpen.value = false
@@ -216,6 +550,10 @@ function printSchedule() {
       </header>
 
       <main class="page-content">
+        <div v-if="toastMessage" class="toast-message" role="status">
+          <span>{{ toastMessage }}</span>
+          <button type="button" aria-label="Dismiss message" @click="dismissToast">×</button>
+        </div>
         <div class="prototype-banner" role="note">
           <span aria-hidden="true">ⓘ</span>
           <span><strong>Interactive prototype.</strong> Sample data and sign-in are simulated; no server or account permissions are connected.</span>
@@ -236,7 +574,7 @@ function printSchedule() {
             <button v-if="page === 'schedule' && user.role === 'student'" class="action-button action-button-secondary" type="button" @click="printSchedule">
               <span aria-hidden="true">↓</span> Export PDF
             </button>
-            <button v-if="user.role === 'administrator' && page === 'schedule'" class="action-button action-button-primary" type="button" @click="$emit('open-schedule-form')">
+            <button v-if="user.role === 'administrator' && page === 'schedule'" class="action-button action-button-primary" type="button" @click="openModal('schedule')">
               <span aria-hidden="true">＋</span> Create schedule
             </button>
           </div>
@@ -281,7 +619,7 @@ function printSchedule() {
                   <div class="time-column"><strong>{{ item.start }}</strong><span>{{ item.end }}</span></div>
                   <span class="class-color-bar" :class="`class-color-${index % 3}`" aria-hidden="true"></span>
                   <div class="dashboard-class-copy"><span>{{ item.code }} <span aria-hidden="true">·</span> {{ item.section }}</span><h3>{{ item.subject }}</h3><p>{{ item.room }} <span aria-hidden="true">·</span> {{ user.role === 'instructor' ? item.section : item.instructor }}</p></div>
-                  <span class="status-badge status-published">{{ item.status }}</span>
+                  <span class="status-badge" :class="`status-${item.status.toLowerCase()}`">{{ item.status }}</span>
                 </article>
               </div>
               <div v-else class="empty-state"><span aria-hidden="true">◷</span><p>No classes scheduled today.</p></div>
@@ -292,42 +630,43 @@ function printSchedule() {
                 <div><p class="card-eyebrow">STAY IN THE LOOP</p><h2>Campus updates</h2></div>
                 <button class="text-action" type="button" @click="openPage('notifications')">View all <span aria-hidden="true">→</span></button>
               </header>
-              <div class="update-item">
-                <span class="update-icon update-icon-blue" aria-hidden="true">↗</span>
-                <div><strong>Room update · CS 204</strong><p>Monday’s HCI class meets in Room 204.</p><span>10 min ago</span></div>
+              <div v-for="item in visibleNotifications.slice(0, 2)" :key="item.id" class="update-item">
+                <span class="update-icon" :class="item.type === 'notice' ? 'update-icon-teal' : 'update-icon-blue'" aria-hidden="true">{{ item.type === 'announcement' ? '✦' : '↗' }}</span>
+                <div><strong>{{ item.title }}</strong><p>{{ item.detail }}</p><span>{{ item.time }}</span></div>
               </div>
-              <div class="update-item">
-                <span class="update-icon update-icon-teal" aria-hidden="true">✦</span>
-                <div><strong>Midterm week reminder</strong><p>Check the academic calendar for key dates.</p><span>Yesterday</span></div>
-              </div>
+              <div v-if="!visibleNotifications.length" class="empty-state"><p>No campus updates yet.</p></div>
               <button class="all-updates-button" type="button" @click="openPage('announcements')">Browse announcements <span aria-hidden="true">→</span></button>
             </article>
           </section>
 
           <section v-if="user.role === 'administrator'" class="quick-actions-card">
             <div><span class="quick-action-icon" aria-hidden="true">✦</span><div><h2>Keep your campus in sync</h2><p>Publish a schedule update or share an announcement with your campus.</p></div></div>
-            <div class="quick-actions-buttons"><button class="action-button action-button-primary" type="button" @click="$emit('open-schedule-form')">＋ Create schedule</button><button class="action-button action-button-secondary" type="button" @click="openPage('announcements')">Write announcement</button></div>
+            <div class="quick-actions-buttons"><button class="action-button action-button-primary" type="button" @click="openModal('schedule')">＋ Create schedule</button><button class="action-button action-button-secondary" type="button" @click="openModal('announcement')">Write announcement</button></div>
           </section>
           <section v-else-if="user.role === 'instructor'" class="quick-actions-card instructor-tip">
             <div><span class="quick-action-icon" aria-hidden="true">✦</span><div><h2>Something changed?</h2><p>Let your students know about a class update or a schedule change.</p></div></div>
-            <div class="quick-actions-buttons"><button class="action-button action-button-primary" type="button" @click="openPage('class-notices')">Submit class notice</button><button class="action-button action-button-secondary" type="button" @click="openPage('announcements')">Create announcement</button></div>
+            <div class="quick-actions-buttons"><button class="action-button action-button-primary" type="button" @click="openPage('class-notices')">Submit class notice</button><button class="action-button action-button-secondary" type="button" @click="openModal('announcement')">Create announcement</button></div>
           </section>
         </template>
 
         <section v-else-if="page === 'schedule'" class="content-card full-card">
           <header class="card-heading schedule-card-heading">
-            <div><p class="card-eyebrow">{{ user.role === 'administrator' ? 'SCHEDULE MANAGEMENT' : 'YOUR WEEK' }}</p><h2>{{ user.role === 'administrator' ? 'Published class schedules' : 'Classes this week' }}</h2></div>
+            <div><p class="card-eyebrow">{{ user.role === 'administrator' ? 'SCHEDULE MANAGEMENT' : 'YOUR WEEK' }}</p><h2>{{ user.role === 'administrator' ? 'Class schedules' : 'Classes this week' }}</h2></div>
             <div class="schedule-heading-right"><span class="week-select">Oct 12 – Oct 16, 2026 <span aria-hidden="true">⌄</span></span><div class="view-toggle"><button class="view-toggle-active" type="button">List</button><button type="button">Week</button></div></div>
           </header>
           <div class="schedule-table-wrap">
             <table class="schedule-table">
-              <thead><tr><th>Class</th><th>Day &amp; time</th><th>Room</th><th>Instructor</th><th>Section</th><th>Status</th></tr></thead>
+              <thead><tr><th>Class</th><th>Day &amp; time</th><th>Room</th><th>Instructor</th><th>Section</th><th>Status</th><th v-if="user.role === 'administrator'">Actions</th></tr></thead>
               <tbody>
-                <tr v-for="(item, index) in classes.filter((entry) => entry.status !== 'Cancelled')" :key="item.id">
+                <tr v-for="(item, index) in scheduleRows" :key="item.id">
                   <td><span class="table-course"><span class="table-course-mark" :class="`class-color-${index % 3}`" aria-hidden="true"></span><span><strong>{{ item.subject }}</strong><small>{{ item.code }}</small></span></span></td>
                   <td><strong>{{ item.day }}</strong><small>{{ item.start }} – {{ item.end }}</small></td>
                   <td>{{ item.room }}</td><td>{{ item.instructor }}</td><td>{{ item.section }}</td>
                   <td><span class="status-badge" :class="`status-${item.status.toLowerCase()}`">{{ item.status }}</span></td>
+                  <td v-if="user.role === 'administrator'" class="row-actions">
+                    <button v-if="item.status === 'Draft'" type="button" @click="publishSchedule(item)">Publish</button>
+                    <button v-if="item.status === 'Published'" type="button" @click="cancelSchedule(item)">Cancel</button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -336,9 +675,9 @@ function printSchedule() {
         </section>
 
         <section v-else-if="page === 'notifications'" class="content-card full-card">
-          <header class="card-heading"><div><p class="card-eyebrow">YOUR UPDATES</p><h2>Notifications <span class="heading-count">{{ unreadCount }} unread</span></h2></div><button class="text-action" type="button" @click="notifications = notifications.map((item) => ({ ...item, unread: false }))">Mark all as read</button></header>
+          <header class="card-heading"><div><p class="card-eyebrow">YOUR UPDATES</p><h2>Notifications <span class="heading-count">{{ unreadCount }} unread</span></h2></div><button class="text-action" type="button" :disabled="!unreadCount" @click="markAllRead">Mark all as read</button></header>
           <div class="notifications-list">
-            <article v-for="item in notifications" :key="item.id" class="notification-row" :class="{ 'notification-unread': item.unread }">
+            <article v-for="item in visibleNotifications" :key="item.id" class="notification-row" :class="{ 'notification-unread': item.unread }">
               <span class="notification-type-icon" :class="`notification-type-${item.type}`" aria-hidden="true">{{ item.type === 'schedule' ? '↗' : item.type === 'notice' ? '◷' : '✦' }}</span>
               <div class="notification-copy"><h3>{{ item.title }} <span v-if="item.unread" class="unread-label">NEW</span></h3><p>{{ item.detail }}</p><span>{{ item.time }}</span></div>
               <button v-if="item.unread" class="mark-read-button" type="button" :aria-label="`Mark ${item.title} as read`" @click="notifications = notifications.map((notification) => notification.id === item.id ? { ...notification, unread: false } : notification)">Mark read</button>
@@ -349,28 +688,152 @@ function printSchedule() {
         </section>
 
         <section v-else-if="page === 'announcements'" class="content-card full-card">
-          <header class="card-heading"><div><p class="card-eyebrow">CAMPUS &amp; CLASS UPDATES</p><h2>Announcements</h2></div><button v-if="user.role !== 'student'" class="action-button action-button-primary" type="button" @click="$emit('open-announcement-form')">＋ Create announcement</button></header>
+          <header class="card-heading"><div><p class="card-eyebrow">CAMPUS &amp; CLASS UPDATES</p><h2>Announcements</h2></div><button v-if="user.role !== 'student'" class="action-button action-button-primary" type="button" @click="openModal('announcement')">＋ Create announcement</button></header>
           <div class="announcement-list">
-            <article class="announcement-card"><span class="announcement-icon announcement-blue" aria-hidden="true">✦</span><div><div class="announcement-meta"><span class="announcement-tag">Academic calendar</span><span>Oct 10, 2026</span></div><h3>Midterm week is coming up</h3><p>Take a moment to review the academic calendar and plan ahead. Reach out to your instructors if you have questions about your classes.</p><span class="announcement-author">Academic office <span aria-hidden="true">·</span> All students</span></div></article>
-            <article class="announcement-card"><span class="announcement-icon announcement-teal" aria-hidden="true">↗</span><div><div class="announcement-meta"><span class="announcement-tag">Campus news</span><span>Oct 08, 2026</span></div><h3>Welcome to a new semester</h3><p>Your class schedule and campus announcements are in one place. Check in here to stay up to date as the semester gets underway.</p><span class="announcement-author">Academic office <span aria-hidden="true">·</span> All students</span></div></article>
+            <article v-for="(announcement, index) in announcements" :key="announcement.id" class="announcement-card">
+              <span class="announcement-icon" :class="index % 2 ? 'announcement-teal' : 'announcement-blue'" aria-hidden="true">✦</span>
+              <div><div class="announcement-meta"><span class="announcement-tag">{{ announcement.category }}</span><span>{{ announcement.date }}</span></div><h3>{{ announcement.title }}</h3><p>{{ announcement.body }}</p><span class="announcement-author">{{ announcement.author }} <span aria-hidden="true">·</span> {{ announcement.audience }}</span></div>
+            </article>
           </div>
           <p class="table-demo-note">Sample campus announcements · Illustrative content</p>
         </section>
 
         <section v-else-if="page === 'academic'" class="academic-section">
-          <div class="content-card full-card"><header class="card-heading"><div><p class="card-eyebrow">CAMPUS DIRECTORY</p><h2>Academic data</h2></div><button class="action-button action-button-primary" type="button" @click="$emit('open-academic-form')">＋ Add record</button></header><div class="academic-grid"><article class="academic-card"><span class="academic-icon academic-blue" aria-hidden="true">▤</span><div><h3>Subjects</h3><p>86 active courses</p></div><span>→</span></article><article class="academic-card"><span class="academic-icon academic-teal" aria-hidden="true">⌂</span><div><h3>Rooms</h3><p>32 campus rooms</p></div><span>→</span></article><article class="academic-card"><span class="academic-icon academic-violet" aria-hidden="true">▦</span><div><h3>Sections</h3><p>36 active sections</p></div><span>→</span></article><article class="academic-card"><span class="academic-icon academic-amber" aria-hidden="true">♙</span><div><h3>Instructors</h3><p>42 teaching staff</p></div><span>→</span></article></div></div>
+          <div class="content-card full-card">
+            <header class="card-heading">
+              <div><p class="card-eyebrow">CAMPUS DIRECTORY</p><h2>Academic data</h2></div>
+              <button class="action-button action-button-primary" type="button" @click="openModal('academic')">＋ Add record</button>
+            </header>
+            <div class="academic-grid">
+              <article v-for="(record, index) in academicRecords" :key="record.category" class="academic-card">
+                <span class="academic-icon" :class="['academic-blue', 'academic-teal', 'academic-violet', 'academic-amber'][index % 4]" aria-hidden="true">{{ ['▤', '⌂', '▦', '♙'][index % 4] }}</span>
+                <div><h3>{{ record.category }}</h3><p>{{ record.name }}</p></div>
+                <span>→</span>
+              </article>
+            </div>
+          </div>
         </section>
 
         <section v-else-if="page === 'users'" class="content-card full-card">
-          <header class="card-heading"><div><p class="card-eyebrow">ACCESS &amp; ACCOUNTS</p><h2>Campus users</h2></div><button class="action-button action-button-primary" type="button" @click="$emit('open-user-form')">＋ Add user</button></header>
-          <div class="schedule-table-wrap"><table class="schedule-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Department / section</th><th>Status</th></tr></thead><tbody><tr v-for="demoUser in [{ name: 'Alex Morgan', email: 'alex.student@demo.kampusly.edu', role: 'Student', section: 'BSCS · 2A' }, { name: 'Jordan Rivera', email: 'jordan.instructor@demo.kampusly.edu', role: 'Instructor', section: 'Computer Science' }, { name: 'Casey Bennett', email: 'casey.admin@demo.kampusly.edu', role: 'Administrator', section: 'Academic office' }]" :key="demoUser.email"><td><strong>{{ demoUser.name }}</strong></td><td>{{ demoUser.email }}</td><td>{{ demoUser.role }}</td><td>{{ demoUser.section }}</td><td><span class="status-badge status-published">Active</span></td></tr></tbody></table></div><p class="table-demo-note">Sample user accounts · Account management is not connected to a server</p>
+          <header class="card-heading">
+            <div><p class="card-eyebrow">ACCESS &amp; ACCOUNTS</p><h2>Campus users</h2></div>
+            <button class="action-button action-button-primary" type="button" @click="openModal('user')">＋ Add user</button>
+          </header>
+          <div class="schedule-table-wrap">
+            <table class="schedule-table">
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Department / section</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                <tr v-for="demoUser in accounts" :key="demoUser.email">
+                  <td><strong>{{ demoUser.name }}</strong></td><td>{{ demoUser.email }}</td><td>{{ roleNames[demoUser.role] }}</td><td>{{ demoUser.section }}</td>
+                  <td><span class="status-badge" :class="demoUser.active === false ? 'status-cancelled' : 'status-published'">{{ demoUser.active === false ? 'Inactive' : 'Active' }}</span></td>
+                  <td class="row-actions"><button type="button" @click="toggleAccountStatus(demoUser)">{{ demoUser.active === false ? 'Reactivate' : 'Deactivate' }}</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="table-demo-note">Sample user accounts · Account management is not connected to a server</p>
         </section>
 
         <section v-else-if="page === 'class-notices'" class="two-column-section">
-          <article class="content-card notice-form-card"><header class="card-heading"><div><p class="card-eyebrow">KEEP YOUR CLASS INFORMED</p><h2>Submit a class notice</h2></div></header><form class="demo-form" @submit.prevent="$emit('open-notice-form')"><label for="notice-class">Assigned class</label><select id="notice-class" required><option value="">Select a class</option><option>Human-Computer Interaction · BSCS 2A</option><option>Software Engineering · BSCS 2A</option></select><label for="notice-type">Notice type</label><select id="notice-type" required><option value="">Choose notice type</option><option>Class unavailable</option><option>Room update</option><option>Schedule change</option></select><label for="notice-message">Message for students</label><textarea id="notice-message" rows="4" placeholder="Share what changed and what students should know…" required></textarea><p class="form-help">Students in the selected class will receive an in-app notification.</p><button class="action-button action-button-primary" type="submit">Review notice <span aria-hidden="true">→</span></button></form></article>
+          <article class="content-card notice-form-card">
+            <header class="card-heading"><div><p class="card-eyebrow">KEEP YOUR CLASS INFORMED</p><h2>Submit a class notice</h2></div></header>
+            <form class="demo-form" @submit.prevent="reviewNotice">
+              <label for="notice-class">Assigned class</label>
+              <select id="notice-class" v-model="noticeForm.classId" required><option value="">Select a class</option><option v-for="item in assignedClasses" :key="item.id" :value="String(item.id)">{{ item.day }} {{ item.start }} · {{ item.subject }} · {{ item.section }}</option></select>
+              <label for="notice-type">Notice type</label>
+              <select id="notice-type" v-model="noticeForm.type" required><option value="">Choose notice type</option><option>Class unavailable</option><option>Room update</option><option>Schedule change</option></select>
+              <label for="notice-message">Message for students</label>
+              <textarea id="notice-message" v-model="noticeForm.message" rows="4" placeholder="Share what changed and what students should know…" required></textarea>
+              <p class="form-help">Students in the selected class will receive an in-app notification.</p>
+              <div v-if="formError" class="inline-error" role="alert">{{ formError }}</div>
+              <button class="action-button action-button-primary" type="submit">Review notice <span aria-hidden="true">→</span></button>
+            </form>
+          </article>
           <aside class="content-card notice-info-card"><span class="notice-info-icon" aria-hidden="true">ⓘ</span><h2>Before you submit</h2><p>Only send notices for classes assigned to you. Review your message before submission—students will be notified after the notice is published.</p><div class="notice-status-sample"><span class="status-badge status-draft">Draft</span><span>Your draft stays private until published.</span></div><div class="notice-status-sample"><span class="status-badge status-published">Published</span><span>Affected students receive an in-app notification.</span></div></aside>
         </section>
+
+        <section v-if="page === 'class-notices' && classNotices.length" class="content-card full-card">
+          <header class="card-heading"><div><p class="card-eyebrow">YOUR RECENT SUBMISSIONS</p><h2>Class notices</h2></div></header>
+          <div class="notice-history">
+            <article v-for="notice in classNotices" :key="notice.id" class="notice-history-item">
+              <span class="notification-type-icon notification-type-notice" aria-hidden="true">◷</span>
+              <div><h3>{{ notice.type }} · {{ notice.subject }}</h3><p>{{ notice.message }}</p><span>{{ notice.date }}</span></div>
+              <span class="status-badge status-published">{{ notice.status }}</span>
+            </article>
+          </div>
+        </section>
       </main>
+    </div>
+
+    <div v-if="activeModal" class="modal-backdrop" @click.self="closeModal">
+      <section
+        class="workflow-modal"
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+        :aria-labelledby="activeModal === 'notice-review' ? 'notice-review-title' : 'workflow-modal-title'"
+        @keydown.esc.stop="closeModal"
+      >
+        <button class="modal-close" type="button" aria-label="Close dialog" @click="closeModal">×</button>
+        <template v-if="activeModal === 'schedule'">
+          <p class="card-eyebrow">SCHEDULE MANAGEMENT</p>
+          <h2 id="workflow-modal-title">Create class schedule</h2>
+          <p class="modal-description">Assign a subject, instructor, room, section, and time. Conflicts are checked before saving.</p>
+          <form class="demo-form modal-form" @submit.prevent="saveSchedule('Draft')">
+            <div class="form-field-row"><div><label for="schedule-code">Subject code</label><input id="schedule-code" v-model="scheduleForm.code" placeholder="e.g. CS 240" required /></div><div><label for="schedule-subject">Subject name</label><input id="schedule-subject" v-model="scheduleForm.subject" placeholder="e.g. Web Development" required /></div></div>
+            <label for="schedule-section">Section</label><select id="schedule-section" v-model="scheduleForm.section" required><option>BSCS · 2A</option><option>BSCS · 2B</option><option>BSIT · 3A</option></select>
+            <label for="schedule-instructor">Instructor</label><select id="schedule-instructor" v-model="scheduleForm.instructor" required><option>Jordan Rivera</option><option>Taylor Santos</option><option>Casey Bennett</option></select>
+            <label for="schedule-room">Room</label><input id="schedule-room" v-model="scheduleForm.room" placeholder="e.g. Room 210" required />
+            <label for="schedule-day">Day</label><select id="schedule-day" v-model="scheduleForm.day" required><option v-for="day in daysOfWeek" :key="day">{{ day }}</option></select>
+            <div class="form-field-row"><div><label for="schedule-start">Start time</label><input id="schedule-start" v-model="scheduleForm.start" type="time" required /></div><div><label for="schedule-end">End time</label><input id="schedule-end" v-model="scheduleForm.end" type="time" required /></div></div>
+            <div v-if="formError" class="inline-error" role="alert">{{ formError }}</div>
+            <p class="form-help">Save as a draft or publish now. Publishing notifies affected students in this prototype.</p>
+            <div class="modal-actions"><button class="action-button action-button-secondary" type="button" @click="closeModal">Cancel</button><button class="action-button action-button-secondary" type="submit">Save draft</button><button class="action-button action-button-primary" type="button" @click="saveSchedule('Published')">Save &amp; publish</button></div>
+          </form>
+        </template>
+        <template v-else-if="activeModal === 'announcement'">
+          <p class="card-eyebrow">CAMPUS COMMUNICATION</p>
+          <h2 id="workflow-modal-title">Create announcement</h2>
+          <p class="modal-description">Share an update with students. Publishing adds an in-app notification in this demo.</p>
+          <form class="demo-form modal-form" @submit.prevent="saveAnnouncement">
+            <label for="announcement-title">Announcement title</label><input id="announcement-title" v-model="announcementForm.title" maxlength="100" required placeholder="What should students know?" />
+            <label for="announcement-category">Category</label><select id="announcement-category" v-model="announcementForm.category"><option>Campus news</option><option>Academic calendar</option><option>Class update</option></select>
+            <label for="announcement-body">Message</label><textarea id="announcement-body" v-model="announcementForm.body" rows="5" maxlength="600" required placeholder="Write a clear, helpful update…"></textarea>
+            <p class="form-help">Audience: all students · Demo notices are not sent by email.</p>
+            <div class="modal-actions"><button class="action-button action-button-secondary" type="button" @click="closeModal">Cancel</button><button class="action-button action-button-primary" type="submit">Publish announcement</button></div>
+          </form>
+        </template>
+        <template v-else-if="activeModal === 'academic'">
+          <p class="card-eyebrow">CAMPUS DIRECTORY</p>
+          <h2 id="workflow-modal-title">Add academic record</h2>
+          <p class="modal-description">Add a sample item to the selected campus directory group.</p>
+          <form class="demo-form modal-form" @submit.prevent="saveAcademicRecord">
+            <label for="academic-category">Record type</label><select id="academic-category" v-model="academicForm.category"><option v-for="category in academicCategories" :key="category">{{ category }}</option></select>
+            <label for="academic-name">Name or identifier</label><input id="academic-name" v-model="academicForm.name" required placeholder="Enter a subject, room, section, or instructor" />
+            <div class="modal-actions"><button class="action-button action-button-secondary" type="button" @click="closeModal">Cancel</button><button class="action-button action-button-primary" type="submit">Add to demo</button></div>
+          </form>
+        </template>
+        <template v-else-if="activeModal === 'user'">
+          <p class="card-eyebrow">ACCESS &amp; ACCOUNTS</p>
+          <h2 id="workflow-modal-title">Add demo user</h2>
+          <p class="modal-description">This adds a sample row only; it does not create an account or grant access.</p>
+          <form class="demo-form modal-form" @submit.prevent="saveUser">
+            <label for="user-name">Full name</label><input id="user-name" v-model="userForm.name" required autocomplete="off" />
+            <label for="user-email">Campus email</label><input id="user-email" v-model="userForm.email" type="email" required autocomplete="off" />
+            <label for="user-role">Role</label><select id="user-role" v-model="userForm.role"><option value="student">Student</option><option value="instructor">Instructor</option><option value="administrator">Administrator</option></select>
+            <label for="user-section">Department or section</label><input id="user-section" v-model="userForm.section" placeholder="Optional" />
+            <div v-if="formError" class="inline-error" role="alert">{{ formError }}</div>
+            <div class="modal-actions"><button class="action-button action-button-secondary" type="button" @click="closeModal">Cancel</button><button class="action-button action-button-primary" type="submit">Add demo user</button></div>
+          </form>
+        </template>
+        <template v-else-if="activeModal === 'notice-review' && pendingNotice">
+          <p class="card-eyebrow">CONFIRM CLASS NOTICE</p>
+          <h2 id="notice-review-title">Review before publishing</h2>
+          <p class="modal-description">This notice will appear to students in the selected class and add an in-app notification.</p>
+          <div class="notice-review-card"><span class="status-badge status-draft">{{ pendingNotice.type }}</span><h3>{{ pendingNotice.subject }}</h3><p>{{ pendingNotice.message }}</p><span>Audience: {{ pendingNotice.section }}</span></div>
+          <div class="modal-actions"><button class="action-button action-button-secondary" type="button" @click="closeModal">Keep editing</button><button class="action-button action-button-primary" type="button" @click="publishNotice">Confirm &amp; notify students</button></div>
+        </template>
+      </section>
     </div>
   </div>
 </template>
@@ -1688,6 +2151,222 @@ function printSchedule() {
   line-height: 1.5;
 }
 
+.toast-message {
+  position: fixed;
+  z-index: 20;
+  top: 4.7rem;
+  right: 1rem;
+  display: flex;
+  max-width: min(440px, calc(100vw - 2rem));
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #bbf7d0;
+  border-radius: 0.75rem;
+  color: #166534;
+  background: #f0fdf4;
+  box-shadow: 0 10px 24px rgb(15 23 42 / 10%);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.toast-message button {
+  flex: 0 0 auto;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.row-actions button {
+  padding: 0.32rem 0.5rem;
+  border: 1px solid #dbeafe;
+  border-radius: 0.45rem;
+  color: #1d4ed8;
+  background: #ffffff;
+  font-size: 0.59rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.row-actions button:hover {
+  background: #eff6ff;
+}
+
+.inline-error {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #fecaca;
+  border-radius: 0.6rem;
+  color: #991b1b;
+  background: #fef2f2;
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.notice-history {
+  display: grid;
+}
+
+.notice-history-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid #f1f5f9;
+}
+
+.notice-history-item > div {
+  min-width: 0;
+}
+
+.notice-history-item h3 {
+  margin: 0;
+  color: #334155;
+  font-size: 0.72rem;
+}
+
+.notice-history-item p {
+  margin: 0.3rem 0;
+  color: #64748b;
+  font-size: 0.66rem;
+}
+
+.notice-history-item > div > span {
+  color: #94a3b8;
+  font-size: 0.58rem;
+}
+
+.notice-history-item > .status-badge {
+  margin-left: auto;
+}
+
+.modal-backdrop {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  overflow: auto;
+  padding: 1rem;
+  background: rgb(15 23 42 / 52%);
+  backdrop-filter: blur(3px);
+}
+
+.workflow-modal {
+  position: relative;
+  width: min(100%, 560px);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  padding: 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgb(15 23 42 / 25%);
+}
+
+.workflow-modal > .card-eyebrow {
+  margin: 0 2.2rem 0.4rem 0;
+  color: #0f766e;
+}
+
+.workflow-modal > h2 {
+  margin: 0;
+  color: #123b78;
+  font-size: 1.25rem;
+  letter-spacing: -0.045em;
+}
+
+.modal-description {
+  margin: 0.5rem 2rem 1rem 0;
+  color: #64748b;
+  font-size: 0.71rem;
+  line-height: 1.6;
+}
+
+.modal-close {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.6rem;
+  color: #64748b;
+  background: #ffffff;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.modal-form {
+  gap: 0.48rem;
+}
+
+.modal-form label {
+  margin-top: 0.25rem;
+}
+
+.modal-form input,
+.modal-form select,
+.modal-form textarea {
+  min-height: 2.55rem;
+  margin: 0;
+  font-size: 0.73rem;
+}
+
+.modal-form textarea {
+  min-height: auto;
+}
+
+.form-field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.form-field-row > div {
+  display: grid;
+  gap: 0.48rem;
+}
+
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.45rem;
+}
+
+.notice-review-card {
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+}
+
+.notice-review-card h3 {
+  margin: 0.65rem 0 0.35rem;
+  color: #123b78;
+  font-size: 0.82rem;
+}
+
+.notice-review-card p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.72rem;
+  line-height: 1.65;
+}
+
+.notice-review-card > span:last-child {
+  display: block;
+  margin-top: 0.6rem;
+  color: #64748b;
+  font-size: 0.61rem;
+}
+
 @media (max-width: 1120px) {
   .sidebar {
     width: 225px;
@@ -1868,6 +2547,14 @@ function printSchedule() {
   }
 
   .two-column-section {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-actions .action-button {
+    flex: 1;
+  }
+
+  .form-field-row {
     grid-template-columns: 1fr;
   }
 
