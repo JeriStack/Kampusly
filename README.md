@@ -10,7 +10,7 @@ academic scheduling efficiently.
 
 | Layer      | Technology                                                   |
 | ---------- | ------------------------------------------------------------ |
-| Frontend   | Vue 3 + TypeScript + Vite, Tailwind CSS + shadcn-vue, FullCalendar |
+| Frontend   | Vue 3 + TypeScript + Vite; scoped CSS and shared design tokens |
 | Backend    | Native PHP + Composer (PSR-4) — **no PHP framework**         |
 | Database   | MySQL + PDO                                                  |
 | Mail       | PHPMailer (SMTP); Mailpit locally                            |
@@ -48,6 +48,14 @@ cp .env.example .env
 
 # 2. Start the local stack
 docker compose up -d --build
+```
+
+To run only the frontend during development, install its locked dependencies and
+start Vite:
+
+```bash
+npm --prefix frontend ci
+npm --prefix frontend run dev
 ```
 
 Services once running:

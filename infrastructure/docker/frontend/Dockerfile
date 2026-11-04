@@ -5,6 +5,9 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# package.json / lockfile are mounted in development; install runs against them.
+# Keep dependencies available when the source bind mount is used in development.
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
 EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
