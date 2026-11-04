@@ -1,188 +1,189 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+import KampuslyLogo from '@/components/common/KampuslyLogo.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
+import BaseButton from '@/components/common/BaseButton.vue'
+import ThemeToggle from '@/components/common/ThemeToggle.vue'
+import { useScrollSpy } from '@/composables/useScrollSpy'
+import { navLinks } from '../content'
 
-defineEmits<{
-  login: []
-}>()
+const mobileOpen = ref(false)
 
-const isMenuOpen = ref(false)
+// Section ids derived from the nav anchor hrefs ("#features" -> "features").
+const sectionIds = navLinks.map((link) => link.href.replace('#', ''))
+const activeId = useScrollSpy(sectionIds)
 
-const links = [
-  { label: 'Features', href: '#features' },
-  { label: 'How it works', href: '#how-it-works' },
-  { label: 'For your campus', href: '#campus' },
-]
+function isActive(href: string): boolean {
+  return activeId.value === href.replace('#', '')
+}
+
+function closeMobile() {
+  mobileOpen.value = false
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && mobileOpen.value) {
+    closeMobile()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <template>
-  <header class="site-header">
-    <div class="container header-inner">
-      <a class="brand" href="#top" aria-label="Kampusly home">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" fill="none">
-            <rect x="3" y="4" width="26" height="25" rx="8" fill="currentColor" />
-            <path
-              d="M10 12.5h12M10 17h8M10 21.5h5"
-              stroke="white"
-              stroke-linecap="round"
-              stroke-width="2"
-            />
-            <circle cx="23" cy="21.5" r="2" fill="#5EEAD4" />
-          </svg>
-        </span>
-        <span>Kampusly</span>
-      </a>
-
-      <nav class="desktop-nav" aria-label="Main navigation">
-        <a v-for="link in links" :key="link.href" :href="link.href">{{ link.label }}</a>
-      </nav>
-
-      <a class="header-login" href="#login" @click.prevent="$emit('login')">Log in <span aria-hidden="true">↗</span></a>
-
-      <button
-        class="menu-toggle"
-        type="button"
-        :aria-expanded="isMenuOpen"
-        aria-controls="mobile-navigation"
-        :aria-label="isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'"
-        @click="isMenuOpen = !isMenuOpen"
-      >
-        <svg v-if="!isMenuOpen" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-        </svg>
-        <svg v-else viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-        </svg>
-      </button>
-    </div>
-
+  <header
+    class="sticky top-0 z-40 border-b border-hairline bg-surface/85 shadow-sm backdrop-blur-md"
+  >
     <nav
-      v-show="isMenuOpen"
-      id="mobile-navigation"
-      class="mobile-nav"
-      aria-label="Mobile navigation"
+      class="relative z-50 mx-auto flex h-16 max-w-content items-center justify-between px-4 sm:px-6 lg:px-8"
+      aria-label="Primary"
     >
       <a
-        v-for="link in links"
-        :key="link.href"
-        :href="link.href"
-        @click="isMenuOpen = false"
+        href="#top"
+        class="flex items-center rounded-md"
+        aria-label="Kampusly home"
+        @click="closeMobile"
       >
-        {{ link.label }}
+        <KampuslyLogo size="md" />
       </a>
-      <a href="#login" @click.prevent="isMenuOpen = false; $emit('login')">Log in</a>
+
+      <!-- Desktop links — centered between the logo and the action. -->
+      <ul
+        class="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 md:flex"
+      >
+        <li v-for="link in navLinks" :key="link.href">
+          <a
+            :href="link.href"
+            :aria-current="isActive(link.href) ? 'true' : undefined"
+            class="group relative text-sm font-medium transition-colors hover:text-navy dark:hover:text-white"
+            :class="
+              isActive(link.href)
+                ? 'text-navy dark:text-white'
+                : 'text-muted'
+            "
+          >
+            {{ link.label }}
+            <span
+              class="absolute -bottom-1.5 left-0 h-0.5 rounded-full bg-action transition-all duration-300 ease-out group-hover:w-full"
+              :class="isActive(link.href) ? 'w-full' : 'w-0'"
+              aria-hidden="true"
+            />
+          </a>
+        </li>
+      </ul>
+
+      <div class="hidden items-center gap-3 md:flex">
+        <ThemeToggle />
+        <BaseButton to="/login" variant="primary">
+          <AppIcon name="login" class="h-4 w-4" />
+          Log In
+        </BaseButton>
+      </div>
+
+      <!-- Mobile controls -->
+      <div class="flex items-center gap-2 md:hidden">
+        <ThemeToggle />
+        <button
+          type="button"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+          :class="
+            mobileOpen
+              ? 'border-action/30 bg-navy-50 text-navy dark:border-white/20 dark:bg-white/10 dark:text-white'
+              : 'border-hairline bg-surface text-muted hover:bg-navy-50 hover:text-navy dark:hover:bg-white/10 dark:hover:text-white'
+          "
+          :aria-expanded="mobileOpen"
+          aria-controls="mobile-menu"
+          :aria-label="mobileOpen ? 'Close menu' : 'Open menu'"
+          @click="mobileOpen = !mobileOpen"
+        >
+          <AppIcon :name="mobileOpen ? 'close' : 'menu'" class="h-5 w-5" />
+        </button>
+      </div>
     </nav>
+
+    <!-- Mobile backdrop for light dismiss -->
+    <Transition
+      enter-active-class="transition-opacity duration-200 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-150 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="mobileOpen"
+        class="fixed inset-x-0 bottom-0 top-16 z-30 bg-slate-900/20 backdrop-blur-[1px] dark:bg-black/40 md:hidden"
+        aria-hidden="true"
+        @click="closeMobile"
+      />
+    </Transition>
+
+    <!-- Mobile menu panel -->
+    <Transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="-translate-y-2 opacity-0"
+      enter-to-class="translate-y-0 opacity-100"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="translate-y-0 opacity-100"
+      leave-to-class="-translate-y-2 opacity-0"
+    >
+      <div
+        v-show="mobileOpen"
+        id="mobile-menu"
+        class="absolute inset-x-0 top-full z-40 border-b border-hairline bg-surface px-4 pb-5 pt-3 shadow-card-hover md:hidden"
+      >
+        <ul class="space-y-1.5">
+          <li v-for="link in navLinks" :key="link.href">
+            <a
+              :href="link.href"
+              :aria-current="isActive(link.href) ? 'true' : undefined"
+              class="group flex items-center justify-between rounded-xl px-4 py-3 text-base font-medium transition-colors"
+              :class="
+                isActive(link.href)
+                  ? 'bg-navy-50 font-semibold text-navy dark:bg-white/10 dark:text-white'
+                  : 'text-ink hover:bg-navy-50/70 hover:text-navy dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'
+              "
+              @click="closeMobile"
+            >
+              <span class="flex items-center gap-3">
+                <span
+                  class="h-1.5 w-1.5 rounded-full transition-colors"
+                  :class="
+                    isActive(link.href)
+                      ? 'bg-action'
+                      : 'bg-subtle/50 group-hover:bg-action'
+                  "
+                  aria-hidden="true"
+                />
+                {{ link.label }}
+              </span>
+              <AppIcon
+                name="arrow-right"
+                class="h-4 w-4 text-subtle transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-navy dark:group-hover:text-white"
+              />
+            </a>
+          </li>
+        </ul>
+
+        <div class="mt-4 border-t border-hairline-soft pt-4">
+          <BaseButton
+            to="/login"
+            variant="primary"
+            size="lg"
+            class="w-full"
+            @click="closeMobile"
+          >
+            <AppIcon name="login" class="h-4 w-4" />
+            Log In
+          </BaseButton>
+        </div>
+      </div>
+    </Transition>
   </header>
 </template>
-
-<style scoped>
-.site-header {
-  position: relative;
-  z-index: 2;
-  background: rgb(248 250 252 / 92%);
-  border-bottom: 1px solid rgb(226 232 240 / 75%);
-}
-
-.header-inner {
-  display: flex;
-  min-height: 76px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2rem;
-}
-
-.brand {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 0.65rem;
-  color: var(--color-brand);
-  font-size: 1.2rem;
-  font-weight: 750;
-  letter-spacing: -0.035em;
-}
-
-.brand-mark,
-.brand-mark svg {
-  display: block;
-  width: 2rem;
-  height: 2rem;
-}
-
-.desktop-nav {
-  display: flex;
-  align-items: center;
-  gap: clamp(1.25rem, 3vw, 2.5rem);
-  margin-left: auto;
-}
-
-.desktop-nav a,
-.header-login {
-  color: #475569;
-  font-size: 0.9rem;
-  font-weight: 550;
-  transition: color 160ms ease;
-}
-
-.desktop-nav a:hover,
-.header-login:hover {
-  color: var(--color-action);
-}
-
-.header-login {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-left: 1rem;
-  color: var(--color-brand);
-  font-weight: 700;
-}
-
-.menu-toggle,
-.mobile-nav {
-  display: none;
-}
-
-@media (max-width: 700px) {
-  .header-inner {
-    min-height: 68px;
-    gap: 1rem;
-  }
-
-  .desktop-nav,
-  .header-login {
-    display: none;
-  }
-
-  .menu-toggle {
-    display: grid;
-    width: 2.75rem;
-    height: 2.75rem;
-    place-items: center;
-    border: 1px solid var(--color-border);
-    border-radius: 0.8rem;
-    color: var(--color-brand);
-    background: var(--color-surface);
-    cursor: pointer;
-  }
-
-  .menu-toggle svg {
-    width: 1.35rem;
-    height: 1.35rem;
-  }
-
-  .mobile-nav {
-    display: grid;
-    gap: 0.25rem;
-    padding: 0.5rem max(1.25rem, calc((100% - 1200px) / 2)) 1rem;
-    border-top: 1px solid var(--color-border);
-    background: var(--color-surface);
-  }
-
-  .mobile-nav a {
-    padding: 0.8rem 0.25rem;
-    color: #334155;
-    font-weight: 600;
-  }
-}
-</style>

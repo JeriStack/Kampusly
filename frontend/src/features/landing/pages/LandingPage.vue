@@ -4,23 +4,24 @@ import HeroSection from '../components/HeroSection.vue'
 import FeatureGrid from '../components/FeatureGrid.vue'
 import HowItWorks from '../components/HowItWorks.vue'
 import UserRolesSection from '../components/UserRolesSection.vue'
-import FAQSection from '../components/FAQSection.vue'
+import FinalCta from '../components/FinalCta.vue'
 import LandingFooter from '../components/LandingFooter.vue'
-
-defineEmits<{
-  login: []
-}>()
 </script>
 
 <template>
-  <a class="skip-link" href="#main-content">Skip to content</a>
-  <LandingNavbar @login="$emit('login')" />
-  <main id="main-content">
-    <HeroSection @login="$emit('login')" />
-    <FeatureGrid />
-    <HowItWorks />
-    <UserRolesSection />
-    <FAQSection />
-  </main>
-  <LandingFooter />
+  <div class="min-h-screen bg-canvas">
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <LandingNavbar />
+
+    <main id="main-content">
+      <HeroSection />
+      <FeatureGrid />
+      <HowItWorks />
+      <UserRolesSection />
+      <FinalCta />
+    </main>
+
+    <LandingFooter />
+  </div>
 </template>

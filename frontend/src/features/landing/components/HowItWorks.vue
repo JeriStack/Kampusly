@@ -1,148 +1,62 @@
 <script setup lang="ts">
-const steps = [
-  {
-    number: '01',
-    title: 'Access Kampusly',
-    description: 'Sign in with the account provided by your campus.',
-  },
-  {
-    number: '02',
-    title: 'Check your schedule',
-    description: 'See your classes, rooms, and instructors in one clear view.',
-  },
-  {
-    number: '03',
-    title: 'Stay in the loop',
-    description: 'Get the latest announcements and class-change updates.',
-  },
-]
+import AppIcon from '@/components/common/AppIcon.vue'
+import { steps } from '../content'
 </script>
 
 <template>
-  <section id="how-it-works" class="section steps-section">
-    <div class="container steps-layout">
-      <div class="steps-heading">
-        <p class="eyebrow">A better rhythm</p>
-        <h2>Three steps.<br /><span>One less thing to worry about.</span></h2>
-        <p>
-          A simple home for your class day—so you can spend less time checking and more time
-          getting where you need to be.
+  <section
+    id="how-it-works"
+    class="scroll-mt-20 border-y border-hairline bg-navy-50/40 py-16 sm:py-24 dark:bg-white/[0.03]"
+  >
+    <div class="mx-auto max-w-content px-4 sm:px-6 lg:px-8">
+      <div class="mx-auto max-w-2xl text-center">
+        <h2
+          class="text-3xl font-bold tracking-tight text-navy sm:text-4xl dark:text-white"
+        >
+          Your Schedule, Simplified
+        </h2>
+        <p class="mt-4 text-lg text-muted">
+          Get set up and stay informed in three simple steps.
         </p>
       </div>
-      <ol class="steps-list">
-        <li v-for="step in steps" :key="step.number">
-          <span class="step-number">{{ step.number }}</span>
-          <div>
-            <h3>{{ step.title }}</h3>
-            <p>{{ step.description }}</p>
-          </div>
-          <span class="step-arrow" aria-hidden="true">↗</span>
+
+      <ol class="mt-14 grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-8">
+        <li
+          v-for="(step, index) in steps"
+          :key="step.number"
+          class="group relative flex flex-col items-center text-center"
+        >
+          <!--
+            Connector between adjacent steps on desktop. Starts just past the
+            current circle and stops just before the next one, so it never
+            runs behind a number badge.
+          -->
+          <span
+            v-if="index < steps.length - 1"
+            class="absolute left-[calc(50%+2.5rem)] right-[calc(-50%+2.5rem)] top-8 hidden h-0.5 -translate-y-1/2 bg-gradient-to-r from-action/40 to-action/10 md:block"
+            aria-hidden="true"
+          />
+
+          <!-- Numbered badge with a supporting icon -->
+          <span class="relative z-10 inline-flex">
+            <span
+              class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-action text-white shadow-md transition-transform duration-200 group-hover:-translate-y-1"
+            >
+              <AppIcon :name="step.icon" class="h-7 w-7" />
+            </span>
+            <span
+              class="absolute -right-1.5 -top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-canvas bg-navy text-xs font-bold text-white dark:bg-action"
+            >
+              {{ step.number }}
+            </span>
+          </span>
+
+          <h3 class="mt-6 text-lg font-semibold text-ink">{{ step.title }}</h3>
+          <p class="mt-2 max-w-xs text-sm leading-relaxed text-muted">
+            {{ step.description }}
+          </p>
         </li>
       </ol>
     </div>
   </section>
 </template>
-
-<style scoped>
-.steps-section {
-  background: #f1f6fc;
-}
-
-.steps-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-  gap: clamp(3rem, 8vw, 8rem);
-  align-items: center;
-}
-
-.steps-heading .eyebrow {
-  margin-bottom: 0.85rem;
-}
-
-h2 {
-  margin: 0;
-  color: var(--color-brand);
-  font-size: clamp(2.1rem, 4.3vw, 3.2rem);
-  letter-spacing: -0.06em;
-  line-height: 1.1;
-}
-
-h2 span {
-  color: #2563eb;
-}
-
-.steps-heading > p:last-child {
-  max-width: 430px;
-  margin: 1.1rem 0 0;
-  color: #64748b;
-  line-height: 1.75;
-}
-
-.steps-list {
-  display: grid;
-  gap: 0.7rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.steps-list li {
-  display: grid;
-  grid-template-columns: 2.9rem minmax(0, 1fr) 1.5rem;
-  gap: 1rem;
-  align-items: center;
-  padding: 1.1rem 1.2rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 1rem;
-  background: #ffffff;
-}
-
-.step-number {
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  place-items: center;
-  border-radius: 0.85rem;
-  color: #1d4ed8;
-  background: #eff6ff;
-  font-size: 0.8rem;
-  font-weight: 750;
-}
-
-.steps-list h3 {
-  margin: 0;
-  color: #123b78;
-  font-size: 1rem;
-}
-
-.steps-list p {
-  margin: 0.35rem 0 0;
-  color: #64748b;
-  font-size: 0.84rem;
-  line-height: 1.5;
-}
-
-.step-arrow {
-  color: #94a3b8;
-  font-size: 1.1rem;
-}
-
-@media (max-width: 850px) {
-  .steps-layout {
-    grid-template-columns: 1fr;
-    gap: 2.5rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .steps-list li {
-    grid-template-columns: 2.75rem minmax(0, 1fr);
-    gap: 0.8rem;
-    padding: 0.9rem;
-  }
-
-  .step-arrow {
-    display: none;
-  }
-}
-</style>

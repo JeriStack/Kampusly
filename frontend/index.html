@@ -2,16 +2,32 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Stay on top of your class schedule, announcements, and campus updates with Kampusly."
+      content="Kampusly — a web-based class schedule management and notification system. View your classes, get notified of changes, and keep up with announcements."
     />
-    <meta name="theme-color" content="#f8fafc" />
     <title>Kampusly — Your Campus. Your Classes. Your Time.</title>
+    <meta name="color-scheme" content="light" />
+    <script>
+      // Apply the saved theme before paint (defaults to light mode) to avoid a
+      // flash of the wrong mode. Mirrors src/composables/useTheme.ts.
+      ;(function () {
+        try {
+          var dark = localStorage.getItem('kampusly-theme') === 'dark'
+          var meta = document.querySelector('meta[name="color-scheme"]')
+          if (meta) {
+            meta.setAttribute('content', dark ? 'dark' : 'light')
+          }
+          document.documentElement.classList.toggle('dark', dark)
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/app/main.ts"></script>
   </body>
 </html>

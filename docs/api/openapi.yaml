@@ -1,0 +1,1293 @@
+openapi: 3.1.0
+info:
+  title: Kampusly REST API
+  version: 1.0.0
+  summary: Kampusly — A Web-Based Class Schedule Management and Notification System
+  description: |
+    Versioned REST API (`/api/v1`) for the Kampusly modular monolith.
+    - **Authentication:** Server-side PHP session cookie (`kampusly_session`, `HttpOnly`, `SameSite=Lax`, `Secure` in production).
+    - **CSRF Protection:** All state-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`) require the `X-CSRF-Token` header matching the active session token.
+    - **Authorization:** Role-based access control (`admin`, `instructor`, `student`) and resource-ownership policies (`InstructorPolicy`, `StudentPolicy`) are enforced on the server for every endpoint.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local Docker Nginx reverse proxy
+tags:
+  - name: Auth
+    description: Session authentication and password recovery
+  - name: Admin
+    description: Operational dashboard summary and audit activity
+  - name: Users
+    description: User account and status administration
+  - name: Students
+    description: Student profile and section assignment management
+  - name: Instructors
+    description: Instructor profile management
+  - name: Academic
+    description: Subjects, rooms, and sections management
+  - name: Schedules
+    description: Class schedule CRUD, conflict detection, role views, and PDF export
+  - name: Announcements
+    description: Subject announcements and attachments
+  - name: ClassNotices
+    description: Instructor class-unavailability/change notices and approval workflow
+  - name: Notifications
+    description: Recipient-specific in-app notifications
+  - name: System
+    description: Liveness and readiness health probes
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: kampusly_session
+      description: Server-side PHP session cookie
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Synchronizer CSRF token returned by `/auth/login` and `/auth/me`
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PerPageParam:
+      name: per_page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    SearchParam:
+      name: q
+      in: query
+      required: false
+      description: Case-insensitive search query across code/name/number fields
+      schema:
+        type: string
+        maxLength: 100
+    StatusParam:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [active, inactive]
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [code, message, request_id]
+      properties:
+        code:
+          type: string
+          examples: [VALIDATION_ERROR, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, SCHEDULE_CONFLICT, RATE_LIMITED]
+        message:
+          type: string
+          examples: ["The given data was invalid."]
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          examples:
+            - subject_code: ["The subject code CS 201 has already been taken."]
+        request_id:
+          type: string
+          examples: ["req_9f8c7b6a5d4e"]
+
+    ConflictErrorEnvelope:
+      type: object
+      required: [code, message, conflicts, request_id]
+      properties:
+        code:
+          type: string
+          const: SCHEDULE_CONFLICT
+        message:
+          type: string
+          examples: ["The schedule cannot be saved due to resource conflicts."]
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleConflictItem'
+        request_id:
+          type: string
+
+    ScheduleConflictItem:
+      type: object
+      required: [dimension, resource_id, resource_label, conflicting_schedule_id, subject_code, section_name, day_of_week, start_time, end_time]
+      properties:
+        dimension:
+          type: string
+          enum: [room, instructor, section]
+        resource_id:
+          type: integer
+        resource_label:
+          type: string
+          examples: ["Room 304", "Prof. Reyes", "BSCS 2A"]
+        conflicting_schedule_id:
+          type: integer
+        subject_code:
+          type: string
+          examples: ["CS 201"]
+        section_name:
+          type: string
+          examples: ["BSCS 2A"]
+        day_of_week:
+          type: string
+          enum: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday]
+        start_time:
+          type: string
+          examples: ["08:00"]
+        end_time:
+          type: string
+          examples: ["10:00"]
+
+    PaginationMeta:
+      type: object
+      required: [page, per_page, total, total_pages]
+      properties:
+        page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+
+    AuthenticatedUserDTO:
+      type: object
+      required: [id, full_name, email, role, status, csrf_token]
+      properties:
+        id:
+          type: integer
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, instructor, student]
+        status:
+          type: string
+          enum: [active, inactive]
+        student_profile:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            student_number: { type: string }
+            section_id: { type: integer }
+            section_name: { type: string }
+            program: { type: string }
+        instructor_profile:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            employee_number: { type: string }
+            department: { type: string }
+        csrf_token:
+          type: string
+
+    SubjectDTO:
+      type: object
+      required: [id, subject_code, subject_name, units, status]
+      properties:
+        id: { type: integer }
+        subject_code: { type: string, examples: ["CS 201"] }
+        subject_name: { type: string, examples: ["Data Structures and Algorithms"] }
+        description: { type: [string, "null"] }
+        units: { type: integer, minimum: 1, maximum: 12 }
+        status: { type: string, enum: [active, inactive] }
+
+    RoomDTO:
+      type: object
+      required: [id, room_code, room_name, building, capacity, status]
+      properties:
+        id: { type: integer }
+        room_code: { type: string, examples: ["RM-304"] }
+        room_name: { type: string, examples: ["Room 304"] }
+        building: { type: string, examples: ["Main Academic Building"] }
+        capacity: { type: integer, minimum: 1 }
+        status: { type: string, enum: [active, inactive] }
+
+    SectionDTO:
+      type: object
+      required: [id, section_name, program, year_level, school_year, semester, status]
+      properties:
+        id: { type: integer }
+        section_name: { type: string, examples: ["BSCS 2A"] }
+        program: { type: string, examples: ["BS Computer Science"] }
+        year_level: { type: integer, minimum: 1, maximum: 6 }
+        school_year: { type: string, examples: ["2026-2027"] }
+        semester: { type: string, enum: [1st, 2nd, Summer] }
+        status: { type: string, enum: [active, inactive] }
+
+    ScheduleDTO:
+      type: object
+      required: [id, subject_id, subject_code, subject_name, units, instructor_id, instructor_name, room_id, room_name, section_id, section_name, school_year, semester, day_of_week, start_time, end_time, status]
+      properties:
+        id: { type: integer }
+        subject_id: { type: integer }
+        subject_code: { type: string }
+        subject_name: { type: string }
+        units: { type: integer }
+        instructor_id: { type: integer }
+        instructor_name: { type: string }
+        room_id: { type: integer }
+        room_name: { type: string }
+        section_id: { type: integer }
+        section_name: { type: string }
+        school_year: { type: string }
+        semester: { type: string, enum: [1st, 2nd, Summer] }
+        day_of_week: { type: string, enum: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday] }
+        start_time: { type: string, pattern: '^\d{2}:\d{2}$', examples: ["08:00"] }
+        end_time: { type: string, pattern: '^\d{2}:\d{2}$', examples: ["10:00"] }
+        status: { type: string, enum: [draft, published, cancelled] }
+        active_notice:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            notice_type: { type: string, enum: [unavailable, cancelled, rescheduled, room_change] }
+            affected_date: { type: string, format: date }
+            message: { type: string }
+            new_room_name: { type: [string, "null"] }
+            new_date: { type: [string, "null"], format: date }
+            new_start_time: { type: [string, "null"] }
+            new_end_time: { type: [string, "null"] }
+
+    AnnouncementDTO:
+      type: object
+      required: [id, subject_id, subject_code, subject_name, author_name, title, message, status, created_at]
+      properties:
+        id: { type: integer }
+        subject_id: { type: integer }
+        subject_code: { type: string }
+        subject_name: { type: string }
+        section_id: { type: [integer, "null"] }
+        section_name: { type: [string, "null"] }
+        author_name: { type: string }
+        title: { type: string }
+        message: { type: string }
+        status: { type: string, enum: [draft, published, archived, withdrawn] }
+        published_at: { type: [string, "null"], format: date-time }
+        attachments:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              original_name: { type: string }
+              mime_type: { type: string }
+              size_bytes: { type: integer }
+              download_url: { type: string }
+        created_at: { type: string, format: date-time }
+
+    ClassNoticeDTO:
+      type: object
+      required: [id, schedule_id, subject_code, section_name, instructor_id, instructor_name, notice_type, affected_date, title, message, status, created_at]
+      properties:
+        id: { type: integer }
+        schedule_id: { type: integer }
+        subject_code: { type: string }
+        section_name: { type: string }
+        instructor_id: { type: integer }
+        instructor_name: { type: string }
+        notice_type: { type: string, enum: [unavailable, cancelled, rescheduled, room_change] }
+        affected_date: { type: string, format: date }
+        title: { type: string }
+        message: { type: string }
+        new_room_id: { type: [integer, "null"] }
+        new_room_name: { type: [string, "null"] }
+        new_date: { type: [string, "null"], format: date }
+        new_start_time: { type: [string, "null"] }
+        new_end_time: { type: [string, "null"] }
+        status: { type: string, enum: [pending_approval, published, rejected, withdrawn] }
+        rejection_reason: { type: [string, "null"] }
+        reviewed_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+
+    NotificationDTO:
+      type: object
+      required: [id, title, message, type, read_at, created_at]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        message: { type: string }
+        type: { type: string, enum: [class_reminder, announcement, class_notice, schedule_update] }
+        reference_type: { type: [string, "null"] }
+        reference_id: { type: [integer, "null"] }
+        read_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate user and establish session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, examples: ["student@kampusly.edu"] }
+                password: { type: string, minLength: 1, examples: ["Secret123!"] }
+      responses:
+        '200':
+          description: Authenticated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/AuthenticatedUserDTO' }
+        '401':
+          description: Invalid credentials (uniform generic error)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+              example:
+                code: UNAUTHENTICATED
+                message: Invalid email or password.
+                request_id: req_login_401
+        '403':
+          description: Account inactive
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Destroy active session and clear cookie
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      responses:
+        '204':
+          description: Logged out successfully
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user profile, role context, and CSRF token
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Current user context
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/AuthenticatedUserDTO' }
+        '401':
+          description: Unauthenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request a single-use password reset link via email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: Generic confirmation message (prevents account enumeration)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: If an active account matches that email, a password reset link has been sent.
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Consume single-use reset token and update password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password, password_confirmation]
+              properties:
+                token: { type: string, minLength: 32 }
+                password: { type: string, minLength: 8 }
+                password_confirmation: { type: string, minLength: 8 }
+      responses:
+        '200':
+          description: Password updated and active sessions invalidated
+        '422':
+          description: Expired, already-used, or invalid token or password mismatch
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /admin/dashboard-summary:
+    get:
+      tags: [Admin]
+      summary: "Operational counts and summary for Administrator Dashboard (Role: admin)"
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Dashboard summary counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required: [total_students, total_instructors, total_subjects, total_rooms, todays_classes, upcoming_classes, active_announcements, cancelled_or_pending_notices]
+                    properties:
+                      total_students: { type: integer }
+                      total_instructors: { type: integer }
+                      total_subjects: { type: integer }
+                      total_rooms: { type: integer }
+                      todays_classes: { type: integer }
+                      upcoming_classes: { type: integer }
+                      active_announcements: { type: integer }
+                      cancelled_or_pending_notices: { type: integer }
+        '403':
+          description: Caller is not an Administrator
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /students:
+    get:
+      tags: [Students]
+      summary: "Paginated list of students (Role: admin, or instructor for assigned section_id)"
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - name: section_id
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Paginated student list
+    post:
+      tags: [Students]
+      summary: "Create student account and profile (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, student_number, first_name, last_name, program, section_id]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                student_number: { type: string }
+                first_name: { type: string }
+                last_name: { type: string }
+                program: { type: string }
+                section_id: { type: integer }
+      responses:
+        '201': { description: Student created }
+        '422':
+          description: Validation error (e.g., duplicate student_number or email)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /students/{id}:
+    get:
+      tags: [Students]
+      summary: "Get student details (Role: admin, or own student profile)"
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Student record }
+        '403': { description: Forbidden }
+    patch:
+      tags: [Students]
+      summary: "Update student profile, section linkage, or account status (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Updated student record }
+
+  /instructors:
+    get:
+      tags: [Instructors]
+      summary: "Paginated list of instructors (Role: admin)"
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+      responses:
+        '200': { description: Paginated instructor list }
+    post:
+      tags: [Instructors]
+      summary: "Create instructor account and profile (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, employee_number, first_name, last_name, department]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                employee_number: { type: string }
+                first_name: { type: string }
+                last_name: { type: string }
+                department: { type: string }
+      responses:
+        '201': { description: Instructor created }
+
+  /instructors/{id}:
+    get:
+      tags: [Instructors]
+      summary: "View instructor profile (Role: admin, or own instructor)"
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Instructor profile }
+    patch:
+      tags: [Instructors]
+      summary: "Update instructor profile or status (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Instructor updated }
+
+  /subjects:
+    get:
+      tags: [Academic]
+      summary: List subjects with search and pagination
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - $ref: '#/components/parameters/StatusParam'
+      responses:
+        '200':
+          description: Subject list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/SubjectDTO' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+    post:
+      tags: [Academic]
+      summary: "Create subject (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject_code, subject_name, units]
+              properties:
+                subject_code: { type: string }
+                subject_name: { type: string }
+                description: { type: [string, "null"] }
+                units: { type: integer, minimum: 1 }
+                status: { type: string, enum: [active, inactive], default: active }
+      responses:
+        '201': { description: Subject created }
+        '422': { description: Duplicate subject_code or invalid fields }
+
+  /subjects/{id}:
+    get:
+      tags: [Academic]
+      summary: Subject details including schedules and published announcements (Role-scoped visibility)
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Subject detail view }
+        '403': { description: Forbidden if student/instructor not associated with subject }
+    patch:
+      tags: [Academic]
+      summary: "Update subject or status (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Subject updated }
+
+  /rooms:
+    get:
+      tags: [Academic]
+      summary: List rooms with search and pagination
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - $ref: '#/components/parameters/StatusParam'
+      responses:
+        '200': { description: Room list }
+    post:
+      tags: [Academic]
+      summary: "Create room (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [room_code, room_name, building, capacity]
+              properties:
+                room_code: { type: string }
+                room_name: { type: string }
+                building: { type: string }
+                capacity: { type: integer, minimum: 1 }
+                status: { type: string, enum: [active, inactive], default: active }
+      responses:
+        '201': { description: Room created }
+
+  /rooms/{id}:
+    patch:
+      tags: [Academic]
+      summary: "Update room details or status (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Room updated }
+
+  /sections:
+    get:
+      tags: [Academic]
+      summary: List sections with search and pagination
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - $ref: '#/components/parameters/StatusParam'
+      responses:
+        '200': { description: Section list }
+    post:
+      tags: [Academic]
+      summary: "Create section (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [section_name, program, year_level, school_year, semester]
+              properties:
+                section_name: { type: string }
+                program: { type: string }
+                year_level: { type: integer, minimum: 1, maximum: 6 }
+                school_year: { type: string }
+                semester: { type: string, enum: [1st, 2nd, Summer] }
+                status: { type: string, enum: [active, inactive], default: active }
+      responses:
+        '201': { description: Section created }
+
+  /sections/{id}:
+    patch:
+      tags: [Academic]
+      summary: "Update section or status (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Section updated }
+
+  /schedules:
+    get:
+      tags: [Schedules]
+      summary: "Filter and paginate master schedules (Role: admin)"
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - name: school_year
+          in: query
+          schema: { type: string }
+        - name: semester
+          in: query
+          schema: { type: string, enum: [1st, 2nd, Summer] }
+        - name: section_id
+          in: query
+          schema: { type: integer }
+        - name: instructor_id
+          in: query
+          schema: { type: integer }
+        - name: room_id
+          in: query
+          schema: { type: integer }
+        - name: day_of_week
+          in: query
+          schema: { type: string, enum: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday] }
+        - name: status
+          in: query
+          schema: { type: string, enum: [draft, published, cancelled] }
+      responses:
+        '200':
+          description: Paginated schedule collection
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ScheduleDTO' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+    post:
+      tags: [Schedules]
+      summary: "Create schedule with transactional room/instructor/section conflict detection (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject_id, instructor_id, room_id, section_id, school_year, semester, day_of_week, start_time, end_time]
+              properties:
+                subject_id: { type: integer }
+                instructor_id: { type: integer }
+                room_id: { type: integer }
+                section_id: { type: integer }
+                school_year: { type: string, examples: ["2026-2027"] }
+                semester: { type: string, enum: [1st, 2nd, Summer] }
+                day_of_week: { type: string, enum: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday] }
+                start_time: { type: string, pattern: '^\d{2}:\d{2}$', examples: ["08:00"] }
+                end_time: { type: string, pattern: '^\d{2}:\d{2}$', examples: ["10:00"] }
+                status: { type: string, enum: [draft, published], default: published }
+      responses:
+        '201':
+          description: Schedule saved and conflict-verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/ScheduleDTO' }
+        '409':
+          description: Overlapping room, instructor, or section assignment detected
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConflictErrorEnvelope' }
+        '422':
+          description: Validation error (e.g., start_time >= end_time or inactive entity)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /schedules/conflicts:
+    get:
+      tags: [Schedules]
+      summary: "Preview schedule conflicts before saving (Role: admin)"
+      security:
+        - sessionCookie: []
+      parameters:
+        - { name: school_year, in: query, required: true, schema: { type: string } }
+        - { name: semester, in: query, required: true, schema: { type: string, enum: [1st, 2nd, Summer] } }
+        - { name: day_of_week, in: query, required: true, schema: { type: string } }
+        - { name: start_time, in: query, required: true, schema: { type: string } }
+        - { name: end_time, in: query, required: true, schema: { type: string } }
+        - { name: room_id, in: query, required: true, schema: { type: integer } }
+        - { name: instructor_id, in: query, required: true, schema: { type: integer } }
+        - { name: section_id, in: query, required: true, schema: { type: integer } }
+        - { name: exclude_schedule_id, in: query, required: false, schema: { type: integer } }
+      responses:
+        '200':
+          description: List of any detected conflicts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  has_conflicts: { type: boolean }
+                  conflicts:
+                    type: array
+                    items: { $ref: '#/components/schemas/ScheduleConflictItem' }
+
+  /schedules/{id}:
+    get:
+      tags: [Schedules]
+      summary: View single schedule detail
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Schedule detail }
+    patch:
+      tags: [Schedules]
+      summary: "Update schedule or transition status (draft/published/cancelled) with conflict check (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Schedule updated }
+        '409':
+          description: Conflict detected
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConflictErrorEnvelope' }
+
+  /my/schedule:
+    get:
+      tags: [Schedules]
+      summary: Personal schedule for authenticated Student (by section_id) or Instructor (by instructor_id)
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: day
+          in: query
+          required: false
+          description: Filter by 'today' or weekday ('Monday'..'Saturday')
+          schema:
+            type: string
+            enum: [today, all, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday]
+            default: all
+      responses:
+        '200':
+          description: Role-scoped schedule items and next upcoming class
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ScheduleDTO' }
+                  next_class:
+                    type: [object, "null"]
+                    $ref: '#/components/schemas/ScheduleDTO'
+
+  /my/schedule.pdf:
+    get:
+      tags: [Schedules]
+      summary: "Download personal schedule as formatted offline PDF (Role: student)"
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Printable PDF binary stream
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: Forbidden for non-student callers
+
+  /announcements:
+    get:
+      tags: [Announcements]
+      summary: List announcements visible to the authenticated user's role/section/subjects
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - name: subject_id
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Paginated announcements
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/AnnouncementDTO' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+    post:
+      tags: [Announcements]
+      summary: "Create draft or published subject announcement (Role: assigned instructor or admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [subject_id, title, message]
+              properties:
+                subject_id: { type: integer }
+                section_id: { type: integer }
+                title: { type: string, minLength: 5, maxLength: 150 }
+                message: { type: string, minLength: 10, maxLength: 5000 }
+                status: { type: string, enum: [draft, published], default: published }
+                attachment:
+                  type: string
+                  format: binary
+                  description: Optional PDF, PNG, or JPEG file (<= 5 MB)
+      responses:
+        '201': { description: Announcement created }
+        '403': { description: Instructor is not assigned to the specified subject_id }
+        '422': { description: Validation or attachment security failure }
+
+  /announcements/{id}:
+    patch:
+      tags: [Announcements]
+      summary: "Update, archive, or withdraw announcement (Role: authoring instructor or admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Announcement updated }
+        '403': { description: Not owner of announcement }
+
+  /announcements/{id}/publish:
+    post:
+      tags: [Announcements]
+      summary: Publish a draft announcement and notify enrolled students
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Announcement published and notifications created }
+
+  /schedules/{id}/notices:
+    post:
+      tags: [ClassNotices]
+      summary: "Submit class notice for an assigned schedule (Role: assigned instructor or admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Target schedule_id
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [notice_type, affected_date, message]
+              properties:
+                notice_type:
+                  type: string
+                  enum: [unavailable, cancelled, rescheduled, room_change]
+                affected_date:
+                  type: string
+                  format: date
+                title:
+                  type: string
+                  maxLength: 150
+                message:
+                  type: string
+                  minLength: 10
+                  maxLength: 1000
+                new_room_id:
+                  type: [integer, "null"]
+                  description: Required when notice_type == 'room_change'
+                new_date:
+                  type: [string, "null"]
+                  format: date
+                  description: Required when notice_type == 'rescheduled'
+                new_start_time:
+                  type: [string, "null"]
+                  pattern: '^\d{2}:\d{2}$'
+                new_end_time:
+                  type: [string, "null"]
+                  pattern: '^\d{2}:\d{2}$'
+      responses:
+        '201':
+          description: Class notice recorded (`published` for unavailable/cancelled; `pending_approval` for room_change/rescheduled)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/ClassNoticeDTO' }
+        '403':
+          description: Instructor is not assigned to this schedule_id
+        '409':
+          description: Active notice already exists for this schedule and date, or proposed room/time conflicts
+
+  /class-notices:
+    get:
+      tags: [ClassNotices]
+      summary: List class notices scoped to role (student section, instructor assignments, or all for admin)
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending_approval, published, rejected, withdrawn] }
+      responses:
+        '200':
+          description: Paginated class notices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ClassNoticeDTO' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+  /class-notices/{id}/approve:
+    post:
+      tags: [ClassNotices]
+      summary: "Approve pending class notice and notify affected students and instructor (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Class notice approved and published }
+
+  /class-notices/{id}/reject:
+    post:
+      tags: [ClassNotices]
+      summary: "Reject pending class notice with required reason (Role: admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rejection_reason]
+              properties:
+                rejection_reason: { type: string, minLength: 5, maxLength: 500 }
+      responses:
+        '200': { description: Class notice rejected and instructor notified }
+
+  /class-notices/{id}/withdraw:
+    post:
+      tags: [ClassNotices]
+      summary: "Withdraw a class notice (Role: authoring instructor or admin)"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Class notice withdrawn }
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: List current user's in-app notifications and unread count
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - name: unread_only
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: User notifications list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/NotificationDTO' }
+                  unread_count:
+                    type: integer
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+  /notifications/{id}/read:
+    post:
+      tags: [Notifications]
+      summary: Mark a single owned notification as read
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Notification marked read }
+        '403': { description: Notification belongs to another user }
+
+  /notifications/read-all:
+    post:
+      tags: [Notifications]
+      summary: Mark all of the current user's unread notifications as read
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      responses:
+        '200': { description: All notifications marked read }
+
+  /health/live:
+    get:
+      tags: [System]
+      summary: Liveness probe (no sensitive diagnostics)
+      responses:
+        '200':
+          description: Application process is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, const: ok }
+
+  /health/ready:
+    get:
+      tags: [System]
+      summary: Readiness probe verifying MySQL connectivity
+      responses:
+        '200':
+          description: Database connection healthy
+        '503':
+          description: Database unreachable
+

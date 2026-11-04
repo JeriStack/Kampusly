@@ -1,22 +1,32 @@
 # ---------------------------------------------------------------------------
-# Kampusly — local development stack
-# Services are limited to what the current stage uses: nginx, php-fpm, mysql,
-# frontend, and mailpit. Scheduler/worker, Prometheus, Grafana, a WebSocket
-# process, and Redis are added later only when a release needs them.
+# Kampusly — Local Development Stack
+# Services are limited to what the current stage uses: nginx, php (backend),
+# mysql, frontend, and mailpit. Scheduler/worker, Prometheus, Grafana, a
+# WebSocket process, and Redis are added later only when a release needs them.
+# All host port bindings default to 127.0.0.1 so development services are
+# never exposed on public network interfaces.
 # ---------------------------------------------------------------------------
 
 services:
   nginx:
     image: nginx:1.27-alpine
     depends_on:
-      - php
+      php:
+        condition: service_healthy
     ports:
-      - "8080:80"
+      - "127.0.0.1:${NGINX_PORT:-8080}:80"
     volumes:
       - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./infrastructure/nginx/conf.d:/etc/nginx/conf.d:ro
       - ./infrastructure/nginx/snippets:/etc/nginx/snippets:ro
       - ./backend/public:/var/www/backend/public:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/api/v1/health/live >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
     networks:
       - kampusly
 
@@ -28,38 +38,66 @@ services:
       mysql:
         condition: service_healthy
     environment:
+      APP_NAME: ${APP_NAME:-Kampusly}
       APP_ENV: ${APP_ENV:-local}
       APP_DEBUG: ${APP_DEBUG:-true}
+      APP_URL: ${APP_URL:-http://localhost:8080}
       APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Manila}
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      DB_CONNECTION: ${DB_CONNECTION:-mysql}
       DB_HOST: ${DB_HOST:-mysql}
       DB_PORT: ${DB_PORT:-3306}
       DB_DATABASE: ${DB_DATABASE:-kampusly}
       DB_USERNAME: ${DB_USERNAME:-kampusly_app}
       DB_PASSWORD: ${DB_PASSWORD:-replace_me}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-kampusly_session}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SESSION_COOKIE_HTTPONLY: ${SESSION_COOKIE_HTTPONLY:-true}
+      SESSION_COOKIE_SAMESITE: ${SESSION_COOKIE_SAMESITE:-Lax}
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM_ADDRESS: ${SMTP_FROM_ADDRESS:-no-reply@kampusly.local}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Kampusly}
     volumes:
       - ./backend:/var/www/backend
+    healthcheck:
+      test: ["CMD", "php", "/var/www/backend/bin/health-check.php", "--live-only"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
     networks:
-      - kampusly
+      kampusly:
+        aliases:
+          - backend
 
   mysql:
     image: mysql:8.4
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+08:00
     environment:
       MYSQL_DATABASE: ${DB_DATABASE:-kampusly}
       MYSQL_USER: ${DB_USERNAME:-kampusly_app}
       MYSQL_PASSWORD: ${DB_PASSWORD:-replace_me}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-replace_me}
+      TZ: ${APP_TIMEZONE:-Asia/Manila}
     ports:
-      - "3306:3306"
+      - "127.0.0.1:${DB_FORWARD_PORT:-3306}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./infrastructure/docker/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 20s
+    restart: unless-stopped
     networks:
       - kampusly
 
@@ -67,21 +105,33 @@ services:
     build:
       context: .
       dockerfile: infrastructure/docker/frontend/Dockerfile
+    depends_on:
+      - nginx
     environment:
-      VITE_API_BASE_URL: ${APP_URL:-http://localhost:8080}/api/v1
+      VITE_APP_NAME: ${VITE_APP_NAME:-Kampusly}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/api/v1}
+      VITE_DEV_API_PROXY_TARGET: http://nginx:80
     ports:
-      - "5173:5173"
+      - "127.0.0.1:${FRONTEND_PORT:-5173}:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5173/ >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
     networks:
       - kampusly
 
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.21
     ports:
-      - "8025:8025" # web UI
-      - "1025:1025" # SMTP sink
+      - "127.0.0.1:${MAILPIT_HTTP_PORT:-8025}:8025" # web UI
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025" # SMTP sink
+    restart: unless-stopped
     networks:
       - kampusly
 
