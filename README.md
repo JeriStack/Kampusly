@@ -60,11 +60,14 @@ npm --prefix frontend run dev
 
 The public landing page links to an interactive, frontend-only prototype. Choose
 one of the sample student, instructor, or administrator profiles to explore its
-role-specific navigation and dashboard. Sign-in is simulated in the browser:
+role-specific navigation and dashboard. The prototype includes mock schedule
+creation and conflict feedback, publishing, instructor notices, announcements,
+student day/week/list schedule views, notification history, and sample
+academic-data and user-account actions. Sign-in is simulated in the browser:
 any non-empty password is accepted for a listed sample email, and no credentials
-or schedule data are sent to a server. This prototype does not implement
-authentication, authorization, account management, or persistent application
-data; its role-specific navigation is for UX demonstration only.
+or schedule data are sent to a server. These interactions do not implement real
+authentication, authorization, server-backed account management, or persistent
+application data; role-specific navigation is for UX demonstration only.
 
 Services once running:
 

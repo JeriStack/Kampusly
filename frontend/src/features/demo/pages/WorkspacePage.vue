@@ -69,6 +69,8 @@ const academicForm = reactive({ category: 'Subjects', name: '' })
 const userForm = reactive({ name: '', email: '', role: 'student' as UserRole, section: '' })
 const noticeForm = reactive({ classId: '', type: '', message: '' })
 const pendingNotice = ref<{ subject: string; section: string; type: string; message: string } | null>(null)
+const scheduleView = ref<'day' | 'week' | 'list'>('list')
+const selectedDay = ref('Monday')
 
 const navigation: Record<UserRole, NavItem[]> = {
   student: [
@@ -103,6 +105,8 @@ const pageTitles: Record<PageId, string> = {
   notifications: 'Notifications',
 }
 const demoRoles: UserRole[] = ['student', 'instructor', 'administrator']
+const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+const academicCategories = ['Subjects', 'Rooms', 'Sections', 'Instructors']
 
 const navItems = computed(() => navigation[props.user.role])
 const visibleNotifications = computed(() =>
@@ -119,14 +123,32 @@ const todayClasses = computed(() => {
   return roleClasses.filter((item) => item.day === 'Monday' && item.status !== 'Cancelled')
 })
 const scheduleRows = computed(() => {
+  let visibleRows: DemoClass[]
+
   if (props.user.role === 'administrator') {
-    return classes.value
+    visibleRows = classes.value
+  } else if (props.user.role === 'instructor') {
+    visibleRows = classes.value.filter((item) => item.instructor === props.user.name && item.status !== 'Cancelled')
+  } else {
+    visibleRows = classes.value.filter((item) => item.section === props.user.section && item.status !== 'Cancelled')
   }
-  if (props.user.role === 'instructor') {
-    return classes.value.filter((item) => item.instructor === props.user.name && item.status !== 'Cancelled')
-  }
-  return classes.value.filter((item) => item.section === props.user.section && item.status !== 'Cancelled')
+  return [...visibleRows].sort(
+    (first, second) =>
+      daysOfWeek.indexOf(first.day) - daysOfWeek.indexOf(second.day) ||
+      first.start.localeCompare(second.start),
+  )
 })
+const displayedScheduleRows = computed(() =>
+  scheduleView.value === 'day'
+    ? scheduleRows.value.filter((item) => item.day === selectedDay.value)
+    : scheduleRows.value,
+)
+const weekSchedule = computed(() =>
+  daysOfWeek.map((day) => ({
+    day,
+    classes: scheduleRows.value.filter((item) => item.day === day),
+  })),
+)
 const assignedClasses = computed(() =>
   classes.value.filter((item) => item.instructor === props.user.name && item.status !== 'Cancelled'),
 )
@@ -134,8 +156,6 @@ const greeting = computed(() => {
   const firstName = props.user.name.split(' ')[0]
   return `Good morning, ${firstName}`
 })
-const academicCategories = ['Subjects', 'Rooms', 'Sections', 'Instructors']
-const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
 function openPage(id: PageId) {
   page.value = id
@@ -144,6 +164,24 @@ function openPage(id: PageId) {
 
 function openModal(id: ModalId) {
   formError.value = ''
+  if (id === 'schedule') {
+    Object.assign(scheduleForm, {
+      code: '',
+      subject: '',
+      day: 'Monday',
+      start: '08:30',
+      end: '10:00',
+      room: '',
+      instructor: 'Jordan Rivera',
+      section: 'BSCS · 2A',
+    })
+  } else if (id === 'announcement') {
+    Object.assign(announcementForm, { title: '', category: 'Campus news', body: '' })
+  } else if (id === 'academic') {
+    Object.assign(academicForm, { category: 'Subjects', name: '' })
+  } else if (id === 'user') {
+    Object.assign(userForm, { name: '', email: '', role: 'student', section: '' })
+  }
   activeModal.value = id
 }
 
@@ -572,7 +610,7 @@ function printSchedule() {
           </div>
           <div class="heading-actions">
             <button v-if="page === 'schedule' && user.role === 'student'" class="action-button action-button-secondary" type="button" @click="printSchedule">
-              <span aria-hidden="true">↓</span> Export PDF
+              <span aria-hidden="true">↓</span> Print / save PDF
             </button>
             <button v-if="user.role === 'administrator' && page === 'schedule'" class="action-button action-button-primary" type="button" @click="openModal('schedule')">
               <span aria-hidden="true">＋</span> Create schedule
@@ -652,13 +690,24 @@ function printSchedule() {
         <section v-else-if="page === 'schedule'" class="content-card full-card">
           <header class="card-heading schedule-card-heading">
             <div><p class="card-eyebrow">{{ user.role === 'administrator' ? 'SCHEDULE MANAGEMENT' : 'YOUR WEEK' }}</p><h2>{{ user.role === 'administrator' ? 'Class schedules' : 'Classes this week' }}</h2></div>
-            <div class="schedule-heading-right"><span class="week-select">Oct 12 – Oct 16, 2026 <span aria-hidden="true">⌄</span></span><div class="view-toggle"><button class="view-toggle-active" type="button">List</button><button type="button">Week</button></div></div>
+            <div class="schedule-heading-right">
+              <span class="week-select">Oct 12 – Oct 16, 2026</span>
+              <div v-if="user.role !== 'administrator'" class="view-toggle" aria-label="Schedule view">
+                <button type="button" :class="{ 'view-toggle-active': scheduleView === 'day' }" :aria-pressed="scheduleView === 'day'" @click="scheduleView = 'day'">Day</button>
+                <button type="button" :class="{ 'view-toggle-active': scheduleView === 'week' }" :aria-pressed="scheduleView === 'week'" @click="scheduleView = 'week'">Week</button>
+                <button type="button" :class="{ 'view-toggle-active': scheduleView === 'list' }" :aria-pressed="scheduleView === 'list'" @click="scheduleView = 'list'">List</button>
+              </div>
+            </div>
           </header>
-          <div class="schedule-table-wrap">
+          <label v-if="scheduleView === 'day' && user.role !== 'administrator'" class="day-picker-label" for="schedule-day-filter">Choose a day</label>
+          <select v-if="scheduleView === 'day' && user.role !== 'administrator'" id="schedule-day-filter" v-model="selectedDay" class="day-picker">
+            <option v-for="day in daysOfWeek" :key="day">{{ day }}</option>
+          </select>
+          <div v-if="scheduleView === 'list' || user.role === 'administrator'" class="schedule-table-wrap">
             <table class="schedule-table">
               <thead><tr><th>Class</th><th>Day &amp; time</th><th>Room</th><th>Instructor</th><th>Section</th><th>Status</th><th v-if="user.role === 'administrator'">Actions</th></tr></thead>
               <tbody>
-                <tr v-for="(item, index) in scheduleRows" :key="item.id">
+                <tr v-for="(item, index) in displayedScheduleRows" :key="item.id">
                   <td><span class="table-course"><span class="table-course-mark" :class="`class-color-${index % 3}`" aria-hidden="true"></span><span><strong>{{ item.subject }}</strong><small>{{ item.code }}</small></span></span></td>
                   <td><strong>{{ item.day }}</strong><small>{{ item.start }} – {{ item.end }}</small></td>
                   <td>{{ item.room }}</td><td>{{ item.instructor }}</td><td>{{ item.section }}</td>
@@ -670,6 +719,26 @@ function printSchedule() {
                 </tr>
               </tbody>
             </table>
+          </div>
+          <div v-else-if="scheduleView === 'day'" class="day-schedule-list">
+            <article v-for="(item, index) in displayedScheduleRows" :key="item.id" class="day-schedule-card">
+              <div class="day-class-time"><strong>{{ item.start }}</strong><span>{{ item.end }}</span></div>
+              <span class="class-color-bar" :class="`class-color-${index % 3}`" aria-hidden="true"></span>
+              <div class="dashboard-class-copy"><span>{{ item.code }} · {{ item.section }}</span><h3>{{ item.subject }}</h3><p>{{ item.room }} · {{ item.instructor }}</p></div>
+              <span class="status-badge" :class="`status-${item.status.toLowerCase()}`">{{ item.status }}</span>
+            </article>
+            <div v-if="!displayedScheduleRows.length" class="empty-state"><span aria-hidden="true">◷</span><p>No classes scheduled for {{ selectedDay }}.</p></div>
+          </div>
+          <div v-else class="week-grid" role="list" aria-label="Classes by weekday">
+            <article v-for="(column, dayIndex) in weekSchedule" :key="column.day" class="week-day-column" :class="{ 'week-day-current': column.day === selectedDay }" role="listitem">
+              <header><span>{{ column.day.slice(0, 3) }}</span><strong>{{ 12 + dayIndex }}</strong></header>
+              <div v-if="column.classes.length" class="week-day-classes">
+                <article v-for="(item, index) in column.classes" :key="item.id" class="week-class-card" :class="`week-tone-${index % 3}`">
+                  <strong>{{ item.start }} – {{ item.end }}</strong><h3>{{ item.subject }}</h3><p>{{ item.room }} · {{ item.instructor }}</p><span class="status-badge" :class="`status-${item.status.toLowerCase()}`">{{ item.status }}</span>
+                </article>
+              </div>
+              <p v-else class="week-empty">No classes</p>
+            </article>
           </div>
           <p class="table-demo-note">Illustrative timetable data · No real student schedule</p>
         </section>
@@ -1764,6 +1833,148 @@ function printSchedule() {
   overflow-x: auto;
 }
 
+.day-picker-label {
+  display: inline-block;
+  margin: 0.4rem 0.35rem 0.8rem 0;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+
+.day-picker {
+  min-height: 2rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  color: #334155;
+  background: #ffffff;
+  font: inherit;
+  font-size: 0.68rem;
+}
+
+.day-schedule-list {
+  display: grid;
+}
+
+.day-schedule-card {
+  display: grid;
+  grid-template-columns: 3.2rem 3px minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.9rem 0;
+  border-top: 1px solid #f1f5f9;
+}
+
+.day-class-time {
+  display: grid;
+  justify-items: end;
+  gap: 0.2rem;
+}
+
+.day-class-time strong {
+  color: #334155;
+  font-size: 0.72rem;
+}
+
+.day-class-time span {
+  color: #64748b;
+  font-size: 0.6rem;
+}
+
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  gap: 0.55rem;
+  overflow-x: auto;
+  padding-bottom: 0.3rem;
+}
+
+.week-day-column {
+  min-height: 220px;
+  padding: 0.65rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fbfdff;
+}
+
+.week-day-column > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid #e2e8f0;
+  color: #64748b;
+}
+
+.week-day-column > header span {
+  font-size: 0.61rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.week-day-column > header strong {
+  display: grid;
+  width: 1.65rem;
+  height: 1.65rem;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 0.65rem;
+}
+
+.week-day-current > header strong {
+  color: #ffffff;
+  background: #123b78;
+}
+
+.week-day-classes {
+  display: grid;
+  gap: 0.45rem;
+  padding-top: 0.55rem;
+}
+
+.week-class-card {
+  padding: 0.6rem;
+  border-left: 3px solid #2563eb;
+  border-radius: 0 0.55rem 0.55rem 0;
+  background: #eff6ff;
+}
+
+.week-tone-1 {
+  border-color: #0d9488;
+  background: #f0fdfa;
+}
+
+.week-tone-2 {
+  border-color: #7c3aed;
+  background: #f5f3ff;
+}
+
+.week-class-card > strong {
+  color: #475569;
+  font-size: 0.56rem;
+}
+
+.week-class-card h3 {
+  margin: 0.35rem 0;
+  color: #1e293b;
+  font-size: 0.64rem;
+  line-height: 1.4;
+}
+
+.week-class-card p {
+  margin: 0 0 0.45rem;
+  color: #64748b;
+  font-size: 0.55rem;
+  line-height: 1.45;
+}
+
+.week-empty {
+  margin: 0.75rem 0 0;
+  color: #94a3b8;
+  font-size: 0.6rem;
+}
+
 .schedule-table {
   width: 100%;
   border-collapse: collapse;
@@ -2531,6 +2742,19 @@ function printSchedule() {
   .schedule-heading-right {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .day-schedule-card {
+    grid-template-columns: 2.8rem 3px minmax(0, 1fr);
+    gap: 0.55rem;
+  }
+
+  .day-schedule-card > .status-badge {
+    display: none;
+  }
+
+  .week-grid {
+    grid-template-columns: repeat(5, minmax(145px, 1fr));
   }
 
   .week-select {
