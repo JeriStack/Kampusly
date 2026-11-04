@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import SchedulePreview from './SchedulePreview.vue'
+
+defineEmits<{
+  login: []
+}>()
 </script>
 
 <template>
@@ -13,7 +17,7 @@ import SchedulePreview from './SchedulePreview.vue'
           your classes change—all in one place.
         </p>
         <div class="hero-actions">
-          <a class="button button-primary" href="#campus-access">
+          <a class="button button-primary" href="#login" @click.prevent="$emit('login')">
             Access My Schedule
             <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path d="M4 10h12m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />

@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+defineEmits<{
+  login: []
+}>()
+
 const isMenuOpen = ref(false)
 
 const links = [
@@ -33,7 +37,7 @@ const links = [
         <a v-for="link in links" :key="link.href" :href="link.href">{{ link.label }}</a>
       </nav>
 
-      <a class="header-login" href="#campus-access">Log in <span aria-hidden="true">↗</span></a>
+      <a class="header-login" href="#login" @click.prevent="$emit('login')">Log in <span aria-hidden="true">↗</span></a>
 
       <button
         class="menu-toggle"
@@ -66,7 +70,7 @@ const links = [
       >
         {{ link.label }}
       </a>
-      <a href="#campus-access" @click="isMenuOpen = false">Log in</a>
+      <a href="#login" @click.prevent="isMenuOpen = false; $emit('login')">Log in</a>
     </nav>
   </header>
 </template>

@@ -58,6 +58,14 @@ npm --prefix frontend ci
 npm --prefix frontend run dev
 ```
 
+The public landing page links to an interactive, frontend-only prototype. Choose
+one of the sample student, instructor, or administrator profiles to explore its
+role-specific navigation and dashboard. Sign-in is simulated in the browser:
+any non-empty password is accepted for a listed sample email, and no credentials
+or schedule data are sent to a server. This prototype does not implement
+authentication, authorization, account management, or persistent application
+data; its role-specific navigation is for UX demonstration only.
+
 Services once running:
 
 | Service      | URL / Port                | Purpose                       |
