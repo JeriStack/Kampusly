@@ -198,6 +198,7 @@ All development ports bind to `127.0.0.1` by default:
 | **API Readiness Probe** | `http://localhost:8080/api/v1/health/ready` | Verifies PDO MySQL `SELECT 1` connectivity (`200` or `503`) |
 | **Conflict Validation** | `http://localhost:8080/api/v1/schedules/validate-conflicts` | Detects room, instructor, and section schedule conflicts |
 | **MySQL 8.4** | `127.0.0.1:3306` | Database `kampusly` |
+| **phpMyAdmin** | `http://localhost:8081` | Local database UI; sign in using `DB_USERNAME` and `DB_PASSWORD` from `.env` |
 | **Mailpit Web UI** | `http://localhost:8025` | Local SMTP capture UI (SMTP port `127.0.0.1:1025`) |
 
 The `/demo` route provides an interactive, frontend-only prototype of the student, instructor, and administrator workflows. Its sample sign-in and data are simulated; it does not authenticate users or enforce permissions. Use `/login` for the application’s API-backed sign-in.

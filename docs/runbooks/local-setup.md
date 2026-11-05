@@ -41,7 +41,7 @@ cp frontend/.env.example frontend/.env
 
 ## 3. Running with Docker Compose (Recommended)
 
-All development ports in `docker-compose.yml` are bound strictly to `127.0.0.1` so services are reachable on your machine without exposing MySQL or Mailpit to external networks.
+All development ports in `docker-compose.yml` are bound strictly to `127.0.0.1` so services are reachable on your machine without exposing MySQL, phpMyAdmin, or Mailpit to external networks.
 
 ```bash
 # Build images and start all services in the background
@@ -79,6 +79,7 @@ docker compose down -v
 | Readiness Health Probe | `http://localhost:8080/api/v1/health/ready` | `http://nginx/api/v1/health/ready` | Confirms PDO MySQL `SELECT 1` connectivity |
 | Vue 3 Vite Dev Server | `http://localhost:5173` | `frontend:5173` | SPA frontend with `/api` proxy to Nginx |
 | MySQL 8.4 | `127.0.0.1:3306` | `mysql:3306` | Relational database (`kampusly`) |
+| phpMyAdmin | `http://localhost:8081` | `phpmyadmin:80` | Local database administration UI; log in with `DB_USERNAME` and `DB_PASSWORD` from root `.env` |
 | Mailpit Web UI | `http://localhost:8025` | `mailpit:8025` (SMTP `1025`) | Captures outbound development emails |
 
 ---
@@ -129,5 +130,4 @@ npm --prefix frontend run dev
 2. **`503 Service Unavailable` on `GET /api/v1/health/ready`:**
    - The PHP runtime is healthy, but MySQL is unreachable or credentials do not match. Verify that MySQL is running (`docker compose ps mysql` or local MySQL service on port `3306`) and that `DB_HOST` is `mysql` inside Docker or `127.0.0.1` on the host.
 3. **Port `3306` or `8080` already in use:**
-   - Override `NGINX_PORT`, `FRONTEND_PORT`, or `DB_FORWARD_PORT` in your root `.env` file before running `docker compose up -d`.
-
+   - Override `NGINX_PORT`, `FRONTEND_PORT`, `DB_FORWARD_PORT`, or `PHPMYADMIN_PORT` in your root `.env` file before running `docker compose up -d`.
