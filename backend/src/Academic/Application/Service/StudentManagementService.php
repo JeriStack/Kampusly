@@ -92,7 +92,7 @@ final class StudentManagementService
             ->requireEmail('email')
             ->requireString('program', 2, 120)
             ->requireInt('section_id', 1)
-            ->optionalString('password', 8, 128)
+            ->optionalString('password', 128)
             ->optionalIn('status', AccountStatus::values())
             ->validateOrThrow();
 
