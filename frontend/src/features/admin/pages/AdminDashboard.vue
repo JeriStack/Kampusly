@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/features/auth/stores/useAuth'
 import { apiClient } from '@/services/api/client'
@@ -22,21 +22,264 @@ interface DashboardSummary {
   cancelled_or_pending_notices: number
 }
 
+interface PaginationMeta {
+  page: number
+  per_page: number
+  total: number
+  total_pages: number
+}
+
+interface PaginatedResponse<T> {
+  data: T[]
+  meta: PaginationMeta
+}
+
+interface UserAccount {
+  id: number
+  full_name: string
+  email: string
+  role: 'admin' | 'instructor' | 'student'
+  status: string
+}
+
+interface Subject {
+  id: number
+  subject_code: string
+  subject_name: string
+  units: number
+  status: string
+}
+
+interface TodayClass {
+  id: number
+  subject_code: string
+  subject_name: string
+  start_time: string
+  end_time: string
+  instructor_name: string
+  room_code: string
+  section_name: string
+  status: string
+}
+
+interface Section {
+  id: number
+  section_name: string
+  program: string
+  status: string
+}
+
 const summary = ref<DashboardSummary | null>(null)
 const isLoading = ref(true)
 const error = ref<string | null>(null)
+
+const accounts = ref<UserAccount[]>([])
+const accountPage = ref(1)
+const accountTotal = ref(0)
+const accountTotalPages = ref(0)
+const isLoadingAccounts = ref(true)
+const accountError = ref<string | null>(null)
+const isLoadingMoreAccounts = ref(false)
+
+const activeSubjects = ref<Subject[]>([])
+const isLoadingSubjects = ref(true)
+const subjectsError = ref<string | null>(null)
+
+const todaysClasses = ref<TodayClass[]>([])
+const isLoadingClasses = ref(true)
+const classesError = ref<string | null>(null)
+
+const sections = ref<Section[]>([])
+const isCreateFormOpen = ref(false)
+const isCreatingAccount = ref(false)
+const createAccountError = ref<string | null>(null)
+const successMessage = ref<string | null>(null)
+const accountForm = reactive({
+  role: 'student' as 'student' | 'instructor',
+  firstName: '',
+  lastName: '',
+  email: '',
+  password: '',
+  studentNumber: '',
+  program: '',
+  sectionId: '',
+  employeeNumber: '',
+  department: '',
+})
+
+const todayLabel = new Intl.DateTimeFormat('en', {
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'Asia/Manila',
+}).format(new Date())
+
+const todayWeekday = new Intl.DateTimeFormat('en', {
+  weekday: 'long',
+  timeZone: 'Asia/Manila',
+}).format(new Date())
+
+const hasMoreAccounts = computed(() => accountPage.value < accountTotalPages.value)
+
+function messageFromError(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback
+}
 
 async function fetchSummary(): Promise<void> {
   isLoading.value = true
   error.value = null
   try {
-    const response = await apiClient.get<{ data: DashboardSummary }>(API_ENDPOINTS.admin.dashboardSummary)
+    const response = await apiClient.get<{ data: DashboardSummary }>(
+      API_ENDPOINTS.admin.dashboardSummary,
+    )
     summary.value = response.data
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Failed to load dashboard metrics.'
+    error.value = messageFromError(err, 'Failed to load dashboard metrics.')
   } finally {
     isLoading.value = false
   }
+}
+
+async function fetchAccounts(append = false): Promise<void> {
+  if (append) {
+    isLoadingMoreAccounts.value = true
+  } else {
+    isLoadingAccounts.value = true
+    accountError.value = null
+  }
+
+  try {
+    const nextPage = append ? accountPage.value + 1 : 1
+    const query = new URLSearchParams({ page: String(nextPage), per_page: '100' })
+    const response = await apiClient.get<PaginatedResponse<UserAccount>>(
+      `${API_ENDPOINTS.users.list}?${query.toString()}`,
+    )
+    accounts.value = append ? [...accounts.value, ...response.data] : response.data
+    accountPage.value = response.meta.page
+    accountTotal.value = response.meta.total
+    accountTotalPages.value = response.meta.total_pages
+  } catch (err: unknown) {
+    accountError.value = messageFromError(err, 'Failed to load user accounts.')
+  } finally {
+    isLoadingAccounts.value = false
+    isLoadingMoreAccounts.value = false
+  }
+}
+
+async function fetchActiveSubjects(): Promise<void> {
+  isLoadingSubjects.value = true
+  subjectsError.value = null
+  try {
+    const query = new URLSearchParams({ page: '1', per_page: '100', status: 'active' })
+    const response = await apiClient.get<PaginatedResponse<Subject>>(
+      `${API_ENDPOINTS.academic.subjects}?${query.toString()}`,
+    )
+    activeSubjects.value = response.data
+  } catch (err: unknown) {
+    subjectsError.value = messageFromError(err, 'Failed to load active subjects.')
+  } finally {
+    isLoadingSubjects.value = false
+  }
+}
+
+async function fetchTodaysClasses(): Promise<void> {
+  isLoadingClasses.value = true
+  classesError.value = null
+  try {
+    const query = new URLSearchParams({
+      page: '1',
+      per_page: '100',
+      day_of_week: todayWeekday,
+      status: 'published',
+    })
+    const response = await apiClient.get<PaginatedResponse<TodayClass>>(
+      `${API_ENDPOINTS.scheduling.schedules}?${query.toString()}`,
+    )
+    todaysClasses.value = response.data
+  } catch (err: unknown) {
+    classesError.value = messageFromError(err, "Failed to load today's classes.")
+  } finally {
+    isLoadingClasses.value = false
+  }
+}
+
+async function fetchSections(): Promise<void> {
+  const query = new URLSearchParams({ page: '1', per_page: '100', status: 'active' })
+  const response = await apiClient.get<PaginatedResponse<Section>>(
+    `${API_ENDPOINTS.academic.sections}?${query.toString()}`,
+  )
+  sections.value = response.data
+}
+
+function resetAccountForm(): void {
+  accountForm.role = 'student'
+  accountForm.firstName = ''
+  accountForm.lastName = ''
+  accountForm.email = ''
+  accountForm.password = ''
+  accountForm.studentNumber = ''
+  accountForm.program = ''
+  accountForm.sectionId = ''
+  accountForm.employeeNumber = ''
+  accountForm.department = ''
+  createAccountError.value = null
+}
+
+async function openCreateForm(): Promise<void> {
+  successMessage.value = null
+  createAccountError.value = null
+  try {
+    await fetchSections()
+    isCreateFormOpen.value = true
+  } catch (err: unknown) {
+    createAccountError.value = messageFromError(err, 'Unable to load sections for the account form.')
+  }
+}
+
+async function createAccount(): Promise<void> {
+  isCreatingAccount.value = true
+  createAccountError.value = null
+  successMessage.value = null
+  const shared = {
+    first_name: accountForm.firstName.trim(),
+    last_name: accountForm.lastName.trim(),
+    email: accountForm.email.trim(),
+    password: accountForm.password,
+    status: 'active',
+  }
+
+  try {
+    if (accountForm.role === 'student') {
+      await apiClient.post(API_ENDPOINTS.academic.students, {
+        ...shared,
+        student_number: accountForm.studentNumber.trim(),
+        program: accountForm.program.trim(),
+        section_id: Number(accountForm.sectionId),
+      })
+    } else {
+      await apiClient.post(API_ENDPOINTS.academic.instructors, {
+        ...shared,
+        employee_number: accountForm.employeeNumber.trim(),
+        department: accountForm.department.trim(),
+      })
+    }
+
+    isCreateFormOpen.value = false
+    resetAccountForm()
+    successMessage.value = 'User account created successfully.'
+    await Promise.all([fetchAccounts(), fetchSummary()])
+  } catch (err: unknown) {
+    createAccountError.value = messageFromError(err, 'Failed to create user account.')
+  } finally {
+    isCreatingAccount.value = false
+  }
+}
+
+function formatTime(value: string): string {
+  const [hours = '0', minutes = '00'] = value.split(':')
+  const date = new Date()
+  date.setHours(Number(hours), Number(minutes), 0, 0)
+  return new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit' }).format(date)
 }
 
 async function handleLogout(): Promise<void> {
@@ -45,13 +288,15 @@ async function handleLogout(): Promise<void> {
 }
 
 onMounted(() => {
-  fetchSummary()
+  void fetchSummary()
+  void fetchAccounts()
+  void fetchActiveSubjects()
+  void fetchTodaysClasses()
 })
 </script>
 
 <template>
   <div class="min-h-screen bg-canvas text-ink">
-    <!-- Top Navigation Header -->
     <header class="sticky top-0 z-20 border-b border-hairline bg-surface/90 backdrop-blur-md">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <div class="flex items-center gap-4">
@@ -78,74 +323,205 @@ onMounted(() => {
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <!-- Welcome Header -->
-      <div class="mb-8">
+    <main class="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+      <div>
         <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
           Welcome back, {{ user?.name }}
         </h1>
         <p class="mt-1 text-sm text-muted">
-          Kampusly Administration System &bull; Schedule & System Overview
+          Kampusly Administration System &bull; Schedule &amp; User Overview
         </p>
       </div>
 
-      <!-- KPI Metrics Cards -->
       <div v-if="isLoading" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div v-for="i in 4" :key="i" class="h-28 animate-pulse rounded-2xl border border-hairline bg-surface p-5" />
+        <div
+          v-for="i in 4"
+          :key="i"
+          class="h-28 animate-pulse rounded-2xl border border-hairline bg-surface p-5"
+        />
       </div>
 
       <div v-else-if="summary" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-2xl border border-hairline bg-surface p-5 shadow-card">
           <div class="text-xs font-semibold uppercase tracking-wider text-muted">Total Students</div>
           <div class="mt-2 text-3xl font-bold text-ink">{{ summary.total_students }}</div>
-          <div class="mt-1 text-xs text-muted">Active enrolled students</div>
+          <div class="mt-1 text-xs text-muted">Registered student profiles</div>
         </div>
-
         <div class="rounded-2xl border border-hairline bg-surface p-5 shadow-card">
           <div class="text-xs font-semibold uppercase tracking-wider text-muted">Instructors</div>
           <div class="mt-2 text-3xl font-bold text-ink">{{ summary.total_instructors }}</div>
-          <div class="mt-1 text-xs text-muted">Faculty members</div>
+          <div class="mt-1 text-xs text-muted">Registered faculty profiles</div>
         </div>
-
         <div class="rounded-2xl border border-hairline bg-surface p-5 shadow-card">
           <div class="text-xs font-semibold uppercase tracking-wider text-muted">Today's Classes</div>
           <div class="mt-2 text-3xl font-bold text-primary-600 dark:text-primary-400">
             {{ summary.todays_classes }}
           </div>
-          <div class="mt-1 text-xs text-muted">Scheduled for today</div>
+          <div class="mt-1 text-xs text-muted">Published for today</div>
         </div>
-
         <div class="rounded-2xl border border-hairline bg-surface p-5 shadow-card">
           <div class="text-xs font-semibold uppercase tracking-wider text-muted">Active Subjects</div>
           <div class="mt-2 text-3xl font-bold text-ink">{{ summary.total_subjects }}</div>
-          <div class="mt-1 text-xs text-muted">Curriculum catalog</div>
+          <div class="mt-1 text-xs text-muted">Available in the curriculum</div>
         </div>
       </div>
-
-      <div v-else-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">
+      <div
+        v-else-if="error"
+        class="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300"
+        role="alert"
+      >
         {{ error }}
+        <button type="button" class="ml-3 font-semibold underline" @click="fetchSummary">Retry</button>
       </div>
 
-      <!-- Quick Action Panels -->
-      <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <section class="rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-semibold text-ink">User Accounts</h2>
+            <p class="mt-1 text-sm text-muted">View and create student and instructor accounts.</p>
+          </div>
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2"
+            @click="openCreateForm"
+          >
+            <AppIcon name="plus" class="h-4 w-4" />
+            Add User
+          </button>
+        </div>
+
+        <div v-if="successMessage" class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">
+          {{ successMessage }}
+        </div>
+        <div v-if="accountError" class="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800" role="alert">
+          {{ accountError }}
+          <button type="button" class="ml-2 font-semibold underline" @click="fetchAccounts()">Retry</button>
+        </div>
+
+        <div v-if="isLoadingAccounts" class="mt-5 space-y-3" aria-label="Loading user accounts">
+          <div v-for="i in 3" :key="i" class="h-12 animate-pulse rounded-lg bg-canvas" />
+        </div>
+        <div v-else-if="!accountError" class="mt-5 overflow-x-auto">
+          <table class="w-full min-w-[640px] text-left text-sm">
+            <thead class="border-b border-hairline text-xs uppercase tracking-wide text-muted">
+              <tr>
+                <th scope="col" class="px-3 py-3 font-semibold">Name</th>
+                <th scope="col" class="px-3 py-3 font-semibold">Email</th>
+                <th scope="col" class="px-3 py-3 font-semibold">Role</th>
+                <th scope="col" class="px-3 py-3 font-semibold">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-hairline">
+              <tr v-for="account in accounts" :key="account.id">
+                <td class="px-3 py-3 font-medium text-ink">{{ account.full_name }}</td>
+                <td class="px-3 py-3 text-muted">{{ account.email }}</td>
+                <td class="px-3 py-3 capitalize text-ink">{{ account.role }}</td>
+                <td class="px-3 py-3">
+                  <span
+                    class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize"
+                    :class="account.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'"
+                  >
+                    {{ account.status }}
+                  </span>
+                </td>
+              </tr>
+              <tr v-if="accounts.length === 0">
+                <td colspan="4" class="px-3 py-8 text-center text-muted">
+                  No user accounts yet. Add a student or instructor to get started.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
+            <span>Showing {{ accounts.length }} of {{ accountTotal }} accounts</span>
+            <button
+              v-if="hasMoreAccounts"
+              type="button"
+              class="rounded-lg border border-hairline px-3 py-2 font-semibold text-ink hover:bg-canvas disabled:opacity-60"
+              :disabled="isLoadingMoreAccounts"
+              @click="fetchAccounts(true)"
+            >
+              {{ isLoadingMoreAccounts ? 'Loading...' : 'Load more accounts' }}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section class="rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
+          <div class="flex items-baseline justify-between gap-3">
+            <div>
+              <h2 class="text-lg font-semibold text-ink">Active Subjects</h2>
+              <p class="mt-1 text-sm text-muted">Subjects currently available.</p>
+            </div>
+            <span class="rounded-full bg-navy-50 px-3 py-1 text-xs font-semibold text-navy">
+              {{ activeSubjects.length }}
+            </span>
+          </div>
+          <p v-if="subjectsError" class="mt-4 text-sm text-rose-700" role="alert">
+            {{ subjectsError }}
+            <button type="button" class="ml-2 font-semibold underline" @click="fetchActiveSubjects">Retry</button>
+          </p>
+          <div v-else-if="isLoadingSubjects" class="mt-5 h-24 animate-pulse rounded-lg bg-canvas" />
+          <div v-else-if="activeSubjects.length === 0" class="mt-5 rounded-lg bg-canvas p-4 text-sm text-muted">
+            No active subjects found.
+          </div>
+          <ul v-else class="mt-4 divide-y divide-hairline">
+            <li v-for="subject in activeSubjects" :key="subject.id" class="flex items-center justify-between gap-4 py-3">
+              <div>
+                <div class="font-semibold text-ink">{{ subject.subject_code }}</div>
+                <div class="text-sm text-muted">{{ subject.subject_name }}</div>
+              </div>
+              <span class="shrink-0 text-xs text-muted">{{ subject.units }} units</span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
+          <div>
+            <h2 class="text-lg font-semibold text-ink">Classes Today</h2>
+            <p class="mt-1 text-sm text-muted">{{ todayLabel }} &middot; all sections and instructors</p>
+          </div>
+          <p v-if="classesError" class="mt-4 text-sm text-rose-700" role="alert">
+            {{ classesError }}
+            <button type="button" class="ml-2 font-semibold underline" @click="fetchTodaysClasses">Retry</button>
+          </p>
+          <div v-else-if="isLoadingClasses" class="mt-5 h-24 animate-pulse rounded-lg bg-canvas" />
+          <div v-else-if="todaysClasses.length === 0" class="mt-5 rounded-lg bg-canvas p-4 text-sm text-muted">
+            No published classes are scheduled for today.
+          </div>
+          <ul v-else class="mt-4 divide-y divide-hairline">
+            <li v-for="item in todaysClasses" :key="item.id" class="py-3">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <div class="font-semibold text-ink">{{ item.subject_code }} &middot; {{ item.subject_name }}</div>
+                  <div class="mt-1 text-sm text-muted">
+                    {{ item.instructor_name }} &middot; {{ item.section_name }} &middot; {{ item.room_code }}
+                  </div>
+                </div>
+                <span class="shrink-0 text-sm font-medium text-navy">
+                  {{ formatTime(item.start_time) }}–{{ formatTime(item.end_time) }}
+                </span>
+              </div>
+            </li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div class="rounded-2xl border border-hairline bg-surface p-6 shadow-card lg:col-span-2">
           <h2 class="text-base font-semibold text-ink">Administrative Capabilities</h2>
           <p class="mt-1 text-xs text-muted">
-            Phase 5 provides secure role-based access control, CSRF synchronizer token verification, rate limiting, and account administration.
+            Manage accounts, academic information, and schedules with role-based access controls.
           </p>
           <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div class="rounded-xl border border-hairline bg-canvas p-4">
-              <div class="text-xs font-bold text-ink">Account & Role Management</div>
-              <p class="mt-1 text-[11px] text-muted">
-                Admins can create accounts, toggle active/inactive statuses with self-deactivation lockout guards.
-              </p>
+              <div class="text-xs font-bold text-ink">Account &amp; Role Management</div>
+              <p class="mt-1 text-[11px] text-muted">Create and review student and instructor accounts.</p>
             </div>
             <div class="rounded-xl border border-hairline bg-canvas p-4">
               <div class="text-xs font-bold text-ink">Conflict-Free Scheduling</div>
-              <p class="mt-1 text-[11px] text-muted">
-                Room, instructor, and section overlap checks prevent scheduling clashes across semesters.
-              </p>
+              <p class="mt-1 text-[11px] text-muted">Review published classes across campus.</p>
             </div>
           </div>
         </div>
@@ -159,19 +535,132 @@ onMounted(() => {
             </div>
             <div class="flex justify-between border-b border-hairline py-1.5">
               <span class="text-muted">Status</span>
-              <span class="font-semibold text-emerald-600 dark:text-emerald-400 capitalize">{{ user?.status }}</span>
-            </div>
-            <div class="flex justify-between border-b border-hairline py-1.5">
-              <span class="text-muted">User ID</span>
-              <span class="font-mono">{{ user?.id }}</span>
+              <span class="font-semibold capitalize text-emerald-600 dark:text-emerald-400">{{ user?.status }}</span>
             </div>
             <div class="flex justify-between py-1.5">
-              <span class="text-muted">Last Signed In</span>
-              <span class="text-muted">{{ user?.last_login_at || 'Just now' }}</span>
+              <span class="text-muted">User ID</span>
+              <span class="font-mono">{{ user?.id }}</span>
             </div>
           </div>
         </div>
       </div>
     </main>
+
+    <div
+      v-if="isCreateFormOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-4"
+      @click.self="isCreateFormOpen = false"
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-user-title"
+        class="my-8 w-full max-w-2xl rounded-2xl border border-hairline bg-surface p-6 shadow-2xl"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 id="create-user-title" class="text-xl font-bold text-ink">Add User Account</h2>
+            <p class="mt-1 text-sm text-muted">Create an active account with the selected role.</p>
+          </div>
+          <button
+            type="button"
+            class="rounded-lg px-2 py-1 text-muted hover:bg-canvas hover:text-ink"
+            aria-label="Close form"
+            @click="isCreateFormOpen = false"
+          >
+            ✕
+          </button>
+        </div>
+
+        <form class="mt-5 space-y-4" @submit.prevent="createAccount">
+          <div>
+            <label for="account-role" class="mb-1 block text-sm font-medium text-ink">Role</label>
+            <select
+              id="account-role"
+              v-model="accountForm.role"
+              required
+              class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action"
+            >
+              <option value="student">Student</option>
+              <option value="instructor">Instructor</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label for="account-first-name" class="mb-1 block text-sm font-medium text-ink">First name</label>
+              <input id="account-first-name" v-model="accountForm.firstName" required minlength="2" maxlength="80" autocomplete="given-name" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+            </div>
+            <div>
+              <label for="account-last-name" class="mb-1 block text-sm font-medium text-ink">Last name</label>
+              <input id="account-last-name" v-model="accountForm.lastName" required minlength="2" maxlength="80" autocomplete="family-name" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+            </div>
+          </div>
+
+          <div>
+            <label for="account-email" class="mb-1 block text-sm font-medium text-ink">Email</label>
+            <input id="account-email" v-model="accountForm.email" type="email" required maxlength="191" autocomplete="email" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+          </div>
+          <div>
+            <label for="account-password" class="mb-1 block text-sm font-medium text-ink">Temporary password</label>
+            <input id="account-password" v-model="accountForm.password" type="password" required minlength="8" maxlength="128" autocomplete="new-password" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+            <p class="mt-1 text-xs text-muted">At least 8 characters and include a letter plus a number or symbol.</p>
+          </div>
+
+          <template v-if="accountForm.role === 'student'">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label for="student-number" class="mb-1 block text-sm font-medium text-ink">Student number</label>
+                <input id="student-number" v-model="accountForm.studentNumber" required minlength="3" maxlength="32" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+              </div>
+              <div>
+                <label for="student-program" class="mb-1 block text-sm font-medium text-ink">Program</label>
+                <input id="student-program" v-model="accountForm.program" required minlength="2" maxlength="120" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+              </div>
+            </div>
+            <div>
+              <label for="student-section" class="mb-1 block text-sm font-medium text-ink">Section</label>
+              <select id="student-section" v-model="accountForm.sectionId" required class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action">
+                <option value="" disabled>Select a section</option>
+                <option v-for="section in sections" :key="section.id" :value="String(section.id)">
+                  {{ section.section_name }} · {{ section.program }}
+                </option>
+              </select>
+              <p v-if="sections.length === 0" class="mt-1 text-xs text-amber-700">Create an active section before adding a student.</p>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label for="employee-number" class="mb-1 block text-sm font-medium text-ink">Employee number</label>
+                <input id="employee-number" v-model="accountForm.employeeNumber" required minlength="3" maxlength="32" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+              </div>
+              <div>
+                <label for="instructor-department" class="mb-1 block text-sm font-medium text-ink">Department</label>
+                <input id="instructor-department" v-model="accountForm.department" required minlength="2" maxlength="120" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+              </div>
+            </div>
+          </template>
+
+          <div v-if="createAccountError" class="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800" role="alert">
+            {{ createAccountError }}
+          </div>
+
+          <div class="flex flex-wrap justify-end gap-3 border-t border-hairline pt-4">
+            <button type="button" class="rounded-lg border border-hairline px-4 py-2 text-sm font-semibold text-ink hover:bg-canvas" @click="isCreateFormOpen = false">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-700 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="isCreatingAccount || (accountForm.role === 'student' && sections.length === 0)"
+            >
+              {{ isCreatingAccount ? 'Creating...' : 'Create Account' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
   </div>
 </template>

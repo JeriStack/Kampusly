@@ -353,6 +353,7 @@ final class AcademicManagementEndpointsTest extends TestCase
                 'first_name' => 'Juan',
                 'last_name' => 'Dela Cruz',
                 'email' => 'juan.delacruz@kampusly.edu.ph',
+                'password' => 'StudentPassword123!',
                 'program' => 'BS Computer Science',
                 'section_id' => 1,
             ]
@@ -395,6 +396,7 @@ final class AcademicManagementEndpointsTest extends TestCase
                 'first_name' => 'Elena',
                 'last_name' => 'Reyes',
                 'email' => 'elena.reyes@kampusly.edu.ph',
+                'password' => 'InstructorPassword123!',
                 'department' => 'College of Computer Studies',
             ]
         );

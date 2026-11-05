@@ -87,7 +87,7 @@ final class InstructorManagementService
             ->requireString('last_name', 2, 80)
             ->requireEmail('email')
             ->requireString('department', 2, 120)
-            ->optionalString('password', 8, 128)
+            ->optionalString('password', 128)
             ->optionalIn('status', AccountStatus::values())
             ->validateOrThrow();
 
