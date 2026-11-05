@@ -57,11 +57,6 @@ async function handleSubmit(): Promise<void> {
   }
 }
 
-function fillCredentials(demoEmail: string): void {
-  email.value = demoEmail
-  password.value = 'ChangeMe123!'
-  errorMessage.value = null
-}
 </script>
 
 <template>
@@ -166,38 +161,6 @@ function fillCredentials(demoEmail: string): void {
           </button>
         </form>
 
-        <!-- Development Quick Demo Credential Helper -->
-        <div class="mt-8 border-t border-hairline pt-6">
-          <p class="text-xs font-semibold uppercase tracking-wider text-muted text-center mb-3">
-            Quick Demo Sign-In (Local Environment)
-          </p>
-          <div class="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              class="flex flex-col items-center rounded-lg border border-hairline bg-surface p-2 text-center transition-colors hover:border-navy hover:bg-navy-50/50 dark:hover:bg-navy-900/40"
-              @click="fillCredentials('admin@kampusly.edu.ph')"
-            >
-              <span class="text-xs font-bold text-ink">Admin</span>
-              <span class="text-[10px] text-muted truncate w-full">Administrator</span>
-            </button>
-            <button
-              type="button"
-              class="flex flex-col items-center rounded-lg border border-hairline bg-surface p-2 text-center transition-colors hover:border-navy hover:bg-navy-50/50 dark:hover:bg-navy-900/40"
-              @click="fillCredentials('cruz@kampusly.edu.ph')"
-            >
-              <span class="text-xs font-bold text-ink">Instructor</span>
-              <span class="text-[10px] text-muted truncate w-full">Prof. Cruz</span>
-            </button>
-            <button
-              type="button"
-              class="flex flex-col items-center rounded-lg border border-hairline bg-surface p-2 text-center transition-colors hover:border-navy hover:bg-navy-50/50 dark:hover:bg-navy-900/40"
-              @click="fillCredentials('santos@kampusly.edu.ph')"
-            >
-              <span class="text-xs font-bold text-ink">Student</span>
-              <span class="text-[10px] text-muted truncate w-full">Santos</span>
-            </button>
-          </div>
-        </div>
       </div>
 
       <p class="text-center text-xs text-muted">
