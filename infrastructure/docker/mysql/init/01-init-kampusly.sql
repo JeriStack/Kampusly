@@ -5,8 +5,9 @@
 --
 -- Phase 3 Scope:
 --   1. Enforce UTF-8 (utf8mb4 / utf8mb4_0900_ai_ci) and UTC+8 / session defaults.
---   2. Create the `schema_migrations` tracking table used by `backend/bin/migrate.php`.
---   3. Do NOT create business domain tables here (those belong to Phase 4+ migrations)
+--   2. Create the `schema_migrations` tracking table; the migration runner records
+--      its bootstrap migration with the SQL file checksum.
+--   3. Do NOT create business domain tables here (those belong to later migrations)
 --      and NEVER place production credentials or real student data in this directory.
 -- ---------------------------------------------------------------------------
 
@@ -23,12 +24,3 @@ CREATE TABLE IF NOT EXISTS `schema_migrations` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_schema_migrations_version` (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-INSERT IGNORE INTO `schema_migrations` (`version`, `description`, `checksum`, `execution_time_ms`)
-VALUES (
-    '0001_01_01_000000_create_schema_migrations_table',
-    'Initialize schema_migrations tracking table',
-    SHA2('0001_01_01_000000_create_schema_migrations_table', 256),
-    0
-);
-
