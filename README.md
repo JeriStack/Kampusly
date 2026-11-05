@@ -65,7 +65,7 @@ kampusly/
 │   ├── config/                # Centralized config (app, database, logging, mail, security)
 │   ├── database/
 │   │   ├── migrations/        # Versioned SQL migrations (0001_..._schema_migrations.sql)
-│   │   ├── seeders/           # Development-only data seeders
+│   │   ├── seeders/           # Optional development data seeders (none enabled by default)
 │   │   ├── factories/         # Test fixture factories
 │   │   └── README.md          # Database naming & migration conventions
 │   ├── public/
@@ -190,7 +190,7 @@ All development ports bind to `127.0.0.1` by default:
 
 | Service | Local URL / Address | Description |
 | :--- | :--- | :--- |
-| **Frontend (Vite Dev)** | `http://localhost:5173` | Vue 3 SPA (landing page, `/login`, and `/demo` routes) |
+| **Frontend (Vite Dev)** | `http://localhost:5173` | Vue 3 SPA (public landing page and API-backed `/login`) |
 | **API Gateway (Nginx)** | `http://localhost:8080/api/v1` | Reverse proxy to PHP-FPM (`backend/public/index.php`) |
 | **Interactive API Docs** | `http://localhost:8080/api/v1/docs` | Swagger UI referencing versioned OpenAPI 3.1 specification |
 | **OpenAPI 3.1 Contract** | `http://localhost:8080/api/v1/openapi.yaml` | Machine-readable OpenAPI 3.1.0 contract |
@@ -200,8 +200,6 @@ All development ports bind to `127.0.0.1` by default:
 | **MySQL 8.4** | `127.0.0.1:3306` | Database `kampusly` |
 | **phpMyAdmin** | `http://localhost:8081` | Local database UI; sign in using `DB_USERNAME` and `DB_PASSWORD` from `.env` |
 | **Mailpit Web UI** | `http://localhost:8025` | Local SMTP capture UI (SMTP port `127.0.0.1:1025`) |
-
-The `/demo` route provides an interactive, frontend-only prototype of the student, instructor, and administrator workflows. Its sample sign-in and data are simulated; it does not authenticate users or enforce permissions. Use `/login` for the application’s API-backed sign-in.
 
 ---
 

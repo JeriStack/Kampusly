@@ -20,7 +20,7 @@ backend/database/
 │       ├── 2026_11_01_000400_create_announcements_and_notices_tables.down.sql
 │       └── 2026_11_01_000500_create_notifications_tables.down.sql
 ├── seeders/
-│   └── 01_development_baseline.php
+│   └── (optional development seeders; none are registered by default)
 └── README.md
 ```
 
@@ -64,11 +64,11 @@ composer --working-dir=backend migrate -- --rollback
 # Roll back in production (requires explicit --force flag)
 composer --working-dir=backend migrate -- --rollback --force
 
-# Run idempotent development seeders (blocked automatically in production)
+# Run optional development seeders (blocked automatically in production)
 composer --working-dir=backend seed
 ```
 
 ## Data Separation & Security Policy
 
-- **Development Fixtures (`backend/database/seeders/`)**: Contains synthetic fictional records (e.g., `admin.dev@kampusly.local`, `CS 201`, `RM-301`, `BSCS 2A`). `backend/bin/seed.php` and `DevelopmentBaselineSeeder` refuse execution when `APP_ENV=production`.
-- **Secrets & Passwords**: Dynamic password hashing using `password_hash()` or environment-provided `DEV_SEED_PASSWORD`. Never commit plaintext passwords or production credentials.
+- **Development Fixtures (`backend/database/seeders/`)**: Optional and empty by default. Create local test accounts through the application or add an explicit development-only seeder. `backend/bin/seed.php` refuses execution when `APP_ENV=production`.
+- **Secrets & Passwords**: Never commit plaintext passwords or production credentials.

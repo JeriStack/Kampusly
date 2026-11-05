@@ -37,12 +37,6 @@ import SchedulePreview from './SchedulePreview.vue'
             Explore Features
           </BaseButton>
         </div>
-        <RouterLink
-          to="/demo"
-          class="mt-4 inline-flex rounded-md text-sm font-medium text-action underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2"
-        >
-          Explore the interactive workflow demo
-        </RouterLink>
       </div>
 
       <!-- Right: product preview -->

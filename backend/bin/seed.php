@@ -20,7 +20,7 @@ try {
     $seedersDir = dirname(__DIR__) . '/database/seeders';
     $files = glob($seedersDir . '/*.php');
     if ($files === false || $files === []) {
-        fwrite(STDOUT, "Seeder runner ready (no Phase 4+ seeders registered yet in database/seeders/).\n");
+        fwrite(STDOUT, "No development seeders are registered.\n");
         exit(0);
     }
 
@@ -39,4 +39,3 @@ try {
     fwrite(STDERR, sprintf('[ERROR] Seeding failed: %s%s', $exception->getMessage(), PHP_EOL));
     exit(1);
 }
-

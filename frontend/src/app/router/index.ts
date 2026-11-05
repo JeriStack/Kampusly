@@ -22,12 +22,6 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/demo',
-    name: 'workflow-demo',
-    component: () => import('@/features/demo/pages/DemoWorkflowPage.vue'),
-    meta: { title: 'Interactive Workflow Demo — Kampusly' },
-  },
-  {
     path: '/admin/dashboard',
     name: 'admin-dashboard',
     component: () => import('@/features/admin/pages/AdminDashboard.vue'),
