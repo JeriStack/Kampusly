@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kampusly\Scheduling\Presentation\Http\Controller;
 
 use Kampusly\Scheduling\Application\Service\ScheduleFoundationService;
+use Kampusly\IdentityAccess\Domain\Entity\User;
 use Kampusly\Shared\Infrastructure\Http\HttpRequest;
 use Kampusly\Shared\Infrastructure\Http\JsonResponse;
 
@@ -42,5 +43,25 @@ final class ScheduleFoundationController
             $request->getRequestId()
         );
     }
-}
 
+    public function createSchedule(HttpRequest $request): JsonResponse
+    {
+        /** @var User|null $actor */
+        $actor = $request->getAttribute('user');
+        $schedule = $this->scheduleService->createSchedule(
+            $request->getBody(),
+            $actor?->getId(),
+            $request->getRequestId()
+        );
+
+        return new JsonResponse(
+            [
+                'message' => 'Schedule created successfully.',
+                'data' => $schedule->toArray(),
+            ],
+            201,
+            [],
+            $request->getRequestId()
+        );
+    }
+}

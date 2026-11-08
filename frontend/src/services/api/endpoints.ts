@@ -73,4 +73,7 @@ export const API_ENDPOINTS = {
     schedules: '/schedules',
     validateConflicts: '/schedules/validate-conflicts',
   },
+  student: {
+    schedule: '/student/schedule',
+  },
 } as const

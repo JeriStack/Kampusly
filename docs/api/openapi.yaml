@@ -871,6 +871,7 @@ paths:
               schema:
                 type: object
                 properties:
+                  message: { type: string }
                   data: { $ref: '#/components/schemas/ScheduleDTO' }
         '409':
           description: Overlapping room, instructor, or section assignment detected
@@ -883,22 +884,31 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorEnvelope' }
 
-  /schedules/conflicts:
-    get:
+  /schedules/validate-conflicts:
+    post:
       tags: [Schedules]
       summary: "Preview schedule conflicts before saving (Role: admin)"
       security:
         - sessionCookie: []
-      parameters:
-        - { name: school_year, in: query, required: true, schema: { type: string } }
-        - { name: semester, in: query, required: true, schema: { type: string, enum: [1st, 2nd, Summer] } }
-        - { name: day_of_week, in: query, required: true, schema: { type: string } }
-        - { name: start_time, in: query, required: true, schema: { type: string } }
-        - { name: end_time, in: query, required: true, schema: { type: string } }
-        - { name: room_id, in: query, required: true, schema: { type: integer } }
-        - { name: instructor_id, in: query, required: true, schema: { type: integer } }
-        - { name: section_id, in: query, required: true, schema: { type: integer } }
-        - { name: exclude_schedule_id, in: query, required: false, schema: { type: integer } }
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [instructor_id, room_id, section_id, school_year, semester, day_of_week, start_time, end_time]
+              properties:
+                subject_id: { type: integer }
+                instructor_id: { type: integer }
+                room_id: { type: integer }
+                section_id: { type: integer }
+                school_year: { type: string, examples: ["2026-2027"] }
+                semester: { type: string, enum: [1st, 2nd, Summer] }
+                day_of_week: { type: string, enum: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday] }
+                start_time: { type: string, pattern: '^\d{2}:\d{2}$' }
+                end_time: { type: string, pattern: '^\d{2}:\d{2}$' }
+                exclude_schedule_id: { type: integer }
       responses:
         '200':
           description: List of any detected conflicts
@@ -907,10 +917,47 @@ paths:
               schema:
                 type: object
                 properties:
-                  has_conflicts: { type: boolean }
-                  conflicts:
-                    type: array
-                    items: { $ref: '#/components/schemas/ScheduleConflictItem' }
+                  data:
+                    type: object
+                    properties:
+                      has_conflicts: { type: boolean }
+                      conflicts:
+                        type: array
+                        items: { $ref: '#/components/schemas/ScheduleConflictItem' }
+        '422':
+          description: Invalid schedule proposal
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /student/schedule:
+    get:
+      tags: [Schedules]
+      summary: "Get the authenticated student's assigned section schedule"
+      description: "Returns only the current student's section and term. Draft entries are included with their draft status so preliminary data is not mistaken for a confirmed timetable."
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: The student's section and published or draft schedule entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      section: { $ref: '#/components/schemas/SectionDTO' }
+                      schedules:
+                        type: array
+                        items: { $ref: '#/components/schemas/ScheduleDTO' }
+        '401':
+          description: Authentication required
+        '403':
+          description: Student role required
+        '404':
+          description: Student profile or assigned section not found
 
   /schedules/{id}:
     get:
@@ -1290,4 +1337,3 @@ paths:
           description: Database connection healthy
         '503':
           description: Database unreachable
-

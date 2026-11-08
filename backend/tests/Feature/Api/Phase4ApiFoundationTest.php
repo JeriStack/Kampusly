@@ -4,14 +4,35 @@ declare(strict_types=1);
 
 namespace Kampusly\Tests\Feature\Api;
 
+use Kampusly\Academic\Domain\Entity\Section;
+use Kampusly\Academic\Domain\Entity\StudentProfile;
+use Kampusly\Academic\Domain\ValueObject\ReferenceStatus;
+use Kampusly\Academic\Domain\ValueObject\Semester;
 use Kampusly\Bootstrap\ApplicationFactory;
+use Kampusly\IdentityAccess\Domain\Entity\User;
+use Kampusly\IdentityAccess\Domain\Repository\UserRepositoryInterface;
+use Kampusly\IdentityAccess\Domain\Service\PasswordHasher;
+use Kampusly\IdentityAccess\Domain\ValueObject\AccountStatus;
+use Kampusly\IdentityAccess\Domain\ValueObject\UserRole;
 use Kampusly\Scheduling\Application\Service\ScheduleFoundationService;
 use Kampusly\Scheduling\Domain\Repository\ScheduleRepositoryInterface;
 use Kampusly\Scheduling\Domain\Service\ScheduleConflictChecker;
+use Kampusly\Scheduling\Domain\Entity\Schedule;
+use Kampusly\Scheduling\Domain\ValueObject\DayOfWeek;
+use Kampusly\Scheduling\Domain\ValueObject\ScheduleStatus;
+use Kampusly\Scheduling\Domain\ValueObject\TimeSlot;
 use Kampusly\Scheduling\Presentation\Http\Controller\ScheduleFoundationController;
+use Kampusly\Academic\Domain\Repository\SectionRepositoryInterface;
+use Kampusly\Academic\Domain\Repository\StudentRepositoryInterface;
 use Kampusly\Shared\Application\Contract\AuditLoggerInterface;
 use Kampusly\Shared\Application\Contract\TransactionManagerInterface;
+use Kampusly\Shared\Infrastructure\Http\ArraySessionManager;
+use Kampusly\Shared\Infrastructure\Http\CsrfManager;
 use Kampusly\Shared\Infrastructure\Http\HttpRequest;
+use Kampusly\Shared\Infrastructure\Http\SessionInterface;
+use Kampusly\Tests\Support\InMemoryUserRepository;
+use Kampusly\Tests\Support\InMemorySectionRepository;
+use Kampusly\Tests\Support\InMemoryStudentRepository;
 use Kampusly\Tests\Support\InMemoryScheduleRepository;
 use Kampusly\Tests\Support\NullAuditLogger;
 use Kampusly\Tests\Support\NullTransactionManager;
@@ -20,6 +41,8 @@ use Kampusly\Tests\Support\TestCase;
 final class Phase4ApiFoundationTest extends TestCase
 {
     private ApplicationFactory $app;
+    private ArraySessionManager $session;
+    private CsrfManager $csrfManager;
 
     protected function setUp(): void
     {
@@ -29,10 +52,51 @@ final class Phase4ApiFoundationTest extends TestCase
         $inMemoryRepo = new InMemoryScheduleRepository();
         $nullTx = new NullTransactionManager();
         $nullAudit = new NullAuditLogger();
+        $this->session = new ArraySessionManager();
+        $this->csrfManager = new CsrfManager($this->session);
+        $hasher = new PasswordHasher();
+        $sectionRepository = new InMemorySectionRepository([
+            new Section(
+                1,
+                'BSCS 2A',
+                'BS Computer Science',
+                2,
+                '2026-2027',
+                Semester::First
+            ),
+        ]);
+        $studentRepository = new InMemoryStudentRepository([
+            new StudentProfile(1, 2, 1, '2026-0001', 'Student', 'User', 'BS Computer Science'),
+        ]);
 
         $container->instance(ScheduleRepositoryInterface::class, $inMemoryRepo);
+        $container->instance(SectionRepositoryInterface::class, $sectionRepository);
+        $container->instance(StudentRepositoryInterface::class, $studentRepository);
         $container->instance(TransactionManagerInterface::class, $nullTx);
         $container->instance(AuditLoggerInterface::class, $nullAudit);
+        $container->instance(SessionInterface::class, $this->session);
+        $container->instance(CsrfManager::class, $this->csrfManager);
+        $container->instance(
+            UserRepositoryInterface::class,
+            new InMemoryUserRepository([
+                new User(
+                    1,
+                    'Administrator',
+                    'admin@kampusly.edu.ph',
+                    $hasher->hash('AdminPassword123!'),
+                    UserRole::Admin,
+                    AccountStatus::Active
+                ),
+                new User(
+                    2,
+                    'Student',
+                    'student@kampusly.edu.ph',
+                    $hasher->hash('StudentPassword123!'),
+                    UserRole::Student,
+                    AccountStatus::Active
+                ),
+            ])
+        );
 
         $scheduleService = new ScheduleFoundationService(
             $inMemoryRepo,
@@ -99,6 +163,7 @@ final class Phase4ApiFoundationTest extends TestCase
 
     public function testScheduleConflictValidationEndpoint(): void
     {
+        $this->session->set('auth_user_id', 1);
         $payload = [
             'subject_id' => 1,
             'instructor_id' => 1,
@@ -115,7 +180,10 @@ final class Phase4ApiFoundationTest extends TestCase
             'POST',
             '/api/v1/schedules/validate-conflicts',
             [],
-            ['Content-Type' => 'application/json'],
+            [
+                'Content-Type' => 'application/json',
+                'X-CSRF-Token' => $this->csrfManager->getToken(),
+            ],
             $payload
         );
 
@@ -130,8 +198,125 @@ final class Phase4ApiFoundationTest extends TestCase
         $this->assertCount(0, $data['data']['conflicts']);
     }
 
+    public function testScheduleListRequiresAdminAuthentication(): void
+    {
+        $unauthenticated = $this->app->handle(new HttpRequest('GET', '/api/v1/schedules'));
+        $this->assertSame(401, $unauthenticated->getStatusCode());
+
+        $this->session->set('auth_user_id', 1);
+        $authenticated = $this->app->handle(new HttpRequest('GET', '/api/v1/schedules'));
+        $this->assertSame(200, $authenticated->getStatusCode());
+        $this->assertArrayHasKey('data', $authenticated->getData());
+    }
+
+    public function testStudentCanReadOnlyTheirAssignedSectionScheduleIncludingDrafts(): void
+    {
+        $scheduleRepository = $this->app->getContainer()->get(ScheduleRepositoryInterface::class);
+        $scheduleRepository->create(new Schedule(
+            null,
+            1,
+            1,
+            1,
+            1,
+            '2026-2027',
+            Semester::First,
+            DayOfWeek::Monday,
+            new TimeSlot('08:00', '09:00'),
+            ScheduleStatus::Draft
+        ));
+        $scheduleRepository->create(new Schedule(
+            null,
+            1,
+            1,
+            1,
+            2,
+            '2026-2027',
+            Semester::First,
+            DayOfWeek::Monday,
+            new TimeSlot('08:00', '09:00'),
+            ScheduleStatus::Published
+        ));
+
+        $this->session->set('auth_user_id', 2);
+        $response = $this->app->handle(new HttpRequest('GET', '/api/v1/student/schedule'));
+
+        $this->assertSame(200, $response->getStatusCode());
+        $data = $response->getData()['data'];
+        $this->assertSame('BSCS 2A', $data['section']['section_name']);
+        $this->assertCount(1, $data['schedules']);
+        $this->assertSame('draft', $data['schedules'][0]['status']);
+        $this->assertSame(1, $data['schedules'][0]['section_id']);
+    }
+
+    public function testAdminCannotReadStudentScheduleEndpoint(): void
+    {
+        $this->session->set('auth_user_id', 1);
+        $response = $this->app->handle(new HttpRequest('GET', '/api/v1/student/schedule'));
+
+        $this->assertSame(403, $response->getStatusCode());
+    }
+
+    public function testAdminCanCreateDraftSchedule(): void
+    {
+        $this->session->set('auth_user_id', 1);
+        $token = $this->csrfManager->getToken();
+        $request = new HttpRequest(
+            'POST',
+            '/api/v1/schedules',
+            [],
+            ['Content-Type' => 'application/json', 'X-CSRF-Token' => $token],
+            [
+                'subject_id' => 1,
+                'instructor_id' => 1,
+                'room_id' => 1,
+                'section_id' => 1,
+                'school_year' => '2026-2027',
+                'semester' => '1st',
+                'day_of_week' => 'Monday',
+                'start_time' => '08:00',
+                'end_time' => '09:00',
+                'status' => 'draft',
+            ]
+        );
+
+        $response = $this->app->handle($request);
+
+        $this->assertSame(201, $response->getStatusCode());
+        $this->assertSame('draft', $response->getData()['data']['status']);
+        $this->assertSame('Monday', $response->getData()['data']['day_of_week']);
+    }
+
+    public function testNonAdminCannotCreateSchedule(): void
+    {
+        $this->session->set('auth_user_id', 2);
+        $token = $this->csrfManager->getToken();
+        $request = new HttpRequest(
+            'POST',
+            '/api/v1/schedules',
+            [],
+            ['Content-Type' => 'application/json', 'X-CSRF-Token' => $token],
+            [
+                'subject_id' => 1,
+                'instructor_id' => 1,
+                'room_id' => 1,
+                'section_id' => 1,
+                'school_year' => '2026-2027',
+                'semester' => '1st',
+                'day_of_week' => 'Monday',
+                'start_time' => '08:00',
+                'end_time' => '09:00',
+                'status' => 'draft',
+            ]
+        );
+
+        $response = $this->app->handle($request);
+
+        $this->assertSame(403, $response->getStatusCode());
+    }
+
     public function testScheduleConflictValidationRejectsInvalidTimeOrder(): void
     {
+        $this->session->set('auth_user_id', 1);
         $invalidPayload = [
             'subject_id' => 1,
             'instructor_id' => 1,
@@ -148,7 +333,10 @@ final class Phase4ApiFoundationTest extends TestCase
             'POST',
             '/api/v1/schedules/validate-conflicts',
             [],
-            ['Content-Type' => 'application/json'],
+            [
+                'Content-Type' => 'application/json',
+                'X-CSRF-Token' => $this->csrfManager->getToken(),
+            ],
             $invalidPayload
         );
 
