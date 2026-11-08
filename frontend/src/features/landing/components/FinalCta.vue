@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import BaseButton from '@/components/common/BaseButton.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import { revealDirective as vReveal } from '@/directives/motion'
 </script>
 
 <template>
@@ -18,7 +19,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
         aria-hidden="true"
       />
 
-      <div class="relative">
+      <div v-reveal class="relative">
         <h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
           Make Every Class Count.
         </h2>

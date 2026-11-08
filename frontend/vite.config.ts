@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const devProxyTarget =
     env.VITE_DEV_API_PROXY_TARGET ||
     process.env.VITE_DEV_API_PROXY_TARGET ||
-    'http://127.0.0.1:8000'
+    'http://127.0.0.1:8080'
 
   return {
     plugins: [vue()],

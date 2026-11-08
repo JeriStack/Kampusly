@@ -84,6 +84,9 @@ final class InMemoryScheduleRepository implements ScheduleRepositoryInterface
             if (isset($filters['room_id']) && $s->getRoomId() !== $filters['room_id']) {
                 return false;
             }
+            if (isset($filters['status']) && $s->getStatus()->value !== $filters['status']) {
+                return false;
+            }
             return true;
         });
 
@@ -115,4 +118,3 @@ final class InMemoryScheduleRepository implements ScheduleRepositoryInterface
         return $persisted;
     }
 }
-

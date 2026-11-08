@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppIcon from '@/components/common/AppIcon.vue'
+import { hoverSpringDirective as vHoverSpring } from '@/directives/motion'
 
 interface PreviewClass {
   time: string
@@ -54,6 +55,7 @@ const toneClasses: Record<PreviewClass['tone'], string> = {
     <div class="relative pb-14 sm:pb-12">
       <!-- Main dashboard card -->
       <div
+        v-hover-spring="{ y: -4, scale: 1.01 }"
         class="rounded-card border border-hairline bg-surface shadow-card-hover"
       >
         <!-- Card header -->

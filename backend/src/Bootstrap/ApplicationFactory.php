@@ -44,6 +44,7 @@ use Kampusly\Scheduling\Domain\Repository\ScheduleRepositoryInterface;
 use Kampusly\Scheduling\Domain\Service\ScheduleConflictChecker;
 use Kampusly\Scheduling\Infrastructure\Persistence\PdoScheduleRepository;
 use Kampusly\Scheduling\Presentation\Http\Controller\ScheduleFoundationController;
+use Kampusly\Scheduling\Presentation\Http\Controller\StudentScheduleController;
 use Kampusly\Shared\Application\Contract\AuditLoggerInterface;
 use Kampusly\Shared\Application\Contract\TransactionManagerInterface;
 use Kampusly\Shared\Infrastructure\Database\PdoConnectionFactory;
@@ -351,6 +352,15 @@ final class ApplicationFactory
         $container->singleton(
             ScheduleFoundationController::class,
             static fn (Container $c): ScheduleFoundationController => new ScheduleFoundationController(
+                $c->get(ScheduleFoundationService::class)
+            )
+        );
+
+        $container->singleton(
+            StudentScheduleController::class,
+            static fn (Container $c): StudentScheduleController => new StudentScheduleController(
+                $c->get(StudentRepositoryInterface::class),
+                $c->get(SectionRepositoryInterface::class),
                 $c->get(ScheduleFoundationService::class)
             )
         );

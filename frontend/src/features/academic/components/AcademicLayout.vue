@@ -21,6 +21,7 @@ const tabs: { name: string; path: string; icon: IconName }[] = [
   { name: 'Subjects', path: '/admin/subjects', icon: 'book' },
   { name: 'Rooms', path: '/admin/rooms', icon: 'grid' },
   { name: 'Sections', path: '/admin/sections', icon: 'layers' },
+  { name: 'Schedules', path: '/admin/schedules', icon: 'calendar' },
 ]
 
 async function handleLogout(): Promise<void> {
@@ -99,4 +100,3 @@ async function handleLogout(): Promise<void> {
     </main>
   </div>
 </template>
-

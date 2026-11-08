@@ -32,6 +32,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/admin/schedules',
+    name: 'admin-schedules',
+    component: () => import('@/features/admin/pages/AdminSchedules.vue'),
+    meta: {
+      title: 'Schedule Management — Kampusly',
+      requiresAuth: true,
+      allowedRoles: ['admin'],
+    },
+  },
+  {
     path: '/instructor/dashboard',
     name: 'instructor-dashboard',
     component: () => import('@/features/instructor/pages/InstructorDashboard.vue'),

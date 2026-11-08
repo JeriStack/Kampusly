@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppIcon from '@/components/common/AppIcon.vue'
+import { hoverSpringDirective as vHoverSpring, revealDirective as vReveal } from '@/directives/motion'
 import { steps } from '../content'
 </script>
 
@@ -9,7 +10,7 @@ import { steps } from '../content'
     class="scroll-mt-20 border-y border-hairline bg-navy-50/40 py-16 sm:py-24 dark:bg-white/[0.03]"
   >
     <div class="mx-auto max-w-content px-4 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl text-center">
+      <div v-reveal class="mx-auto max-w-2xl text-center">
         <h2
           class="text-3xl font-bold tracking-tight text-navy sm:text-4xl dark:text-white"
         >
@@ -24,6 +25,7 @@ import { steps } from '../content'
         <li
           v-for="(step, index) in steps"
           :key="step.number"
+          v-reveal="{ delay: index * 110 }"
           class="group relative flex flex-col items-center text-center"
         >
           <!--
@@ -40,6 +42,7 @@ import { steps } from '../content'
           <!-- Numbered badge with a supporting icon -->
           <span class="relative z-10 inline-flex">
             <span
+              v-hover-spring="{ y: -4, scale: 1.04 }"
               class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-action text-white shadow-md transition-transform duration-200 group-hover:-translate-y-1"
             >
               <AppIcon :name="step.icon" class="h-7 w-7" />

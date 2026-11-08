@@ -13,6 +13,7 @@ use Kampusly\IdentityAccess\Presentation\Http\Controller\AdminDashboardControlle
 use Kampusly\IdentityAccess\Presentation\Http\Controller\AuthController;
 use Kampusly\IdentityAccess\Presentation\Http\Controller\UserController;
 use Kampusly\Scheduling\Presentation\Http\Controller\ScheduleFoundationController;
+use Kampusly\Scheduling\Presentation\Http\Controller\StudentScheduleController;
 use Kampusly\Shared\Infrastructure\Http\AuthenticateMiddleware;
 use Kampusly\Shared\Infrastructure\Http\AuthorizeRoleMiddleware;
 use Kampusly\Shared\Infrastructure\Http\HttpRequest;
@@ -317,11 +318,23 @@ return static function (Router $router, Container $container): void {
         /** @var ScheduleFoundationController $scheduleController */
         $scheduleController = $container->get(ScheduleFoundationController::class);
         return $scheduleController->listSchedules($request);
-    });
+    }, [$authenticate, $authorizeRoles(['admin'])]);
+
+    $router->post('/schedules', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var ScheduleFoundationController $scheduleController */
+        $scheduleController = $container->get(ScheduleFoundationController::class);
+        return $scheduleController->createSchedule($request);
+    }, [$authenticate, $authorizeRoles(['admin'])]);
 
     $router->post('/schedules/validate-conflicts', static function (HttpRequest $request) use ($container): JsonResponse {
         /** @var ScheduleFoundationController $scheduleController */
         $scheduleController = $container->get(ScheduleFoundationController::class);
         return $scheduleController->validateConflicts($request);
-    });
+    }, [$authenticate, $authorizeRoles(['admin'])]);
+
+    $router->get('/student/schedule', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var StudentScheduleController $studentScheduleController */
+        $studentScheduleController = $container->get(StudentScheduleController::class);
+        return $studentScheduleController->listMySchedule($request);
+    }, [$authenticate, $authorizeRoles(['student'])]);
 };

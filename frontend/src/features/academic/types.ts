@@ -145,6 +145,27 @@ export interface Section {
   updated_at: string | null
 }
 
+export interface Schedule {
+  id: number
+  subject_id: number
+  subject_code: string | null
+  subject_name: string | null
+  instructor_id: number
+  instructor_name: string | null
+  room_id: number
+  room_code: string | null
+  section_id: number
+  section_name: string | null
+  school_year: string
+  semester: '1st' | '2nd' | 'Summer'
+  day_of_week: string
+  start_time: string
+  end_time: string
+  status: 'draft' | 'published' | 'cancelled'
+  created_at: string | null
+  updated_at: string | null
+}
+
 export interface CreateSectionPayload {
   section_name: string
   program: string
@@ -162,4 +183,3 @@ export interface UpdateSectionPayload {
   semester: '1st' | '2nd' | 'Summer'
   status?: 'active' | 'inactive'
 }
-
