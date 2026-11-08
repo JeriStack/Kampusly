@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuth } from '@/features/auth/stores/useAuth'
 import { apiClient } from '@/services/api/client'
 import { API_ENDPOINTS } from '@/services/api/endpoints'
@@ -9,6 +9,7 @@ import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 
 const router = useRouter()
+const route = useRoute()
 const { user, logout } = useAuth()
 
 interface DashboardSummary {
@@ -120,6 +121,11 @@ const todayWeekday = new Intl.DateTimeFormat('en', {
 }).format(new Date())
 
 const hasMoreAccounts = computed(() => accountPage.value < accountTotalPages.value)
+const accountRoleFilter = computed<'student' | 'instructor' | null>(() => {
+  if (route.path === '/admin/students') return 'student'
+  if (route.path === '/admin/instructors') return 'instructor'
+  return null
+})
 
 function messageFromError(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback
@@ -151,6 +157,9 @@ async function fetchAccounts(append = false): Promise<void> {
   try {
     const nextPage = append ? accountPage.value + 1 : 1
     const query = new URLSearchParams({ page: String(nextPage), per_page: '100' })
+    if (accountRoleFilter.value) {
+      query.set('role', accountRoleFilter.value)
+    }
     const response = await apiClient.get<PaginatedResponse<UserAccount>>(
       `${API_ENDPOINTS.users.list}?${query.toString()}`,
     )
@@ -212,7 +221,7 @@ async function fetchSections(): Promise<void> {
 }
 
 function resetAccountForm(): void {
-  accountForm.role = 'student'
+  accountForm.role = accountRoleFilter.value ?? 'student'
   accountForm.firstName = ''
   accountForm.lastName = ''
   accountForm.email = ''
@@ -226,6 +235,7 @@ function resetAccountForm(): void {
 }
 
 async function openCreateForm(): Promise<void> {
+  accountForm.role = accountRoleFilter.value ?? 'student'
   successMessage.value = null
   createAccountError.value = null
   try {
@@ -275,6 +285,24 @@ async function createAccount(): Promise<void> {
   }
 }
 
+async function toggleAccountStatus(account: UserAccount): Promise<void> {
+  if (account.id === user.value?.id) return
+
+  const status = account.status === 'active' ? 'inactive' : 'active'
+  const action = status === 'inactive' ? 'deactivate' : 'reactivate'
+  if (!window.confirm(`Are you sure you want to ${action} ${account.full_name}?`)) return
+
+  accountError.value = null
+  successMessage.value = null
+  try {
+    await apiClient.patch(API_ENDPOINTS.users.updateStatus(account.id), { status })
+    successMessage.value = `${account.full_name} is now ${status}.`
+    await Promise.all([fetchAccounts(), fetchSummary()])
+  } catch (err: unknown) {
+    accountError.value = messageFromError(err, 'Failed to update account status.')
+  }
+}
+
 function formatTime(value: string): string {
   const [hours = '0', minutes = '00'] = value.split(':')
   const date = new Date()
@@ -292,6 +320,11 @@ onMounted(() => {
   void fetchAccounts()
   void fetchActiveSubjects()
   void fetchTodaysClasses()
+})
+
+watch(accountRoleFilter, () => {
+  accountPage.value = 1
+  void fetchAccounts()
 })
 </script>
 
@@ -321,6 +354,25 @@ onMounted(() => {
           </button>
         </div>
       </div>
+      <nav class="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 sm:px-6 lg:px-8" aria-label="Admin navigation">
+        <RouterLink
+          v-for="tab in [
+            { name: 'Dashboard', path: '/admin/dashboard' },
+            { name: 'Students', path: '/admin/students' },
+            { name: 'Instructors', path: '/admin/instructors' },
+            { name: 'Schedules', path: '/admin/schedules' },
+            { name: 'Subjects', path: '/admin/subjects' },
+            { name: 'Rooms', path: '/admin/rooms' },
+            { name: 'Sections', path: '/admin/sections' },
+          ]"
+          :key="tab.path"
+          :to="tab.path"
+          class="whitespace-nowrap border-b-2 px-3 py-2.5 text-xs font-semibold transition-colors"
+          :class="route.path === tab.path ? 'border-navy text-navy dark:border-primary-400 dark:text-primary-300' : 'border-transparent text-muted hover:text-ink'"
+        >
+          {{ tab.name }}
+        </RouterLink>
+      </nav>
     </header>
 
     <main class="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -377,8 +429,10 @@ onMounted(() => {
       <section class="rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 class="text-lg font-semibold text-ink">User Accounts</h2>
-            <p class="mt-1 text-sm text-muted">View and create student and instructor accounts.</p>
+            <h2 class="text-lg font-semibold text-ink">
+              {{ accountRoleFilter ? `${accountRoleFilter === 'student' ? 'Student' : 'Instructor'} Accounts` : 'User Accounts' }}
+            </h2>
+            <p class="mt-1 text-sm text-muted">View, create, activate, or deactivate accounts.</p>
           </div>
           <button
             type="button"
@@ -409,6 +463,7 @@ onMounted(() => {
                 <th scope="col" class="px-3 py-3 font-semibold">Email</th>
                 <th scope="col" class="px-3 py-3 font-semibold">Role</th>
                 <th scope="col" class="px-3 py-3 font-semibold">Status</th>
+                <th scope="col" class="px-3 py-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-hairline">
@@ -424,9 +479,19 @@ onMounted(() => {
                     {{ account.status }}
                   </span>
                 </td>
+                <td class="px-3 py-3 text-right">
+                  <button
+                    type="button"
+                    class="rounded-md border border-hairline px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="account.id === user?.id"
+                    @click="toggleAccountStatus(account)"
+                  >
+                    {{ account.status === 'active' ? 'Deactivate' : 'Activate' }}
+                  </button>
+                </td>
               </tr>
               <tr v-if="accounts.length === 0">
-                <td colspan="4" class="px-3 py-8 text-center text-muted">
+                <td colspan="5" class="px-3 py-8 text-center text-muted">
                   No user accounts yet. Add a student or instructor to get started.
                 </td>
               </tr>

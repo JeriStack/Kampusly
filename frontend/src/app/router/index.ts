@@ -42,6 +42,36 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/admin/subjects',
+    name: 'admin-subjects',
+    component: () => import('@/features/academic/subjects/SubjectsView.vue'),
+    meta: { title: 'Subject Management — Kampusly', requiresAuth: true, allowedRoles: ['admin'] },
+  },
+  {
+    path: '/admin/rooms',
+    name: 'admin-rooms',
+    component: () => import('@/features/academic/rooms/RoomsView.vue'),
+    meta: { title: 'Room Management — Kampusly', requiresAuth: true, allowedRoles: ['admin'] },
+  },
+  {
+    path: '/admin/sections',
+    name: 'admin-sections',
+    component: () => import('@/features/academic/sections/SectionsView.vue'),
+    meta: { title: 'Section Management — Kampusly', requiresAuth: true, allowedRoles: ['admin'] },
+  },
+  {
+    path: '/admin/students',
+    name: 'admin-students',
+    component: () => import('@/features/admin/pages/AdminDashboard.vue'),
+    meta: { title: 'Student Accounts — Kampusly', requiresAuth: true, allowedRoles: ['admin'] },
+  },
+  {
+    path: '/admin/instructors',
+    name: 'admin-instructors',
+    component: () => import('@/features/admin/pages/AdminDashboard.vue'),
+    meta: { title: 'Instructor Accounts — Kampusly', requiresAuth: true, allowedRoles: ['admin'] },
+  },
+  {
     path: '/instructor/dashboard',
     name: 'instructor-dashboard',
     component: () => import('@/features/instructor/pages/InstructorDashboard.vue'),

@@ -33,6 +33,12 @@ const schedulesByDay = computed(() =>
     }))
     .filter((group) => group.entries.length > 0),
 )
+const hasDraftSchedules = computed(() =>
+  schedules.value.some((schedule) => schedule.status === 'draft'),
+)
+const hasProvisionalInstructors = computed(() =>
+  schedules.value.some((schedule) => schedule.instructor_name?.startsWith('Temporary ')),
+)
 
 function instructorLabel(schedule: Schedule): string {
   const name = schedule.instructor_name
@@ -136,11 +142,16 @@ onMounted(loadSchedule)
           </p>
 
           <div
-            v-if="schedules.some((schedule) => schedule.status === 'draft')"
+            v-if="hasDraftSchedules || hasProvisionalInstructors"
             class="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
             role="status"
           >
-            This is a preliminary schedule. Draft class details are awaiting instructor and room confirmation.
+            <template v-if="hasDraftSchedules">
+              This schedule contains draft meetings and is not yet fully confirmed.
+            </template>
+            <template v-else>
+              This schedule is published, but some instructor assignments are provisional. Please check with the administrator.
+            </template>
           </div>
 
           <div v-if="isScheduleLoading" class="mt-5 rounded-xl bg-canvas p-8 text-center" role="status">
@@ -205,7 +216,13 @@ onMounted(loadSchedule)
                         'border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-200': schedule.status === 'published',
                       }"
                     >
-                      {{ schedule.status === 'draft' ? 'Draft · unconfirmed' : 'Published' }}
+                      {{
+                        schedule.status === 'draft'
+                          ? 'Draft · unconfirmed'
+                          : schedule.instructor_name?.startsWith('Temporary ')
+                            ? 'Published · instructor provisional'
+                            : 'Published'
+                      }}
                     </span>
                   </div>
                 </li>

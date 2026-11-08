@@ -332,6 +332,12 @@ return static function (Router $router, Container $container): void {
         return $scheduleController->validateConflicts($request);
     }, [$authenticate, $authorizeRoles(['admin'])]);
 
+    $router->patch('/schedules/{id}', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+        /** @var ScheduleFoundationController $scheduleController */
+        $scheduleController = $container->get(ScheduleFoundationController::class);
+        return $scheduleController->updateSchedule($request, $params);
+    }, [$authenticate, $authorizeRoles(['admin'])]);
+
     $router->get('/student/schedule', static function (HttpRequest $request) use ($container): JsonResponse {
         /** @var StudentScheduleController $studentScheduleController */
         $studentScheduleController = $container->get(StudentScheduleController::class);

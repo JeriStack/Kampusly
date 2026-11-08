@@ -16,6 +16,7 @@ use Kampusly\Shared\Application\Contract\AuditLoggerInterface;
 use Kampusly\Shared\Application\Contract\TransactionManagerInterface;
 use Kampusly\Shared\Application\DTO\PaginatedResult;
 use Kampusly\Shared\Domain\Exception\ConflictException;
+use Kampusly\Shared\Domain\Exception\ResourceNotFoundException;
 use Kampusly\Shared\Domain\ValueObject\PaginationQuery;
 use Kampusly\Shared\Infrastructure\Http\RequestValidator;
 
@@ -184,6 +185,70 @@ final class ScheduleFoundationService
     /**
      * @param array<string, mixed> $payload
      */
+    public function updateSchedule(
+        int $scheduleId,
+        array $payload,
+        ?int $actorUserId = null,
+        ?string $requestId = null
+    ): Schedule {
+        $this->validateSchedulePayload($payload, true);
+
+        /** @var Schedule $updated */
+        $updated = $this->transactions->transactional(
+            function () use ($scheduleId, $payload, $actorUserId, $requestId): Schedule {
+                $existing = $this->schedules->findById($scheduleId);
+                if ($existing === null) {
+                    throw new ResourceNotFoundException('Schedule not found.');
+                }
+
+                $status = ScheduleStatus::from((string) ($payload['status'] ?? $existing->getStatus()->value));
+                if ($status !== ScheduleStatus::Cancelled) {
+                    $proposal = $payload;
+                    $proposal['exclude_schedule_id'] = $scheduleId;
+                    $validation = $this->validateProposal($proposal);
+                    if ($validation['has_conflicts']) {
+                        throw ConflictException::scheduleConflict($validation['conflicts']);
+                    }
+                }
+
+                $schedule = new Schedule(
+                    $scheduleId,
+                    (int) $payload['subject_id'],
+                    (int) $payload['instructor_id'],
+                    (int) $payload['room_id'],
+                    (int) $payload['section_id'],
+                    trim((string) $payload['school_year']),
+                    Semester::from((string) $payload['semester']),
+                    DayOfWeek::from((string) $payload['day_of_week']),
+                    new TimeSlot((string) $payload['start_time'], (string) $payload['end_time']),
+                    $status
+                );
+
+                $persisted = $this->schedules->update($schedule);
+                $this->auditLogger->record(
+                    $actorUserId,
+                    'schedule.updated',
+                    'schedule',
+                    $persisted->getId(),
+                    [
+                        'status' => $persisted->getStatus()->value,
+                        'day_of_week' => $persisted->getDayOfWeek()->value,
+                        'start_time' => $persisted->getTimeSlot()->getStartTime(),
+                        'end_time' => $persisted->getTimeSlot()->getEndTime(),
+                    ],
+                    $requestId
+                );
+
+                return $persisted;
+            }
+        );
+
+        return $updated;
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
     private function validateSchedulePayload(array $payload, bool $requireSubjectId): void
     {
         $validator = new RequestValidator($payload);
@@ -208,4 +273,3 @@ final class ScheduleFoundationService
             ->validateOrThrow();
     }
 }
-

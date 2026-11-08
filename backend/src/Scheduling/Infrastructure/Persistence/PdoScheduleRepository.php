@@ -174,6 +174,45 @@ final class PdoScheduleRepository implements ScheduleRepositoryInterface
         return $this->findById($id) ?? $schedule;
     }
 
+    public function update(Schedule $schedule): Schedule
+    {
+        $id = $schedule->getId();
+        if ($id === null) {
+            throw new \InvalidArgumentException('Cannot update a schedule without an ID.');
+        }
+
+        $stmt = $this->pdo->prepare(
+            'UPDATE `schedules`
+             SET `subject_id` = :subject_id,
+                 `instructor_id` = :instructor_id,
+                 `room_id` = :room_id,
+                 `section_id` = :section_id,
+                 `school_year` = :school_year,
+                 `semester` = :semester,
+                 `day_of_week` = :day_of_week,
+                 `start_time` = :start_time,
+                 `end_time` = :end_time,
+                 `status` = :status,
+                 `updated_at` = CURRENT_TIMESTAMP
+             WHERE `id` = :id'
+        );
+        $stmt->execute([
+            ':subject_id' => $schedule->getSubjectId(),
+            ':instructor_id' => $schedule->getInstructorId(),
+            ':room_id' => $schedule->getRoomId(),
+            ':section_id' => $schedule->getSectionId(),
+            ':school_year' => $schedule->getSchoolYear(),
+            ':semester' => $schedule->getSemester()->value,
+            ':day_of_week' => $schedule->getDayOfWeek()->value,
+            ':start_time' => $schedule->getTimeSlot()->getStartTime(),
+            ':end_time' => $schedule->getTimeSlot()->getEndTime(),
+            ':status' => $schedule->getStatus()->value,
+            ':id' => $id,
+        ]);
+
+        return $this->findById($id) ?? $schedule;
+    }
+
     private function baseSelectSql(): string
     {
         return 'SELECT
@@ -190,4 +229,3 @@ final class PdoScheduleRepository implements ScheduleRepositoryInterface
         INNER JOIN `sections` sec ON sec.`id` = s.`section_id`';
     }
 }
-

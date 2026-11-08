@@ -286,6 +286,45 @@ final class Phase4ApiFoundationTest extends TestCase
         $this->assertSame('Monday', $response->getData()['data']['day_of_week']);
     }
 
+    public function testAdminCanPublishScheduleWithConflictValidation(): void
+    {
+        $this->session->set('auth_user_id', 1);
+        $draft = $this->app->getContainer()->get(ScheduleRepositoryInterface::class)->create(new Schedule(
+            null,
+            1,
+            1,
+            1,
+            1,
+            '2026-2027',
+            Semester::First,
+            DayOfWeek::Monday,
+            new TimeSlot('08:00', '09:00'),
+            ScheduleStatus::Draft
+        ));
+        $token = $this->csrfManager->getToken();
+        $response = $this->app->handle(new HttpRequest(
+            'PATCH',
+            '/api/v1/schedules/' . $draft->getId(),
+            [],
+            ['Content-Type' => 'application/json', 'X-CSRF-Token' => $token],
+            [
+                'subject_id' => 1,
+                'instructor_id' => 1,
+                'room_id' => 1,
+                'section_id' => 1,
+                'school_year' => '2026-2027',
+                'semester' => '1st',
+                'day_of_week' => 'Monday',
+                'start_time' => '08:00',
+                'end_time' => '09:00',
+                'status' => 'published',
+            ]
+        ));
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('published', $response->getData()['data']['status']);
+    }
+
     public function testNonAdminCannotCreateSchedule(): void
     {
         $this->session->set('auth_user_id', 2);
