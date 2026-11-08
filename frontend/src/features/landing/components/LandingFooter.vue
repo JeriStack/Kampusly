@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import KampuslyLogo from '@/components/common/KampuslyLogo.vue'
+import { revealDirective as vReveal } from '@/directives/motion'
 import { navLinks } from '../content'
 
 const year = new Date().getFullYear()
@@ -11,7 +12,7 @@ const year = new Date().getFullYear()
     <div class="mx-auto max-w-content px-4 py-14 sm:px-6 lg:px-8">
       <div class="grid gap-10 md:grid-cols-12">
         <!-- Brand -->
-        <div class="flex flex-col items-center text-center md:col-span-5 md:items-start md:text-left">
+        <div v-reveal class="flex flex-col items-center text-center md:col-span-5 md:items-start md:text-left">
           <KampuslyLogo />
           <p class="mt-3 max-w-xs text-justify text-sm leading-relaxed text-muted">
             A web-based class schedule management and notification system.
@@ -20,7 +21,7 @@ const year = new Date().getFullYear()
         </div>
 
         <!-- Link columns -->
-        <div class="grid grid-cols-2 gap-8 text-center md:col-span-7 md:justify-items-end">
+        <div v-reveal="{ delay: 120 }" class="grid grid-cols-2 gap-8 text-center md:col-span-7 md:justify-items-end">
           <nav aria-label="Explore">
             <h2 class="text-sm font-semibold text-ink">Explore</h2>
             <ul class="mt-4 space-y-3">
