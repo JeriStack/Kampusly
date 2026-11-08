@@ -71,6 +71,7 @@ export const API_ENDPOINTS = {
   },
   scheduling: {
     schedules: '/schedules',
+    schedule: (id: number | string) => `/schedules/${id}`,
     validateConflicts: '/schedules/validate-conflicts',
   },
   student: {

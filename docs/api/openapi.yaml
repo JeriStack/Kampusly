@@ -983,13 +983,45 @@ paths:
           in: path
           required: true
           schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject_id, instructor_id, room_id, section_id, school_year, semester, day_of_week, start_time, end_time]
+              properties:
+                subject_id: { type: integer }
+                instructor_id: { type: integer }
+                room_id: { type: integer }
+                section_id: { type: integer }
+                school_year: { type: string }
+                semester: { type: string, enum: [1st, 2nd, Summer] }
+                day_of_week: { type: string, enum: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday] }
+                start_time: { type: string, pattern: '^\d{2}:\d{2}$' }
+                end_time: { type: string, pattern: '^\d{2}:\d{2}$' }
+                status: { type: string, enum: [draft, published, cancelled] }
       responses:
-        '200': { description: Schedule updated }
+        '200':
+          description: Schedule updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/ScheduleDTO' }
+        '404': { description: Schedule not found }
         '409':
           description: Conflict detected
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ConflictErrorEnvelope' }
+        '422':
+          description: Invalid schedule data
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
 
   /my/schedule:
     get:

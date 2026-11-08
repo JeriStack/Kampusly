@@ -18,10 +18,10 @@ const tabs: { name: string; path: string; icon: IconName }[] = [
   { name: 'Dashboard', path: '/admin/dashboard', icon: 'admin' },
   { name: 'Students', path: '/admin/students', icon: 'student' },
   { name: 'Instructors', path: '/admin/instructors', icon: 'instructor' },
+  { name: 'Schedules', path: '/admin/schedules', icon: 'calendar' },
   { name: 'Subjects', path: '/admin/subjects', icon: 'book' },
   { name: 'Rooms', path: '/admin/rooms', icon: 'grid' },
   { name: 'Sections', path: '/admin/sections', icon: 'layers' },
-  { name: 'Schedules', path: '/admin/schedules', icon: 'calendar' },
 ]
 
 async function handleLogout(): Promise<void> {

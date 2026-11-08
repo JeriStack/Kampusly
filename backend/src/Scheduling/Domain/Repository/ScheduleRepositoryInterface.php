@@ -32,5 +32,6 @@ interface ScheduleRepositoryInterface
     public function paginate(PaginationQuery $pagination, array $filters = []): PaginatedResult;
 
     public function create(Schedule $schedule): Schedule;
-}
 
+    public function update(Schedule $schedule): Schedule;
+}

@@ -64,4 +64,29 @@ final class ScheduleFoundationController
             $request->getRequestId()
         );
     }
+
+    /**
+     * @param array<string, string> $params
+     */
+    public function updateSchedule(HttpRequest $request, array $params): JsonResponse
+    {
+        /** @var User|null $actor */
+        $actor = $request->getAttribute('user');
+        $schedule = $this->scheduleService->updateSchedule(
+            (int) ($params['id'] ?? 0),
+            $request->getBody(),
+            $actor?->getId(),
+            $request->getRequestId()
+        );
+
+        return new JsonResponse(
+            [
+                'message' => 'Schedule updated successfully.',
+                'data' => $schedule->toArray(),
+            ],
+            200,
+            [],
+            $request->getRequestId()
+        );
+    }
 }

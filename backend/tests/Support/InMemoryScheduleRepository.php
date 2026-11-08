@@ -100,6 +100,9 @@ final class InMemoryScheduleRepository implements ScheduleRepositoryInterface
     public function create(Schedule $schedule): Schedule
     {
         $id = $schedule->getId() ?? $this->autoIncrement++;
+        if ($id >= $this->autoIncrement) {
+            $this->autoIncrement = $id + 1;
+        }
         $persisted = new Schedule(
             $id,
             $schedule->getSubjectId(),
@@ -113,8 +116,19 @@ final class InMemoryScheduleRepository implements ScheduleRepositoryInterface
             $schedule->getStatus()
         );
 
-        $this->schedules[] = $persisted;
+        $this->schedules[$id] = $persisted;
 
         return $persisted;
+    }
+
+    public function update(Schedule $schedule): Schedule
+    {
+        $id = $schedule->getId();
+        if ($id === null || !isset($this->schedules[$id])) {
+            return $schedule;
+        }
+
+        $this->schedules[$id] = $schedule;
+        return $schedule;
     }
 }

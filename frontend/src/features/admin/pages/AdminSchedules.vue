@@ -33,8 +33,11 @@ const form = reactive({
   day_of_week: 'Monday',
   start_time: '08:00',
   end_time: '09:00',
+  status: 'draft' as 'draft' | 'published',
 })
 
+const selectedSection = ref<Section | undefined>(undefined)
+const editingSchedule = ref<Schedule | null>(null)
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 function collectionUrl(path: string): string {
@@ -85,35 +88,114 @@ async function loadData(): Promise<void> {
   }
 }
 
-async function createDraft(): Promise<void> {
+function openCreateForm(): void {
+  editingSchedule.value = null
+  form.subject_id = subjects.value[0]?.id ?? 0
+  form.instructor_id = instructors.value[0]?.id ?? 0
+  form.room_id = rooms.value[0]?.id ?? 0
+  form.section_id = sections.value[0]?.id ?? 0
+  form.day_of_week = 'Monday'
+  form.start_time = '08:00'
+  form.end_time = '09:00'
+  form.status = 'draft'
+  updateSelectedSection()
+}
+
+function openEditForm(schedule: Schedule): void {
+  editingSchedule.value = schedule
+  form.subject_id = schedule.subject_id
+  form.instructor_id = schedule.instructor_id
+  form.room_id = schedule.room_id
+  form.section_id = schedule.section_id
+  form.day_of_week = schedule.day_of_week
+  form.start_time = schedule.start_time.slice(0, 5)
+  form.end_time = schedule.end_time.slice(0, 5)
+  form.status = schedule.status === 'published' ? 'published' : 'draft'
+  updateSelectedSection()
+  formError.value = null
+  successMessage.value = null
+}
+
+async function saveSchedule(): Promise<void> {
+  if (!selectedSection.value) {
+    formError.value = 'Select a section with an academic term before saving.'
+    return
+  }
+  if (form.status === 'published' && !window.confirm('Publish this class meeting to student schedules?')) {
+    return
+  }
+
   isSubmitting.value = true
   formError.value = null
   successMessage.value = null
 
   try {
-    const response = await apiClient.post<{ message: string; data: Schedule }>(
-      API_ENDPOINTS.scheduling.schedules,
-      {
-        ...form,
-        school_year: selectedSection.value?.school_year,
-        semester: selectedSection.value?.semester,
-        status: 'draft',
-      },
-    )
-    schedules.value = [response.data, ...schedules.value]
-    successMessage.value = `${response.data.subject_code ?? 'Class'} added as a draft.`
+    const payload = {
+      ...form,
+      school_year: selectedSection.value.school_year,
+      semester: selectedSection.value.semester,
+    }
+    let response: { data: Schedule }
+    if (editingSchedule.value) {
+      response = await apiClient.patch<{ message: string; data: Schedule }>(
+        API_ENDPOINTS.scheduling.schedule(editingSchedule.value.id),
+        payload,
+      )
+      schedules.value = schedules.value.map((schedule) =>
+        schedule.id === response.data.id ? response.data : schedule,
+      )
+      successMessage.value = `${response.data.subject_code ?? 'Class'} meeting updated.`
+      editingSchedule.value = null
+    } else {
+      response = await apiClient.post<{ message: string; data: Schedule }>(
+        API_ENDPOINTS.scheduling.schedules,
+        payload,
+      )
+      schedules.value = [response.data, ...schedules.value]
+      successMessage.value = `${response.data.subject_code ?? 'Class'} added as ${response.data.status}.`
+    }
   } catch (err) {
-    formError.value =
-      err instanceof ApiError ? err.message : 'Failed to create the schedule entry.'
+    formError.value = err instanceof ApiError ? err.message : 'Failed to save the schedule entry.'
   } finally {
     isSubmitting.value = false
   }
 }
 
-const selectedSection = ref<Section | undefined>(undefined)
-
 function updateSelectedSection(): void {
   selectedSection.value = sections.value.find((section) => section.id === form.section_id)
+}
+
+async function changeScheduleStatus(schedule: Schedule, status: Schedule['status']): Promise<void> {
+  const action = status === 'published' ? 'publish' : 'cancel'
+  if (!window.confirm(`Are you sure you want to ${action} ${schedule.subject_code ?? 'this class'}?`)) {
+    return
+  }
+
+  formError.value = null
+  successMessage.value = null
+  try {
+    const response = await apiClient.patch<{ message: string; data: Schedule }>(
+      API_ENDPOINTS.scheduling.schedule(schedule.id),
+      {
+        subject_id: schedule.subject_id,
+        instructor_id: schedule.instructor_id,
+        room_id: schedule.room_id,
+        section_id: schedule.section_id,
+        school_year: schedule.school_year,
+        semester: schedule.semester,
+        day_of_week: schedule.day_of_week,
+        start_time: schedule.start_time.slice(0, 5),
+        end_time: schedule.end_time.slice(0, 5),
+        status,
+      },
+    )
+    schedules.value = schedules.value.map((item) =>
+      item.id === response.data.id ? response.data : item,
+    )
+    successMessage.value = `${response.data.subject_code ?? 'Class'} ${status}.`
+  } catch (err) {
+    formError.value = err instanceof ApiError ? err.message : `Failed to ${action} the class.`
+  }
 }
 
 onMounted(async () => {
@@ -125,8 +207,19 @@ onMounted(async () => {
 <template>
   <AcademicLayout
     title="Schedule Management"
-    subtitle="Create and review class meetings. Entries are saved as drafts until verified and published."
+    subtitle="Create, edit, publish, and cancel class meetings. Published changes are checked for conflicts."
   >
+    <template #actions>
+      <button
+        type="button"
+        class="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-navy-700"
+        @click="openCreateForm"
+      >
+        <AppIcon name="plus" class="h-3.5 w-3.5" />
+        <span>Add meeting</span>
+      </button>
+    </template>
+
     <div
       v-if="error"
       role="alert"
@@ -153,9 +246,7 @@ onMounted(async () => {
         </div>
         <div>
           <h2 class="text-base font-bold text-ink">Add a class meeting</h2>
-          <p class="mt-1 text-xs text-muted">
-            Add each day/time meeting separately. Drafts are not shown as confirmed student schedules.
-          </p>
+          <p class="mt-1 text-xs text-muted">Each day/time meeting is managed as a separate entry.</p>
         </div>
       </div>
 
@@ -171,7 +262,7 @@ onMounted(async () => {
         Loading academic catalogs…
       </div>
 
-      <form v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" @submit.prevent="createDraft">
+      <form v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" @submit.prevent="saveSchedule">
         <label class="text-xs font-semibold text-ink">
           Subject
           <select
@@ -263,6 +354,17 @@ onMounted(async () => {
           />
         </label>
 
+        <label class="text-xs font-semibold text-ink">
+          Status
+          <select
+            v-model="form.status"
+            class="mt-1.5 w-full rounded-lg border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20"
+          >
+            <option value="draft">Draft — not shown as confirmed</option>
+            <option value="published">Published — visible to students</option>
+          </select>
+        </label>
+
         <div class="flex items-end sm:col-span-2 lg:col-span-1">
           <button
             type="submit"
@@ -270,7 +372,7 @@ onMounted(async () => {
             class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-navy px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-navy-700 focus:outline-none focus:ring-2 focus:ring-navy focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <AppIcon :name="isSubmitting ? 'loader' : 'plus'" class="h-4 w-4" />
-            {{ isSubmitting ? 'Saving…' : 'Add Draft Meeting' }}
+            {{ isSubmitting ? 'Saving…' : editingSchedule ? 'Save Changes' : 'Add Meeting' }}
           </button>
         </div>
       </form>
@@ -286,7 +388,7 @@ onMounted(async () => {
     <section class="overflow-hidden rounded-2xl border border-hairline bg-surface shadow-sm">
       <div class="border-b border-hairline px-5 py-4">
         <h2 class="text-base font-bold text-ink">Schedule entries</h2>
-        <p class="mt-1 text-xs text-muted">Draft status is shown with text and is not a published timetable.</p>
+        <p class="mt-1 text-xs text-muted">Use the actions to edit, publish, republish, or cancel entries.</p>
       </div>
 
       <div v-if="isLoading" class="p-8 text-center text-sm text-muted" role="status">
@@ -306,6 +408,7 @@ onMounted(async () => {
               <th scope="col" class="px-5 py-3 font-semibold">Room</th>
               <th scope="col" class="px-5 py-3 font-semibold">Instructor</th>
               <th scope="col" class="px-5 py-3 font-semibold">Status</th>
+              <th scope="col" class="px-5 py-3 text-right font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-hairline">
@@ -331,6 +434,33 @@ onMounted(async () => {
                 >
                   {{ schedule.status }}
                 </span>
+              </td>
+              <td class="px-5 py-3">
+                <div class="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    class="rounded-md border border-hairline px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy"
+                    @click="openEditForm(schedule)"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    v-if="schedule.status !== 'published'"
+                    type="button"
+                    class="rounded-md border border-teal-300 px-2.5 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:border-teal-800 dark:text-teal-200 dark:hover:bg-teal-950/40"
+                    @click="changeScheduleStatus(schedule, 'published')"
+                  >
+                    {{ schedule.status === 'cancelled' ? 'Republish' : 'Publish' }}
+                  </button>
+                  <button
+                    v-if="schedule.status === 'published'"
+                    type="button"
+                    class="rounded-md border border-rose-300 px-2.5 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 dark:border-rose-800 dark:text-rose-200 dark:hover:bg-rose-950/40"
+                    @click="changeScheduleStatus(schedule, 'cancelled')"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
