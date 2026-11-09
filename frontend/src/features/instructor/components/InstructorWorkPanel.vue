@@ -164,6 +164,10 @@ async function saveAnnouncement(): Promise<void> {
   }
 }
 
+onMounted(() => {
+  void loadData()
+})
+
 async function withdrawAnnouncement(announcement: Announcement): Promise<void> {
   if (!window.confirm('Delete this announcement? Students will no longer see it in their announcements list.')) return
   error.value = null
