@@ -139,6 +139,7 @@ export interface Section {
   year_level: number
   school_year: string
   semester: '1st' | '2nd' | 'Summer'
+  term_start_date?: string | null
   status: 'active' | 'inactive'
   enrolled_students_count?: number
   created_at: string | null
@@ -173,6 +174,7 @@ export interface CreateSectionPayload {
   school_year: string
   semester: '1st' | '2nd' | 'Summer'
   status?: 'active' | 'inactive'
+  term_start_date?: string | null
 }
 
 export interface UpdateSectionPayload {
@@ -182,4 +184,5 @@ export interface UpdateSectionPayload {
   school_year: string
   semester: '1st' | '2nd' | 'Summer'
   status?: 'active' | 'inactive'
+  term_start_date?: string | null
 }

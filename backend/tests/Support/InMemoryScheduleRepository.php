@@ -131,4 +131,19 @@ final class InMemoryScheduleRepository implements ScheduleRepositoryInterface
         $this->schedules[$id] = $schedule;
         return $schedule;
     }
+
+    public function hasInstructorAssignment(int $instructorId, int $sectionId, int $subjectId): bool
+    {
+        foreach ($this->schedules as $schedule) {
+            if (!$schedule->isCancelled()
+                && $schedule->getInstructorId() === $instructorId
+                && $schedule->getSectionId() === $sectionId
+                && $schedule->getSubjectId() === $subjectId
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

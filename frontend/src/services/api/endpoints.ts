@@ -73,8 +73,22 @@ export const API_ENDPOINTS = {
     schedules: '/schedules',
     schedule: (id: number | string) => `/schedules/${id}`,
     validateConflicts: '/schedules/validate-conflicts',
+    instructorSchedule: '/instructor/schedule',
+    scheduleChangeRequests: '/schedule-change-requests',
+    scheduleChangeRequest: (id: number | string) => `/schedule-change-requests/${id}`,
   },
   student: {
     schedule: '/student/schedule',
+    scheduleChangeRequests: '/student/schedule-change-requests',
+    announcements: '/student/announcements',
+  },
+  instructor: {
+    announcements: '/instructor/announcements',
+    announcement: (id: number | string) => `/instructor/announcements/${id}`,
+  },
+  notifications: {
+    list: '/notifications',
+    read: (id: number | string) => `/notifications/${id}/read`,
+    readAll: '/notifications/read-all',
   },
 } as const

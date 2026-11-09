@@ -22,7 +22,10 @@ use Kampusly\Academic\Presentation\Http\Controller\AcademicCatalogController;
 use Kampusly\Academic\Presentation\Http\Controller\InstructorController;
 use Kampusly\Academic\Presentation\Http\Controller\StudentController;
 use Kampusly\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
+use Kampusly\Announcements\Application\Service\InstructorAnnouncementService;
 use Kampusly\Announcements\Infrastructure\Persistence\PdoAnnouncementRepository;
+use Kampusly\Announcements\Presentation\Http\Controller\InstructorAnnouncementController;
+use Kampusly\Announcements\Presentation\Http\Controller\StudentAnnouncementController;
 use Kampusly\ClassNotices\Application\Service\ClassNoticeFoundationService;
 use Kampusly\ClassNotices\Domain\Repository\ClassNoticeRepositoryInterface;
 use Kampusly\ClassNotices\Infrastructure\Persistence\PdoClassNoticeRepository;
@@ -39,12 +42,18 @@ use Kampusly\IdentityAccess\Presentation\Http\Controller\AuthController;
 use Kampusly\IdentityAccess\Presentation\Http\Controller\UserController;
 use Kampusly\Notifications\Domain\Repository\NotificationRepositoryInterface;
 use Kampusly\Notifications\Infrastructure\Persistence\PdoNotificationRepository;
+use Kampusly\Notifications\Presentation\Http\Controller\NotificationController;
 use Kampusly\Scheduling\Application\Service\ScheduleFoundationService;
+use Kampusly\Scheduling\Application\Service\ScheduleChangeRequestService;
+use Kampusly\Scheduling\Domain\Repository\ScheduleChangeRequestRepositoryInterface;
+use Kampusly\Scheduling\Infrastructure\Persistence\PdoScheduleChangeRequestRepository;
 use Kampusly\Scheduling\Domain\Repository\ScheduleRepositoryInterface;
 use Kampusly\Scheduling\Domain\Service\ScheduleConflictChecker;
 use Kampusly\Scheduling\Infrastructure\Persistence\PdoScheduleRepository;
 use Kampusly\Scheduling\Presentation\Http\Controller\ScheduleFoundationController;
 use Kampusly\Scheduling\Presentation\Http\Controller\StudentScheduleController;
+use Kampusly\Scheduling\Presentation\Http\Controller\InstructorScheduleController;
+use Kampusly\Scheduling\Presentation\Http\Controller\ScheduleChangeRequestController;
 use Kampusly\Shared\Application\Contract\AuditLoggerInterface;
 use Kampusly\Shared\Application\Contract\TransactionManagerInterface;
 use Kampusly\Shared\Infrastructure\Database\PdoConnectionFactory;
@@ -392,6 +401,78 @@ final class ApplicationFactory
             NotificationRepositoryInterface::class,
             static fn (Container $c): NotificationRepositoryInterface => new PdoNotificationRepository(
                 $c->get(PdoConnectionFactory::class)->getConnection()
+            )
+        );
+
+        $container->singleton(
+            NotificationController::class,
+            static fn (Container $c): NotificationController => new NotificationController(
+                $c->get(NotificationRepositoryInterface::class)
+            )
+        );
+
+        $container->singleton(
+            ScheduleChangeRequestRepositoryInterface::class,
+            static fn (Container $c): ScheduleChangeRequestRepositoryInterface => new PdoScheduleChangeRequestRepository(
+                $c->get(PdoConnectionFactory::class)->getConnection()
+            )
+        );
+
+        $container->singleton(
+            ScheduleChangeRequestService::class,
+            static fn (Container $c): ScheduleChangeRequestService => new ScheduleChangeRequestService(
+                $c->get(ScheduleChangeRequestRepositoryInterface::class),
+                $c->get(StudentRepositoryInterface::class),
+                $c->get(SectionRepositoryInterface::class),
+                $c->get(ScheduleRepositoryInterface::class),
+                $c->get(InstructorRepositoryInterface::class),
+                $c->get(RoomRepositoryInterface::class),
+                $c->get(NotificationRepositoryInterface::class),
+                $c->get(TransactionManagerInterface::class),
+                $c->get(AuditLoggerInterface::class)
+            )
+        );
+
+        $container->singleton(
+            ScheduleChangeRequestController::class,
+            static fn (Container $c): ScheduleChangeRequestController => new ScheduleChangeRequestController(
+                $c->get(ScheduleChangeRequestService::class)
+            )
+        );
+
+        $container->singleton(
+            InstructorScheduleController::class,
+            static fn (Container $c): InstructorScheduleController => new InstructorScheduleController(
+                $c->get(InstructorRepositoryInterface::class),
+                $c->get(ScheduleFoundationService::class)
+            )
+        );
+
+        $container->singleton(
+            InstructorAnnouncementService::class,
+            static fn (Container $c): InstructorAnnouncementService => new InstructorAnnouncementService(
+                $c->get(AnnouncementRepositoryInterface::class),
+                $c->get(InstructorRepositoryInterface::class),
+                $c->get(StudentRepositoryInterface::class),
+                $c->get(ScheduleRepositoryInterface::class),
+                $c->get(NotificationRepositoryInterface::class),
+                $c->get(TransactionManagerInterface::class),
+                $c->get(AuditLoggerInterface::class)
+            )
+        );
+
+        $container->singleton(
+            InstructorAnnouncementController::class,
+            static fn (Container $c): InstructorAnnouncementController => new InstructorAnnouncementController(
+                $c->get(InstructorAnnouncementService::class)
+            )
+        );
+
+        $container->singleton(
+            StudentAnnouncementController::class,
+            static fn (Container $c): StudentAnnouncementController => new StudentAnnouncementController(
+                $c->get(InstructorAnnouncementService::class),
+                $c->get(StudentRepositoryInterface::class)
             )
         );
 

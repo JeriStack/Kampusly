@@ -117,8 +117,8 @@ final class PdoSectionRepository implements SectionRepositoryInterface
     public function create(Section $section): Section
     {
         $stmt = $this->pdo->prepare(
-            'INSERT INTO `sections` (`section_name`, `program`, `year_level`, `school_year`, `semester`, `status`)
-             VALUES (:section_name, :program, :year_level, :school_year, :semester, :status)'
+            'INSERT INTO `sections` (`section_name`, `program`, `year_level`, `school_year`, `semester`, `status`, `term_start_date`)
+             VALUES (:section_name, :program, :year_level, :school_year, :semester, :status, :term_start_date)'
         );
         $stmt->execute([
             ':section_name' => $section->getSectionName(),
@@ -127,6 +127,7 @@ final class PdoSectionRepository implements SectionRepositoryInterface
             ':school_year' => $section->getSchoolYear(),
             ':semester' => $section->getSemester()->value,
             ':status' => $section->getStatus()->value,
+            ':term_start_date' => $section->getTermStartDate(),
         ]);
 
         $id = (int) $this->pdo->lastInsertId();
@@ -142,7 +143,8 @@ final class PdoSectionRepository implements SectionRepositoryInterface
                  `year_level` = :year_level,
                  `school_year` = :school_year,
                  `semester` = :semester,
-                 `status` = :status
+                 `status` = :status,
+                 `term_start_date` = :term_start_date
              WHERE `id` = :id'
         );
         $stmt->execute([
@@ -153,6 +155,7 @@ final class PdoSectionRepository implements SectionRepositoryInterface
             ':school_year' => $section->getSchoolYear(),
             ':semester' => $section->getSemester()->value,
             ':status' => $section->getStatus()->value,
+            ':term_start_date' => $section->getTermStartDate(),
         ]);
 
         return $this->findById((int) $section->getId()) ?? $section;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import ScheduleChangeRequestsPanel from '@/features/admin/components/ScheduleChangeRequestsPanel.vue'
 import AcademicLayout from '@/features/academic/components/AcademicLayout.vue'
 import { API_ENDPOINTS } from '@/services/api/endpoints'
 import { apiClient } from '@/services/api/client'
@@ -238,6 +239,8 @@ onMounted(async () => {
     >
       {{ successMessage }}
     </div>
+
+    <ScheduleChangeRequestsPanel />
 
     <section class="mb-8 rounded-2xl border border-hairline bg-surface p-5 shadow-sm sm:p-6">
       <div class="mb-5 flex items-start gap-3">

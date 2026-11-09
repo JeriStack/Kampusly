@@ -231,6 +231,10 @@ components:
         year_level: { type: integer, minimum: 1, maximum: 6 }
         school_year: { type: string, examples: ["2026-2027"] }
         semester: { type: string, enum: [1st, 2nd, Summer] }
+        term_start_date:
+          type: [string, "null"]
+          format: date
+          description: "When set by an administrator, opens student schedule-change requests for one calendar month."
         status: { type: string, enum: [active, inactive] }
 
     ScheduleDTO:
@@ -778,12 +782,13 @@ paths:
                 year_level: { type: integer, minimum: 1, maximum: 6 }
                 school_year: { type: string }
                 semester: { type: string, enum: [1st, 2nd, Summer] }
+                term_start_date: { type: [string, "null"], format: date }
                 status: { type: string, enum: [active, inactive], default: active }
       responses:
         '201': { description: Section created }
 
   /sections/{id}:
-    patch:
+    put:
       tags: [Academic]
       summary: "Update section or status (Role: admin)"
       security:
@@ -794,6 +799,21 @@ paths:
           in: path
           required: true
           schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [section_name, program, year_level, school_year, semester]
+              properties:
+                section_name: { type: string }
+                program: { type: string }
+                year_level: { type: integer, minimum: 1, maximum: 6 }
+                school_year: { type: string }
+                semester: { type: string, enum: [1st, 2nd, Summer] }
+                term_start_date: { type: [string, "null"], format: date }
+                status: { type: string, enum: [active, inactive] }
       responses:
         '200': { description: Section updated }
 
@@ -952,12 +972,192 @@ paths:
                       schedules:
                         type: array
                         items: { $ref: '#/components/schemas/ScheduleDTO' }
+                      schedule_change_window:
+                        type: object
+                        properties:
+                          starts_on: { type: [string, "null"], format: date }
+                          deadline: { type: [string, "null"], format: date }
+                          is_open: { type: boolean }
+                          days_remaining: { type: integer, minimum: 0 }
         '401':
           description: Authentication required
         '403':
           description: Student role required
         '404':
           description: Student profile or assigned section not found
+
+  /instructor/schedule:
+    get:
+      tags: [Schedules]
+      summary: "Get the authenticated instructor's assigned timetable (Role: instructor)"
+      description: Instructor identity is derived from the authenticated session; client instructor filters are ignored.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - name: day_of_week
+          in: query
+          schema: { type: string, enum: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday] }
+        - name: section_id
+          in: query
+          schema: { type: integer }
+      responses:
+        '200': { description: The instructor's schedules with section, subject, classroom, and status }
+
+  /student/schedule-change-requests:
+    get:
+      tags: [Schedules]
+      summary: "List the authenticated student's schedule change requests"
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200': { description: Student-owned request history }
+    post:
+      tags: [Schedules]
+      summary: "Request a change to an assigned published class within the first month of the term"
+      description: "The section's term start date must be configured by an administrator. Approval changes request status only; it does not modify the shared section schedule."
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [schedule_id, reason]
+              properties:
+                schedule_id: { type: integer }
+                preferred_day_of_week: { type: string, enum: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday] }
+                preferred_start_time: { type: string, pattern: '^\d{2}:\d{2}$' }
+                preferred_end_time: { type: string, pattern: '^\d{2}:\d{2}$' }
+                preferred_room_id: { type: integer }
+                reason: { type: string, minLength: 10, maxLength: 1000 }
+      responses:
+        '201': { description: Schedule change request submitted and instructor notified }
+        '409': { description: Term request window is closed or a pending request already exists }
+        '422': { description: Invalid request data }
+
+  /schedule-change-requests:
+    get:
+      tags: [Schedules]
+      summary: "List schedule change requests for authorized administrators"
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, approved, rejected] }
+      responses:
+        '200': { description: Paginated request queue }
+
+  /schedule-change-requests/{id}:
+    patch:
+      tags: [Schedules]
+      summary: "Approve or reject a student request (Role: admin)"
+      description: Approval/rejection updates only the request status and not the shared schedule.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [approved, rejected] }
+                review_note: { type: string, maxLength: 1000 }
+      responses:
+        '200': { description: Request decision saved; student and assigned instructor notified }
+        '409': { description: Request was already reviewed }
+
+  /instructor/announcements:
+    get:
+      tags: [Announcements]
+      summary: "List announcements authored by the authenticated instructor"
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200': { description: Instructor announcement history }
+    post:
+      tags: [Announcements]
+      summary: "Publish a message to an assigned section (Role: instructor)"
+      description: Only active students in that section receive the announcement and an in-app notification.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [section_id, subject_id, title, message]
+              properties:
+                section_id: { type: integer }
+                subject_id: { type: integer }
+                title: { type: string, minLength: 3, maxLength: 180 }
+                message: { type: string, minLength: 3, maxLength: 5000 }
+      responses:
+        '201': { description: Published announcement }
+        '403': { description: Instructor is not assigned to the selected section and subject }
+
+  /instructor/announcements/{id}:
+    put:
+      tags: [Announcements]
+      summary: "Edit an announcement authored by the authenticated instructor"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Announcement updated and section students notified }
+        '403': { description: Announcement belongs to another instructor }
+    delete:
+      tags: [Announcements]
+      summary: "Withdraw an announcement authored by the authenticated instructor"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Announcement withdrawn }
+
+  /student/announcements:
+    get:
+      tags: [Announcements]
+      summary: "List published announcements for the authenticated student's section only"
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200': { description: Published announcements addressed to the student's assigned section }
 
   /schedules/{id}:
     get:
@@ -1304,7 +1504,7 @@ paths:
         - $ref: '#/components/parameters/PerPageParam'
         - name: unread_only
           in: query
-          schema: { type: boolean, default: false }
+          schema: { type: string, enum: ["true", "false"] }
       responses:
         '200':
           description: User notifications list
@@ -1321,7 +1521,7 @@ paths:
                   meta: { $ref: '#/components/schemas/PaginationMeta' }
 
   /notifications/{id}/read:
-    post:
+    patch:
       tags: [Notifications]
       summary: Mark a single owned notification as read
       security:
@@ -1334,7 +1534,7 @@ paths:
           schema: { type: integer }
       responses:
         '200': { description: Notification marked read }
-        '403': { description: Notification belongs to another user }
+        '404': { description: Notification not found for the authenticated user }
 
   /notifications/read-all:
     post:

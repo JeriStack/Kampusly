@@ -34,4 +34,6 @@ interface ScheduleRepositoryInterface
     public function create(Schedule $schedule): Schedule;
 
     public function update(Schedule $schedule): Schedule;
+
+    public function hasInstructorAssignment(int $instructorId, int $sectionId, int $subjectId): bool;
 }

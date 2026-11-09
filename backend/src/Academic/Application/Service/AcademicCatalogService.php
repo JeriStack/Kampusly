@@ -429,6 +429,7 @@ final class AcademicCatalogService
             ->requireString('school_year', 4, 20)
             ->requireIn('semester', Semester::values())
             ->optionalIn('status', ReferenceStatus::values())
+            ->optionalDate('term_start_date')
             ->validateOrThrow();
 
         $name = trim((string) $payload['section_name']);
@@ -449,7 +450,12 @@ final class AcademicCatalogService
             (int) $payload['year_level'],
             $sy,
             Semester::from($sem),
-            ReferenceStatus::from((string) ($payload['status'] ?? 'active'))
+            ReferenceStatus::from((string) ($payload['status'] ?? 'active')),
+            null,
+            null,
+            isset($payload['term_start_date']) && $payload['term_start_date'] !== ''
+                ? (string) $payload['term_start_date']
+                : null
         );
 
         /** @var Section $created */
@@ -489,6 +495,7 @@ final class AcademicCatalogService
             ->requireString('school_year', 4, 20)
             ->requireIn('semester', Semester::values())
             ->optionalIn('status', ReferenceStatus::values())
+            ->optionalDate('term_start_date')
             ->validateOrThrow();
 
         $name = trim((string) $payload['section_name']);
@@ -510,7 +517,12 @@ final class AcademicCatalogService
             (int) $payload['year_level'],
             $sy,
             Semester::from($sem),
-            ReferenceStatus::from((string) ($payload['status'] ?? $existing->getStatus()->value))
+            ReferenceStatus::from((string) ($payload['status'] ?? $existing->getStatus()->value)),
+            null,
+            null,
+            array_key_exists('term_start_date', $payload)
+                ? ($payload['term_start_date'] !== '' ? (string) $payload['term_start_date'] : null)
+                : $existing->getTermStartDate()
         );
 
         $this->transactions->transactional(function () use ($updated, $actorUserId, $requestId): void {

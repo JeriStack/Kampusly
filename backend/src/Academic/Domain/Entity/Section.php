@@ -15,6 +15,7 @@ final class Section
     private int $yearLevel;
     private string $schoolYear;
     private Semester $semester;
+    private ?string $termStartDate;
     private ReferenceStatus $status;
     private ?string $createdAt;
     private ?string $updatedAt;
@@ -28,7 +29,8 @@ final class Section
         Semester $semester,
         ReferenceStatus $status = ReferenceStatus::Active,
         ?string $createdAt = null,
-        ?string $updatedAt = null
+        ?string $updatedAt = null,
+        ?string $termStartDate = null
     ) {
         $this->id = $id;
         $this->sectionName = trim($sectionName);
@@ -36,6 +38,7 @@ final class Section
         $this->yearLevel = $yearLevel;
         $this->schoolYear = trim($schoolYear);
         $this->semester = $semester;
+        $this->termStartDate = $termStartDate;
         $this->status = $status;
         $this->createdAt = $createdAt;
         $this->updatedAt = $updatedAt;
@@ -55,7 +58,10 @@ final class Section
             Semester::from((string) ($row['semester'] ?? '1st')),
             ReferenceStatus::from((string) ($row['status'] ?? 'active')),
             isset($row['created_at']) ? (string) $row['created_at'] : null,
-            isset($row['updated_at']) ? (string) $row['updated_at'] : null
+            isset($row['updated_at']) ? (string) $row['updated_at'] : null,
+            isset($row['term_start_date']) && $row['term_start_date'] !== null
+                ? (string) $row['term_start_date']
+                : null
         );
     }
 
@@ -94,6 +100,11 @@ final class Section
         return $this->status;
     }
 
+    public function getTermStartDate(): ?string
+    {
+        return $this->termStartDate;
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -106,10 +117,10 @@ final class Section
             'year_level' => $this->yearLevel,
             'school_year' => $this->schoolYear,
             'semester' => $this->semester->value,
+            'term_start_date' => $this->termStartDate,
             'status' => $this->status->value,
             'created_at' => $this->createdAt,
             'updated_at' => $this->updatedAt,
         ];
     }
 }
-

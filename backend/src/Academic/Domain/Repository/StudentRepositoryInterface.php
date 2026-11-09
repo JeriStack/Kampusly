@@ -28,4 +28,7 @@ interface StudentRepositoryInterface
     public function update(StudentProfile $student): StudentProfile;
 
     public function hasSchedules(int $studentId): bool;
+
+    /** @return list<int> */
+    public function findActiveUserIdsBySection(int $sectionId): array;
 }
