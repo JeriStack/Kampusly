@@ -213,6 +213,25 @@ final class PdoScheduleRepository implements ScheduleRepositoryInterface
         return $this->findById($id) ?? $schedule;
     }
 
+    public function hasInstructorAssignment(int $instructorId, int $sectionId, int $subjectId): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT COUNT(*) FROM `schedules`
+             WHERE `instructor_id` = :instructor_id
+               AND `section_id` = :section_id
+               AND `subject_id` = :subject_id
+               AND `status` != :cancelled_status'
+        );
+        $stmt->execute([
+            ':instructor_id' => $instructorId,
+            ':section_id' => $sectionId,
+            ':subject_id' => $subjectId,
+            ':cancelled_status' => 'cancelled',
+        ]);
+
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
     private function baseSelectSql(): string
     {
         return 'SELECT

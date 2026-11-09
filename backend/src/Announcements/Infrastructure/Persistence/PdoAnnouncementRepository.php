@@ -48,6 +48,11 @@ final class PdoAnnouncementRepository implements AnnouncementRepositoryInterface
             $params[':status'] = trim($filters['status']);
         }
 
+        if (isset($filters['instructor_id']) && is_int($filters['instructor_id'])) {
+            $conditions[] = '`instructor_id` = :instructor_id';
+            $params[':instructor_id'] = $filters['instructor_id'];
+        }
+
         $whereSql = $conditions !== [] ? 'WHERE ' . implode(' AND ', $conditions) : '';
 
         $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM `announcements` {$whereSql}");
@@ -104,5 +109,30 @@ final class PdoAnnouncementRepository implements AnnouncementRepositoryInterface
         $id = (int) $this->pdo->lastInsertId();
         return $this->findById($id) ?? $announcement;
     }
-}
 
+    public function update(Announcement $announcement): Announcement
+    {
+        $id = $announcement->getId();
+        if ($id === null) {
+            throw new \InvalidArgumentException('Cannot update an announcement without an ID.');
+        }
+
+        $stmt = $this->pdo->prepare(
+            'UPDATE `announcements`
+             SET `title` = :title, `message` = :message, `subject_id` = :subject_id,
+                 `section_id` = :section_id, `status` = :status,
+                 `published_at` = CURRENT_TIMESTAMP, `updated_at` = CURRENT_TIMESTAMP
+             WHERE `id` = :id'
+        );
+        $stmt->execute([
+            ':title' => $announcement->getTitle(),
+            ':message' => $announcement->getMessage(),
+            ':subject_id' => $announcement->getSubjectId(),
+            ':section_id' => $announcement->getSectionId(),
+            ':status' => $announcement->getStatus()->value,
+            ':id' => $id,
+        ]);
+
+        return $this->findById($id) ?? $announcement;
+    }
+}

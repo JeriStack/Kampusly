@@ -20,6 +20,7 @@ const program = ref('')
 const yearLevel = ref(1)
 const schoolYear = ref('2026-2027')
 const semester = ref<'1st' | '2nd' | 'Summer'>('1st')
+const termStartDate = ref('')
 const status = ref<'active' | 'inactive'>('active')
 
 watch(
@@ -31,6 +32,7 @@ watch(
       yearLevel.value = val.year_level
       schoolYear.value = val.school_year
       semester.value = val.semester
+      termStartDate.value = val.term_start_date ?? ''
       status.value = val.status
     } else {
       sectionName.value = ''
@@ -38,6 +40,7 @@ watch(
       yearLevel.value = 1
       schoolYear.value = '2026-2027'
       semester.value = '1st'
+      termStartDate.value = ''
       status.value = 'active'
     }
   },
@@ -51,6 +54,7 @@ function handleSubmit(): void {
     year_level: Number(yearLevel.value),
     school_year: schoolYear.value.trim(),
     semester: semester.value,
+    term_start_date: termStartDate.value || null,
     status: status.value,
   })
 }
@@ -112,6 +116,20 @@ function handleSubmit(): void {
               <option :value="5">5th Year</option>
             </select>
           </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-muted">
+            First day of semester
+          </label>
+          <input
+            v-model="termStartDate"
+            type="date"
+            class="mt-1 w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-xs text-ink focus:border-navy focus:outline-none"
+          />
+          <p class="mt-1 text-[11px] text-muted">
+            Student schedule-change requests are allowed through one month after this date.
+          </p>
         </div>
 
         <div>
@@ -189,4 +207,3 @@ function handleSubmit(): void {
     </div>
   </div>
 </template>
-

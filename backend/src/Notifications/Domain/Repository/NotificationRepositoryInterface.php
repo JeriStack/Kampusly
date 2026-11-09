@@ -19,5 +19,10 @@ interface NotificationRepositoryInterface
     ): PaginatedResult;
 
     public function create(Notification $notification): Notification;
-}
 
+    public function countUnreadForUser(int $userId): int;
+
+    public function markAsRead(int $userId, int $notificationId): bool;
+
+    public function markAllAsRead(int $userId): int;
+}

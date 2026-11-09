@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Kampusly\Academic\Presentation\Http\Controller\AcademicCatalogController;
 use Kampusly\Academic\Presentation\Http\Controller\InstructorController;
 use Kampusly\Academic\Presentation\Http\Controller\StudentController;
+use Kampusly\Announcements\Presentation\Http\Controller\InstructorAnnouncementController;
+use Kampusly\Announcements\Presentation\Http\Controller\StudentAnnouncementController;
 use Kampusly\Bootstrap\Config;
 use Kampusly\Bootstrap\Container;
 use Kampusly\Bootstrap\Router;
@@ -14,6 +16,9 @@ use Kampusly\IdentityAccess\Presentation\Http\Controller\AuthController;
 use Kampusly\IdentityAccess\Presentation\Http\Controller\UserController;
 use Kampusly\Scheduling\Presentation\Http\Controller\ScheduleFoundationController;
 use Kampusly\Scheduling\Presentation\Http\Controller\StudentScheduleController;
+use Kampusly\Scheduling\Presentation\Http\Controller\InstructorScheduleController;
+use Kampusly\Scheduling\Presentation\Http\Controller\ScheduleChangeRequestController;
+use Kampusly\Notifications\Presentation\Http\Controller\NotificationController;
 use Kampusly\Shared\Infrastructure\Http\AuthenticateMiddleware;
 use Kampusly\Shared\Infrastructure\Http\AuthorizeRoleMiddleware;
 use Kampusly\Shared\Infrastructure\Http\HttpRequest;
@@ -343,4 +348,82 @@ return static function (Router $router, Container $container): void {
         $studentScheduleController = $container->get(StudentScheduleController::class);
         return $studentScheduleController->listMySchedule($request);
     }, [$authenticate, $authorizeRoles(['student'])]);
+
+    $router->get('/instructor/schedule', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var InstructorScheduleController $controller */
+        $controller = $container->get(InstructorScheduleController::class);
+        return $controller->listMine($request);
+    }, [$authenticate, $authorizeRoles(['instructor'])]);
+
+    $router->get('/student/schedule-change-requests', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var ScheduleChangeRequestController $controller */
+        $controller = $container->get(ScheduleChangeRequestController::class);
+        return $controller->listMine($request);
+    }, [$authenticate, $authorizeRoles(['student'])]);
+
+    $router->post('/student/schedule-change-requests', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var ScheduleChangeRequestController $controller */
+        $controller = $container->get(ScheduleChangeRequestController::class);
+        return $controller->create($request);
+    }, [$authenticate, $authorizeRoles(['student'])]);
+
+    $router->get('/schedule-change-requests', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var ScheduleChangeRequestController $controller */
+        $controller = $container->get(ScheduleChangeRequestController::class);
+        return $controller->listAll($request);
+    }, [$authenticate, $authorizeRoles(['admin'])]);
+
+    $router->patch('/schedule-change-requests/{id}', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+        /** @var ScheduleChangeRequestController $controller */
+        $controller = $container->get(ScheduleChangeRequestController::class);
+        return $controller->review($request, $params);
+    }, [$authenticate, $authorizeRoles(['admin'])]);
+
+    $router->get('/instructor/announcements', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var InstructorAnnouncementController $controller */
+        $controller = $container->get(InstructorAnnouncementController::class);
+        return $controller->listMine($request);
+    }, [$authenticate, $authorizeRoles(['instructor'])]);
+
+    $router->post('/instructor/announcements', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var InstructorAnnouncementController $controller */
+        $controller = $container->get(InstructorAnnouncementController::class);
+        return $controller->create($request);
+    }, [$authenticate, $authorizeRoles(['instructor'])]);
+
+    $router->put('/instructor/announcements/{id}', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+        /** @var InstructorAnnouncementController $controller */
+        $controller = $container->get(InstructorAnnouncementController::class);
+        return $controller->update($request, $params);
+    }, [$authenticate, $authorizeRoles(['instructor'])]);
+
+    $router->delete('/instructor/announcements/{id}', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+        /** @var InstructorAnnouncementController $controller */
+        $controller = $container->get(InstructorAnnouncementController::class);
+        return $controller->delete($request, $params);
+    }, [$authenticate, $authorizeRoles(['instructor'])]);
+
+    $router->get('/student/announcements', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var StudentAnnouncementController $controller */
+        $controller = $container->get(StudentAnnouncementController::class);
+        return $controller->listMine($request);
+    }, [$authenticate, $authorizeRoles(['student'])]);
+
+    $router->get('/notifications', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var NotificationController $controller */
+        $controller = $container->get(NotificationController::class);
+        return $controller->listMine($request);
+    }, [$authenticate]);
+
+    $router->patch('/notifications/{id}/read', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+        /** @var NotificationController $controller */
+        $controller = $container->get(NotificationController::class);
+        return $controller->markRead($request, $params);
+    }, [$authenticate]);
+
+    $router->post('/notifications/read-all', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var NotificationController $controller */
+        $controller = $container->get(NotificationController::class);
+        return $controller->markAllRead($request);
+    }, [$authenticate]);
 };

@@ -190,4 +190,18 @@ final class PdoStudentRepository implements StudentRepositoryInterface
         $stmt->execute([':id' => $studentId]);
         return ((int) $stmt->fetchColumn()) > 0;
     }
+
+    public function findActiveUserIdsBySection(int $sectionId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT s.`user_id`
+             FROM `students` s
+             INNER JOIN `users` u ON u.`id` = s.`user_id`
+             WHERE s.`section_id` = :section_id AND u.`status` = :active_status
+             ORDER BY s.`id` ASC'
+        );
+        $stmt->execute([':section_id' => $sectionId, ':active_status' => 'active']);
+
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
 }

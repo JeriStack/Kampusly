@@ -4,6 +4,8 @@ import { useAuth } from '@/features/auth/stores/useAuth'
 import KampuslyLogo from '@/components/common/KampuslyLogo.vue'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import NotificationCenter from '@/components/common/NotificationCenter.vue'
+import InstructorWorkPanel from '@/features/instructor/components/InstructorWorkPanel.vue'
 
 const router = useRouter()
 const { user, logout } = useAuth()
@@ -26,6 +28,7 @@ async function handleLogout(): Promise<void> {
           </span>
         </div>
         <div class="flex items-center gap-3">
+          <NotificationCenter />
           <ThemeToggle />
           <div class="hidden text-right sm:block">
             <div class="text-xs font-bold text-ink">{{ user?.name }}</div>
@@ -80,17 +83,7 @@ async function handleLogout(): Promise<void> {
 
         <!-- Instructor Capabilities -->
         <div class="rounded-2xl border border-hairline bg-surface p-6 shadow-card md:col-span-2">
-          <h2 class="text-base font-semibold text-ink">Teaching Schedule & Notices</h2>
-          <p class="mt-2 text-xs text-muted">
-            As an instructor, your account is authorized to view your teaching schedules and post class notices for cancellations, make-up classes, and room transfers.
-          </p>
-          <div class="mt-6 rounded-xl border border-dashed border-hairline bg-canvas p-6 text-center">
-            <AppIcon name="calendar" class="mx-auto h-8 w-8 text-muted" />
-            <div class="mt-2 text-sm font-semibold text-ink">Teaching Schedule Module</div>
-            <p class="mt-1 text-xs text-muted">
-              Schedule loading and notice dispatch workflows will be active in subsequent phases.
-            </p>
-          </div>
+          <InstructorWorkPanel />
         </div>
       </div>
     </main>

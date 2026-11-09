@@ -18,5 +18,6 @@ interface AnnouncementRepositoryInterface
     public function paginate(PaginationQuery $pagination, array $filters = []): PaginatedResult;
 
     public function create(Announcement $announcement): Announcement;
-}
 
+    public function update(Announcement $announcement): Announcement;
+}

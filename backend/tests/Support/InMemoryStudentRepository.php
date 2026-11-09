@@ -121,4 +121,16 @@ final class InMemoryStudentRepository implements StudentRepositoryInterface
     {
         return $this->scheduledStudentIds[$studentId] ?? false;
     }
+
+    public function findActiveUserIdsBySection(int $sectionId): array
+    {
+        $userIds = [];
+        foreach ($this->students as $student) {
+            if ($student->getSectionId() === $sectionId && $student->getStatus() === 'active') {
+                $userIds[] = $student->getUserId();
+            }
+        }
+
+        return $userIds;
+    }
 }

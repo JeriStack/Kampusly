@@ -8,6 +8,7 @@ use Kampusly\Academic\Domain\Repository\SectionRepositoryInterface;
 use Kampusly\Academic\Domain\Repository\StudentRepositoryInterface;
 use Kampusly\IdentityAccess\Domain\Entity\User;
 use Kampusly\Scheduling\Application\Service\ScheduleFoundationService;
+use Kampusly\Scheduling\Domain\ValueObject\ScheduleChangeWindow;
 use Kampusly\Shared\Domain\Exception\ResourceNotFoundException;
 use Kampusly\Shared\Infrastructure\Http\HttpRequest;
 use Kampusly\Shared\Infrastructure\Http\JsonResponse;
@@ -50,6 +51,8 @@ final class StudentScheduleController
             'section_id' => $student->getSectionId(),
             'school_year' => $section->getSchoolYear(),
             'semester' => $section->getSemester()->value,
+            'page' => 1,
+            'per_page' => 100,
         ];
         $schedules = [];
         foreach (['published', 'draft'] as $status) {
@@ -77,11 +80,20 @@ final class StudentScheduleController
             }
         );
 
+        $termStart = $section->getTermStartDate();
+        $window = new ScheduleChangeWindow($termStart);
+
         return new JsonResponse(
             [
                 'data' => [
                     'section' => $section->toArray(),
                     'schedules' => $schedules,
+                    'schedule_change_window' => [
+                        'starts_on' => $termStart,
+                        'deadline' => $window->getDeadline(),
+                        'is_open' => $window->isOpen(),
+                        'days_remaining' => $window->getDaysRemaining(),
+                    ],
                 ],
             ],
             200,
@@ -89,4 +101,5 @@ final class StudentScheduleController
             $request->getRequestId()
         );
     }
+
 }
