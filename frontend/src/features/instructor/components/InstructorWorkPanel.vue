@@ -26,6 +26,7 @@ interface AssignedClass {
 const schedules = ref<Schedule[]>([])
 const announcements = ref<Announcement[]>([])
 const isLoading = ref(true)
+const isAnnouncementsLoading = ref(true)
 const isSaving = ref(false)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
@@ -34,6 +35,7 @@ const sectionFilter = ref('')
 const editingAnnouncementId = ref<number | null>(null)
 const form = reactive({ target: '', title: '', message: '' })
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const REQUEST_TIMEOUT_MS = 15000
 const assignedClasses = computed<AssignedClass[]>(() => {
   const classes = new Map<string, AssignedClass>()
   for (const schedule of schedules.value) {
@@ -73,25 +75,39 @@ const scheduleGroups = computed(() =>
 
 async function loadData(): Promise<void> {
   isLoading.value = true
+  isAnnouncementsLoading.value = true
   error.value = null
+  await Promise.all([loadSchedules(), loadAnnouncements()])
+}
+
+async function loadSchedules(): Promise<void> {
   try {
-    const [scheduleResponse, announcementResponse] = await Promise.all([
-      apiClient.get<{ data: Schedule[] }>(
-        `${API_ENDPOINTS.scheduling.instructorSchedule}?page=1&per_page=100`,
-      ),
-      apiClient.get<{ data: Announcement[] }>(
-        `${API_ENDPOINTS.instructor.announcements}?page=1&per_page=100`,
-      ),
-    ])
-    schedules.value = scheduleResponse.data
-    announcements.value = announcementResponse.data
+    const response = await apiClient.get<{ data: Schedule[] }>(
+      `${API_ENDPOINTS.scheduling.instructorSchedule}?page=1&per_page=100`,
+      { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
+    )
+    schedules.value = response.data
     if (!form.target && assignedClasses.value.length > 0) {
       form.target = `${assignedClasses.value[0].section_id}:${assignedClasses.value[0].subject_id}`
     }
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'Unable to load your teaching information.'
+    error.value = err instanceof ApiError ? err.message : 'Unable to load your teaching schedule.'
   } finally {
     isLoading.value = false
+  }
+}
+
+async function loadAnnouncements(): Promise<void> {
+  try {
+    const response = await apiClient.get<{ data: Announcement[] }>(
+      `${API_ENDPOINTS.instructor.announcements}?page=1&per_page=100`,
+      { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
+    )
+    announcements.value = response.data
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : 'Unable to load your announcements.'
+  } finally {
+    isAnnouncementsLoading.value = false
   }
 }
 
@@ -256,6 +272,7 @@ async function withdrawAnnouncement(announcement: Announcement): Promise<void> {
             </div>
           </li>
         </ul>
+        <p v-else-if="isAnnouncementsLoading" class="mt-2 text-xs text-muted">Loading announcements…</p>
         <p v-else class="mt-2 text-xs text-muted">No announcements published yet.</p>
       </div>
     </section>
