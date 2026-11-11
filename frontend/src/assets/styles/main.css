@@ -46,3 +46,19 @@
     @apply not-sr-only fixed left-4 top-4 z-50 rounded-md bg-action px-4 py-2 text-sm font-semibold text-white shadow-card;
   }
 }
+
+@layer utilities {
+  .dashboard-readable [class~='text-xs'],
+  .dashboard-readable [class~='text-sm'] {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  .dashboard-readable [class~='text-[10px]'],
+  .dashboard-readable [class~='text-[11px]'],
+  .dashboard-readable [class~='text-[12px]'],
+  .dashboard-readable [class~='text-[13px]'] {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+}
