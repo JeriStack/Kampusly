@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '@/features/auth/stores/useAuth'
 import KampuslyLogo from '@/components/common/KampuslyLogo.vue'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
@@ -12,6 +12,7 @@ import { ApiError } from '@/services/api/errors'
 import type { Schedule, Section } from '@/features/academic/types'
 
 const router = useRouter()
+const route = useRoute()
 const { user, logout } = useAuth()
 
 interface StudentScheduleResponse {
@@ -70,6 +71,8 @@ const announcementTab = ref<'inbox' | 'archived'>('inbox')
 const expandedAnnouncements = ref<number[]>([])
 const busyAnnouncementId = ref<number | null>(null)
 const announcementActionError = ref<string | null>(null)
+const highlightedAnnouncementId = ref<number | null>(null)
+let highlightTimer: ReturnType<typeof setTimeout> | undefined
 const isSubmittingRequest = ref(false)
 const requestError = ref<string | null>(null)
 const requestSuccess = ref<string | null>(null)
@@ -177,6 +180,47 @@ function announcementSubject(announcement: Announcement): string {
     : announcement.subject_code
 }
 
+/**
+ * Opens the announcement referenced by `?announcement=<id>` (set when a student clicks an
+ * announcement notification): opens the card, picks the right tab, expands it and scrolls to it.
+ */
+async function focusAnnouncementFromRoute(): Promise<void> {
+  const raw = Array.isArray(route.query.announcement)
+    ? route.query.announcement[0]
+    : route.query.announcement
+  const id = Number(raw)
+  if (!Number.isInteger(id) || id <= 0) return
+
+  isAnnouncementsOpen.value = true
+  const inInbox = announcements.value.some((announcement) => announcement.id === id)
+  const inArchive = archivedAnnouncements.value.some((announcement) => announcement.id === id)
+  announcementTab.value = !inInbox && inArchive ? 'archived' : 'inbox'
+  if (inInbox || inArchive) {
+    if (!expandedAnnouncements.value.includes(id)) {
+      expandedAnnouncements.value = [...expandedAnnouncements.value, id]
+    }
+    highlightedAnnouncementId.value = id
+    if (highlightTimer) clearTimeout(highlightTimer)
+    highlightTimer = setTimeout(() => {
+      highlightedAnnouncementId.value = null
+    }, 3000)
+  }
+
+  await nextTick()
+  document.getElementById(`announcement-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  // Drop the query so a page refresh does not re-trigger the focus.
+  await router.replace({ name: 'student-dashboard' })
+}
+
+watch(
+  () => route.query.announcement,
+  async (value) => {
+    if (!value) return
+    await loadStudentUpdates()
+    await focusAnnouncementFromRoute()
+  },
+)
+
 function toggleAnnouncement(id: number): void {
   expandedAnnouncements.value = expandedAnnouncements.value.includes(id)
     ? expandedAnnouncements.value.filter((expandedId) => expandedId !== id)
@@ -248,11 +292,13 @@ async function handleLogout(): Promise<void> {
 
 onMounted(async () => {
   await loadSchedule()
+  await focusAnnouncementFromRoute()
   updatesTimer = setInterval(() => void loadStudentUpdates(), 30_000)
 })
 
 onBeforeUnmount(() => {
   if (updatesTimer) clearInterval(updatesTimer)
+  if (highlightTimer) clearTimeout(highlightTimer)
 })
 </script>
 
@@ -496,8 +542,10 @@ onBeforeUnmount(() => {
               <ul v-if="visibleAnnouncements.length" class="mt-3 space-y-2">
                 <li
                   v-for="announcement in visibleAnnouncements"
+                  :id="`announcement-${announcement.id}`"
                   :key="announcement.id"
-                  class="overflow-hidden rounded-lg border border-hairline"
+                  class="overflow-hidden rounded-lg border transition-shadow"
+                  :class="highlightedAnnouncementId === announcement.id ? 'border-primary-500 ring-2 ring-primary-400/60' : 'border-hairline'"
                 >
                   <button
                     type="button"
