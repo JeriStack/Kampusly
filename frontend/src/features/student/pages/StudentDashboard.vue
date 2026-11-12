@@ -52,6 +52,7 @@ interface Announcement {
   subject_name: string | null
   author_name: string | null
   published_at: string | null
+  archived_at?: string | null
 }
 
 const schedules = ref<Schedule[]>([])
@@ -64,6 +65,11 @@ const scheduleChangeWindow = ref<StudentScheduleResponse['data']['schedule_chang
 })
 const requests = ref<ScheduleChangeRequest[]>([])
 const announcements = ref<Announcement[]>([])
+const archivedAnnouncements = ref<Announcement[]>([])
+const announcementTab = ref<'inbox' | 'archived'>('inbox')
+const expandedAnnouncements = ref<number[]>([])
+const busyAnnouncementId = ref<number | null>(null)
+const announcementActionError = ref<string | null>(null)
 const isSubmittingRequest = ref(false)
 const requestError = ref<string | null>(null)
 const requestSuccess = ref<string | null>(null)
@@ -140,19 +146,61 @@ async function loadSchedule(): Promise<void> {
 
 async function loadStudentUpdates(): Promise<void> {
   try {
-    const [requestResponse, announcementResponse] = await Promise.all([
+    const [requestResponse, announcementResponse, archivedResponse] = await Promise.all([
       apiClient.get<{ data: ScheduleChangeRequest[] }>(
         `${API_ENDPOINTS.student.scheduleChangeRequests}?page=1&per_page=100`,
       ),
       apiClient.get<{ data: Announcement[] }>(
         `${API_ENDPOINTS.student.announcements}?page=1&per_page=100`,
       ),
+      apiClient.get<{ data: Announcement[] }>(
+        `${API_ENDPOINTS.student.announcements}?page=1&per_page=100&archived=1`,
+      ),
     ])
     requests.value = requestResponse.data
     announcements.value = announcementResponse.data
+    archivedAnnouncements.value = archivedResponse.data
     extrasError.value = null
   } catch (err) {
     extrasError.value = err instanceof ApiError ? err.message : 'Unable to load announcements or request history.'
+  }
+}
+
+const visibleAnnouncements = computed(() =>
+  announcementTab.value === 'inbox' ? announcements.value : archivedAnnouncements.value,
+)
+
+function announcementSubject(announcement: Announcement): string {
+  if (!announcement.subject_code) return announcement.subject_name || 'Subject'
+  return announcement.subject_name
+    ? `${announcement.subject_code} — ${announcement.subject_name}`
+    : announcement.subject_code
+}
+
+function toggleAnnouncement(id: number): void {
+  expandedAnnouncements.value = expandedAnnouncements.value.includes(id)
+    ? expandedAnnouncements.value.filter((expandedId) => expandedId !== id)
+    : [...expandedAnnouncements.value, id]
+}
+
+async function setAnnouncementArchived(announcement: Announcement, archive: boolean): Promise<void> {
+  busyAnnouncementId.value = announcement.id
+  announcementActionError.value = null
+  try {
+    const path = API_ENDPOINTS.student.announcementArchive(announcement.id)
+    if (archive) {
+      await apiClient.post(path)
+    } else {
+      await apiClient.delete(path)
+    }
+    await loadStudentUpdates()
+  } catch (err) {
+    announcementActionError.value =
+      err instanceof ApiError
+        ? err.message
+        : `Unable to ${archive ? 'archive' : 'restore'} the announcement.`
+  } finally {
+    busyAnnouncementId.value = null
   }
 }
 
@@ -417,25 +465,78 @@ onBeforeUnmount(() => {
           </div>
           <div v-show="isAnnouncementsOpen">
             <p v-if="extrasError" class="mt-3 text-xs text-rose-700" role="alert">{{ extrasError }}</p>
-            <ul v-else-if="announcements.length" class="mt-4 divide-y divide-hairline">
-              <li v-for="announcement in announcements" :key="announcement.id" class="py-3 first:pt-0 last:pb-0">
-                <h3 class="text-sm font-semibold text-ink">{{ announcement.title }}</h3>
-                <p class="mt-1 text-[11px] font-semibold text-primary-700 dark:text-primary-300">
-                  <template v-if="announcement.subject_code">
-                    {{ announcement.subject_code }}<template v-if="announcement.subject_name"> — {{ announcement.subject_name }}</template>
-                  </template>
-                  <template v-if="announcement.author_name">
-                    <span v-if="announcement.subject_code" class="font-normal text-muted"> · </span>
-                    <span class="font-normal text-muted">Posted by {{ announcement.author_name }}</span>
-                  </template>
-                </p>
-                <p class="mt-1 whitespace-pre-wrap text-xs text-muted">{{ announcement.message }}</p>
-                <time v-if="announcement.published_at" class="mt-1 block text-[10px] text-muted">{{ announcement.published_at }}</time>
-              </li>
-            </ul>
-            <p v-else class="mt-4 rounded-lg bg-canvas p-4 text-center text-xs text-muted">
-              No announcements for your section yet.
-            </p>
+            <template v-else>
+              <div class="mt-4 flex gap-1 rounded-lg bg-canvas p-1 text-xs font-semibold" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  class="flex-1 rounded-md px-3 py-1.5 transition-colors"
+                  :class="announcementTab === 'inbox' ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'"
+                  :aria-selected="announcementTab === 'inbox'"
+                  @click="announcementTab = 'inbox'"
+                >
+                  Inbox ({{ announcements.length }})
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  class="flex-1 rounded-md px-3 py-1.5 transition-colors"
+                  :class="announcementTab === 'archived' ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'"
+                  :aria-selected="announcementTab === 'archived'"
+                  @click="announcementTab = 'archived'"
+                >
+                  Archived ({{ archivedAnnouncements.length }})
+                </button>
+              </div>
+              <p v-if="announcementTab === 'archived'" class="mt-3 text-[11px] text-muted">
+                Archived announcements are deleted automatically after 7 days.
+              </p>
+              <p v-if="announcementActionError" class="mt-3 text-xs text-rose-700" role="alert">{{ announcementActionError }}</p>
+
+              <ul v-if="visibleAnnouncements.length" class="mt-3 space-y-2">
+                <li
+                  v-for="announcement in visibleAnnouncements"
+                  :key="announcement.id"
+                  class="overflow-hidden rounded-lg border border-hairline"
+                >
+                  <button
+                    type="button"
+                    class="flex w-full items-center gap-2 bg-canvas px-3 py-2.5 text-left"
+                    :aria-expanded="expandedAnnouncements.includes(announcement.id)"
+                    @click="toggleAnnouncement(announcement.id)"
+                  >
+                    <AppIcon
+                      name="chevron-right"
+                      class="h-3.5 w-3.5 shrink-0 transition-transform"
+                      :class="{ 'rotate-90': expandedAnnouncements.includes(announcement.id) }"
+                    />
+                    <span class="min-w-0">
+                      <span class="block truncate text-xs font-bold text-ink">{{ announcementSubject(announcement) }}</span>
+                      <span class="block truncate text-[11px] text-muted">{{ announcement.author_name || 'Instructor' }}</span>
+                    </span>
+                  </button>
+                  <div v-show="expandedAnnouncements.includes(announcement.id)" class="border-t border-hairline px-3 py-3">
+                    <h3 class="text-sm font-semibold text-ink">{{ announcement.title }}</h3>
+                    <p class="mt-1 whitespace-pre-wrap text-xs text-muted">{{ announcement.message }}</p>
+                    <div class="mt-3 flex items-center justify-between gap-3">
+                      <time v-if="announcement.published_at" class="text-[10px] text-muted">{{ announcement.published_at }}</time>
+                      <span v-else />
+                      <button
+                        type="button"
+                        class="rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-[11px] font-semibold text-ink transition-colors hover:bg-surface disabled:opacity-50"
+                        :disabled="busyAnnouncementId === announcement.id"
+                        @click="setAnnouncementArchived(announcement, announcementTab === 'inbox')"
+                      >
+                        {{ announcementTab === 'inbox' ? 'Archive' : 'Restore' }}
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+              <p v-else class="mt-3 rounded-lg bg-canvas p-4 text-center text-xs text-muted">
+                {{ announcementTab === 'inbox' ? 'No announcements for your section yet.' : 'No archived announcements.' }}
+              </p>
+            </template>
           </div>
         </section>
 

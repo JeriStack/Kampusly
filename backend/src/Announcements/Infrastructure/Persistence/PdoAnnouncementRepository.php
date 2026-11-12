@@ -53,16 +53,37 @@ final class PdoAnnouncementRepository implements AnnouncementRepositoryInterface
             $params[':instructor_id'] = $filters['instructor_id'];
         }
 
+        // Per-student archive view. 'active' hides any archived row (including expired ones),
+        // 'archived' only shows archives still inside the retention window.
+        $archiveJoin = '';
+        $archiveSelect = '';
+        if (isset($filters['student_id']) && is_int($filters['student_id'])) {
+            $archiveJoin = 'LEFT JOIN `student_announcement_archives` sa
+                ON sa.`announcement_id` = a.`id` AND sa.`student_id` = :student_id';
+            $archiveSelect = ', sa.`archived_at` AS `archived_at`';
+            $params[':student_id'] = $filters['student_id'];
+
+            $retentionDays = isset($filters['archive_retention_days']) && is_int($filters['archive_retention_days'])
+                ? max(1, $filters['archive_retention_days'])
+                : 7;
+            if (($filters['archive_view'] ?? 'active') === 'archived') {
+                $conditions[] = "sa.`archived_at` IS NOT NULL AND sa.`archived_at` >= DATE_SUB(NOW(), INTERVAL {$retentionDays} DAY)";
+            } else {
+                $conditions[] = 'sa.`archived_at` IS NULL';
+            }
+        }
+
         $whereSql = $conditions !== [] ? 'WHERE ' . implode(' AND ', $conditions) : '';
 
-        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM `announcements` a {$whereSql}");
+        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM `announcements` a {$archiveJoin} {$whereSql}");
         $countStmt->execute($params);
         $total = (int) $countStmt->fetchColumn();
 
-        $sql = "SELECT a.*, s.`subject_code`, s.`subject_name`, u.`full_name` AS `author_name`
+        $sql = "SELECT a.*, s.`subject_code`, s.`subject_name`, u.`full_name` AS `author_name`{$archiveSelect}
                 FROM `announcements` a
                 LEFT JOIN `subjects` s ON s.`id` = a.`subject_id`
                 LEFT JOIN `users` u ON u.`id` = a.`author_user_id`
+                {$archiveJoin}
                 {$whereSql}
                 ORDER BY a.`published_at` DESC
                 LIMIT :limit OFFSET :offset";
@@ -83,6 +104,9 @@ final class PdoAnnouncementRepository implements AnnouncementRepositoryInterface
                 $item['subject_code'] = isset($row['subject_code']) ? (string) $row['subject_code'] : null;
                 $item['subject_name'] = isset($row['subject_name']) ? (string) $row['subject_name'] : null;
                 $item['author_name'] = isset($row['author_name']) ? (string) $row['author_name'] : null;
+                if (array_key_exists('archived_at', $row)) {
+                    $item['archived_at'] = $row['archived_at'] !== null ? (string) $row['archived_at'] : null;
+                }
                 $items[] = $item;
             }
         }
@@ -144,5 +168,35 @@ final class PdoAnnouncementRepository implements AnnouncementRepositoryInterface
         ]);
 
         return $this->findById($id) ?? $announcement;
+    }
+
+    public function archiveForStudent(int $studentId, int $announcementId): void
+    {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO `student_announcement_archives` (`student_id`, `announcement_id`)
+             VALUES (:student_id, :announcement_id)
+             ON DUPLICATE KEY UPDATE `archived_at` = `archived_at`'
+        );
+        $stmt->execute([
+            ':student_id' => $studentId,
+            ':announcement_id' => $announcementId,
+        ]);
+    }
+
+    public function restoreForStudent(int $studentId, int $announcementId, int $retentionDays): bool
+    {
+        $days = max(1, $retentionDays);
+        $stmt = $this->pdo->prepare(
+            "DELETE FROM `student_announcement_archives`
+             WHERE `student_id` = :student_id
+               AND `announcement_id` = :announcement_id
+               AND `archived_at` >= DATE_SUB(NOW(), INTERVAL {$days} DAY)"
+        );
+        $stmt->execute([
+            ':student_id' => $studentId,
+            ':announcement_id' => $announcementId,
+        ]);
+
+        return $stmt->rowCount() > 0;
     }
 }

@@ -26,6 +26,9 @@ use Kampusly\Shared\Infrastructure\Http\RequestValidator;
 
 final class InstructorAnnouncementService
 {
+    /** Days an archived announcement is kept before it is deleted for the student. */
+    public const ARCHIVE_RETENTION_DAYS = 7;
+
     private AnnouncementRepositoryInterface $announcements;
     private InstructorRepositoryInterface $instructors;
     private StudentRepositoryInterface $students;
@@ -65,12 +68,53 @@ final class InstructorAnnouncementService
         );
     }
 
-    public function listForStudent(int $sectionId, array $query): PaginatedResult
+    public function listForStudent(int $studentId, int $sectionId, array $query): PaginatedResult
     {
+        $archived = in_array(strtolower((string) ($query['archived'] ?? '')), ['1', 'true'], true);
+
         return $this->announcements->paginate(
             PaginationQuery::fromQuery($query),
-            ['section_id' => $sectionId, 'status' => AnnouncementStatus::Published->value]
+            [
+                'section_id' => $sectionId,
+                'status' => AnnouncementStatus::Published->value,
+                'student_id' => $studentId,
+                'archive_view' => $archived ? 'archived' : 'active',
+                'archive_retention_days' => self::ARCHIVE_RETENTION_DAYS,
+            ]
         );
+    }
+
+    public function archiveForStudent(int $studentId, int $sectionId, int $announcementId): void
+    {
+        $this->requireStudentAnnouncement($sectionId, $announcementId);
+        $this->announcements->archiveForStudent($studentId, $announcementId);
+    }
+
+    public function restoreForStudent(int $studentId, int $sectionId, int $announcementId): void
+    {
+        $this->requireStudentAnnouncement($sectionId, $announcementId);
+        $restored = $this->announcements->restoreForStudent(
+            $studentId,
+            $announcementId,
+            self::ARCHIVE_RETENTION_DAYS
+        );
+        if (!$restored) {
+            throw new ResourceNotFoundException('Archived announcement not found or already deleted.');
+        }
+    }
+
+    private function requireStudentAnnouncement(int $sectionId, int $announcementId): Announcement
+    {
+        $announcement = $this->announcements->findById($announcementId);
+        if (
+            $announcement === null
+            || $announcement->getSectionId() !== $sectionId
+            || $announcement->getStatus() !== AnnouncementStatus::Published
+        ) {
+            throw new ResourceNotFoundException('Announcement not found.');
+        }
+
+        return $announcement;
     }
 
     /** @param array<string, mixed> $payload */

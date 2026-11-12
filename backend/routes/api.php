@@ -409,6 +409,26 @@ return static function (Router $router, Container $container): void {
         return $controller->listMine($request);
     }, [$authenticate, $authorizeRoles(['student'])]);
 
+    $router->post(
+        '/student/announcements/{id}/archive',
+        static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+            /** @var StudentAnnouncementController $controller */
+            $controller = $container->get(StudentAnnouncementController::class);
+            return $controller->archive($request, $params);
+        },
+        [$authenticate, $authorizeRoles(['student'])]
+    );
+
+    $router->delete(
+        '/student/announcements/{id}/archive',
+        static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+            /** @var StudentAnnouncementController $controller */
+            $controller = $container->get(StudentAnnouncementController::class);
+            return $controller->restore($request, $params);
+        },
+        [$authenticate, $authorizeRoles(['student'])]
+    );
+
     $router->get('/notifications', static function (HttpRequest $request) use ($container): JsonResponse {
         /** @var NotificationController $controller */
         $controller = $container->get(NotificationController::class);

@@ -1153,11 +1153,48 @@ paths:
       summary: "List published announcements for the authenticated student's section only"
       security:
         - sessionCookie: []
+      description: Each item includes subject_code, subject_name, author_name and archived_at. By default only non-archived announcements are returned. Archives older than 7 days are deleted for the student and appear in neither list.
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
+        - name: archived
+          in: query
+          required: false
+          description: Set to 1 or true to list the student's archived announcements (kept for 7 days).
+          schema: { type: string, enum: ['0', '1', 'true', 'false'] }
       responses:
         '200': { description: Published announcements addressed to the student's assigned section }
+
+  /student/announcements/{id}/archive:
+    post:
+      tags: [Announcements]
+      summary: "Archive an announcement for the authenticated student only"
+      description: Archived announcements are deleted automatically 7 days after archiving.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Announcement archived }
+        '404': { description: Announcement not found for the student's section }
+    delete:
+      tags: [Announcements]
+      summary: "Restore an archived announcement for the authenticated student"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Announcement restored to the inbox }
+        '404': { description: Announcement is not archived or the 7-day retention period has ended }
 
   /schedules/{id}:
     get:

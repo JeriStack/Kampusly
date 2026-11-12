@@ -20,4 +20,15 @@ interface AnnouncementRepositoryInterface
     public function create(Announcement $announcement): Announcement;
 
     public function update(Announcement $announcement): Announcement;
+
+    /**
+     * Archive an announcement for one student. Archiving twice keeps the original archive time.
+     */
+    public function archiveForStudent(int $studentId, int $announcementId): void;
+
+    /**
+     * Restore an archived announcement for one student.
+     * Archives older than the retention window are expired and cannot be restored.
+     */
+    public function restoreForStudent(int $studentId, int $announcementId, int $retentionDays): bool;
 }
