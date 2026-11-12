@@ -77,6 +77,8 @@ const scheduleError = ref<string | null>(null)
 const today = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date())
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const expandedDays = ref<string[]>([today])
+const isAnnouncementsOpen = ref(false)
+const isChangeRequestOpen = ref(false)
 
 function toggleDay(day: string): void {
   expandedDays.value = expandedDays.value.includes(day)
@@ -388,38 +390,72 @@ onBeforeUnmount(() => {
       <div class="mt-6 grid gap-6 lg:grid-cols-2">
         <section class="rounded-2xl border border-hairline bg-surface p-5 shadow-card">
           <div class="flex items-start justify-between gap-3">
-            <div>
-              <h2 class="text-base font-semibold text-ink">Class announcements</h2>
-              <p class="mt-1 text-xs text-muted">Updates for {{ section?.section_name || 'your section' }}.</p>
-            </div>
+            <h2 class="min-w-0 flex-1">
+              <button
+                type="button"
+                class="flex w-full items-start gap-2 text-left"
+                :aria-expanded="isAnnouncementsOpen"
+                @click="isAnnouncementsOpen = !isAnnouncementsOpen"
+              >
+                <AppIcon
+                  name="chevron-right"
+                  class="mt-0.5 h-4 w-4 shrink-0 transition-transform"
+                  :class="{ 'rotate-90': isAnnouncementsOpen }"
+                />
+                <span class="block">
+                  <span class="block text-base font-semibold text-ink">Class announcements</span>
+                  <span class="mt-1 block text-xs font-normal text-muted">Updates for {{ section?.section_name || 'your section' }}.</span>
+                </span>
+              </button>
+            </h2>
+            <span v-if="announcements.length" class="rounded-full border border-hairline bg-canvas px-2 py-1 text-[10px] font-semibold text-muted">
+              {{ announcements.length }}
+            </span>
           </div>
-          <p v-if="extrasError" class="mt-3 text-xs text-rose-700" role="alert">{{ extrasError }}</p>
-          <ul v-else-if="announcements.length" class="mt-4 divide-y divide-hairline">
-            <li v-for="announcement in announcements" :key="announcement.id" class="py-3 first:pt-0 last:pb-0">
-              <h3 class="text-sm font-semibold text-ink">{{ announcement.title }}</h3>
-              <p class="mt-1 whitespace-pre-wrap text-xs text-muted">{{ announcement.message }}</p>
-              <time v-if="announcement.published_at" class="mt-1 block text-[10px] text-muted">{{ announcement.published_at }}</time>
-            </li>
-          </ul>
-          <p v-else class="mt-4 rounded-lg bg-canvas p-4 text-center text-xs text-muted">
-            No announcements for your section yet.
-          </p>
+          <div v-show="isAnnouncementsOpen">
+            <p v-if="extrasError" class="mt-3 text-xs text-rose-700" role="alert">{{ extrasError }}</p>
+            <ul v-else-if="announcements.length" class="mt-4 divide-y divide-hairline">
+              <li v-for="announcement in announcements" :key="announcement.id" class="py-3 first:pt-0 last:pb-0">
+                <h3 class="text-sm font-semibold text-ink">{{ announcement.title }}</h3>
+                <p class="mt-1 whitespace-pre-wrap text-xs text-muted">{{ announcement.message }}</p>
+                <time v-if="announcement.published_at" class="mt-1 block text-[10px] text-muted">{{ announcement.published_at }}</time>
+              </li>
+            </ul>
+            <p v-else class="mt-4 rounded-lg bg-canvas p-4 text-center text-xs text-muted">
+              No announcements for your section yet.
+            </p>
+          </div>
         </section>
 
         <section class="rounded-2xl border border-hairline bg-surface p-5 shadow-card">
           <div class="flex items-start justify-between gap-3">
-            <div>
-              <h2 class="text-base font-semibold text-ink">Schedule change request</h2>
-              <p v-if="scheduleChangeWindow.deadline" class="mt-1 text-xs text-muted">
-                Deadline: {{ scheduleChangeWindow.deadline }} <span v-if="canRequestChange">· {{ scheduleChangeWindow.days_remaining }} day(s) remaining</span>
-              </p>
-              <p v-else class="mt-1 text-xs text-muted">The semester start date has not been configured.</p>
-            </div>
+            <h2 class="min-w-0 flex-1">
+              <button
+                type="button"
+                class="flex w-full items-start gap-2 text-left"
+                :aria-expanded="isChangeRequestOpen"
+                @click="isChangeRequestOpen = !isChangeRequestOpen"
+              >
+                <AppIcon
+                  name="chevron-right"
+                  class="mt-0.5 h-4 w-4 shrink-0 transition-transform"
+                  :class="{ 'rotate-90': isChangeRequestOpen }"
+                />
+                <span class="block">
+                  <span class="block text-base font-semibold text-ink">Schedule change request</span>
+                  <span v-if="scheduleChangeWindow.deadline" class="mt-1 block text-xs font-normal text-muted">
+                    Deadline: {{ scheduleChangeWindow.deadline }} <span v-if="canRequestChange">· {{ scheduleChangeWindow.days_remaining }} day(s) remaining</span>
+                  </span>
+                  <span v-else class="mt-1 block text-xs font-normal text-muted">The semester start date has not been configured.</span>
+                </span>
+              </button>
+            </h2>
             <span class="rounded-full border px-2 py-1 text-[10px] font-semibold"
               :class="canRequestChange ? 'border-teal-300 bg-teal-50 text-teal-900' : 'border-hairline bg-canvas text-muted'">
               {{ canRequestChange ? 'Open' : 'Closed' }}
             </span>
           </div>
+          <div v-show="isChangeRequestOpen">
           <p v-if="requestError" class="mt-3 text-xs text-rose-700" role="alert">{{ requestError }}</p>
           <p v-if="requestSuccess" class="mt-3 text-xs text-teal-700" role="status">{{ requestSuccess }}</p>
           <form v-if="canRequestChange && publishedSchedules.length" class="mt-4 space-y-3" @submit.prevent="submitScheduleChangeRequest">
@@ -476,6 +512,7 @@ onBeforeUnmount(() => {
               </li>
             </ul>
             <p v-else class="mt-2 text-xs text-muted">No schedule change requests yet.</p>
+          </div>
           </div>
         </section>
       </div>
