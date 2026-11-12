@@ -230,7 +230,7 @@ onBeforeUnmount(() => {
     <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div class="mb-8">
         <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-          Mabuhay, {{ user?.name }}!
+          {{ user?.name }}
         </h1>
         <p class="mt-1 text-sm text-muted">
           Your Campus. Your Classes. Your Time.

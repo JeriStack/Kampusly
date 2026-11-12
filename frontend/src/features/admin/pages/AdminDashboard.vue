@@ -378,7 +378,7 @@ watch(accountRoleFilter, () => {
     <main class="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
       <div>
         <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-          Welcome back, {{ user?.name }}
+          {{ user?.name }}
         </h1>
         <p class="mt-1 text-sm text-muted">
           Kampusly Administration System &bull; Schedule &amp; User Overview
