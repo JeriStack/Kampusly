@@ -85,7 +85,10 @@ final class HttpRequest
                 }
 
                 $decoded = json_decode($rawBody, true);
-                if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded) || array_is_list($decoded)) {
+                // json_decode turns both `{}` and `[]` into an empty PHP array, so the
+                // leading character is what tells a JSON object (accepted) from a list.
+                $isJsonObject = str_starts_with(ltrim($rawBody), '{');
+                if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded) || !$isJsonObject) {
                     throw new ValidationException(
                         ['body' => ['Request body must be a valid JSON object.']],
                         'Malformed JSON request body.'
