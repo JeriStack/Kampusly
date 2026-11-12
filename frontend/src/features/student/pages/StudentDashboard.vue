@@ -48,6 +48,9 @@ interface Announcement {
   title: string
   message: string
   subject_id: number
+  subject_code: string | null
+  subject_name: string | null
+  author_name: string | null
   published_at: string | null
 }
 
@@ -417,6 +420,15 @@ onBeforeUnmount(() => {
             <ul v-else-if="announcements.length" class="mt-4 divide-y divide-hairline">
               <li v-for="announcement in announcements" :key="announcement.id" class="py-3 first:pt-0 last:pb-0">
                 <h3 class="text-sm font-semibold text-ink">{{ announcement.title }}</h3>
+                <p class="mt-1 text-[11px] font-semibold text-primary-700 dark:text-primary-300">
+                  <template v-if="announcement.subject_code">
+                    {{ announcement.subject_code }}<template v-if="announcement.subject_name"> — {{ announcement.subject_name }}</template>
+                  </template>
+                  <template v-if="announcement.author_name">
+                    <span v-if="announcement.subject_code" class="font-normal text-muted"> · </span>
+                    <span class="font-normal text-muted">Posted by {{ announcement.author_name }}</span>
+                  </template>
+                </p>
                 <p class="mt-1 whitespace-pre-wrap text-xs text-muted">{{ announcement.message }}</p>
                 <time v-if="announcement.published_at" class="mt-1 block text-[10px] text-muted">{{ announcement.published_at }}</time>
               </li>
