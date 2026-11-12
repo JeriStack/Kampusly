@@ -75,13 +75,13 @@ onBeforeUnmount(() => {
   <div class="relative">
     <button
       type="button"
-      class="relative inline-flex h-9 items-center gap-2 rounded-lg border border-hairline bg-canvas px-3 text-xs font-semibold text-ink hover:bg-surface"
+      class="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-hairline bg-canvas text-ink hover:bg-surface"
       aria-label="Notifications"
+      title="Notifications"
       :aria-expanded="isOpen"
       @click="isOpen = !isOpen"
     >
       <AppIcon name="bell" class="h-4 w-4" />
-      <span class="hidden sm:inline">Notifications</span>
       <span
         v-if="unreadCount > 0"
         class="absolute -right-1.5 -top-1.5 min-w-5 rounded-full bg-rose-600 px-1 text-center text-[10px] leading-5 text-white"
