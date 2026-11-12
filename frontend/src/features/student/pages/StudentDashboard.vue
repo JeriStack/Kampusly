@@ -256,9 +256,9 @@ onBeforeUnmount(() => {
                 {{ user?.profile?.section_name || 'BSIT-3A' }}
               </span>
             </div>
-            <div class="flex justify-between py-1.5">
-              <span class="text-muted">Institutional Email</span>
-              <span class="font-medium truncate max-w-[150px]">{{ user?.email }}</span>
+            <div class="flex justify-between gap-4 py-1.5">
+              <span class="shrink-0 text-muted">Institutional Email</span>
+              <span class="min-w-0 break-all text-right font-medium">{{ user?.email }}</span>
             </div>
           </div>
         </div>
