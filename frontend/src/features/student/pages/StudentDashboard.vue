@@ -76,6 +76,13 @@ const isScheduleLoading = ref(true)
 const scheduleError = ref<string | null>(null)
 const today = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date())
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const expandedDays = ref<string[]>([today])
+
+function toggleDay(day: string): void {
+  expandedDays.value = expandedDays.value.includes(day)
+    ? expandedDays.value.filter((expanded) => expanded !== day)
+    : [...expandedDays.value, day]
+}
 const schedulesByDay = computed(() =>
   days
     .map((day) => ({
@@ -314,13 +321,30 @@ onBeforeUnmount(() => {
               class="overflow-hidden rounded-xl border border-hairline"
               :aria-label="`${group.day}${group.day === today ? ', today' : ''} classes`"
             >
-              <h3 class="flex items-center justify-between bg-canvas px-4 py-2.5 text-xs font-bold text-ink">
-                {{ group.day }}
-                <span v-if="group.day === today" class="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] text-primary-800 dark:bg-primary-900/50 dark:text-primary-200">
-                  Today
-                </span>
+              <h3>
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-between gap-3 bg-canvas px-4 py-2.5 text-left text-xs font-bold text-ink"
+                  :aria-expanded="expandedDays.includes(group.day)"
+                  @click="toggleDay(group.day)"
+                >
+                  <span class="flex items-center gap-2">
+                    <AppIcon
+                      name="chevron-right"
+                      class="h-3.5 w-3.5 transition-transform"
+                      :class="{ 'rotate-90': expandedDays.includes(group.day) }"
+                    />
+                    {{ group.day }}
+                    <span v-if="group.day === today" class="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] text-primary-800 dark:bg-primary-900/50 dark:text-primary-200">
+                      Today
+                    </span>
+                  </span>
+                  <span class="text-[10px] font-semibold text-muted">
+                    {{ group.entries.length }} {{ group.entries.length === 1 ? 'class' : 'classes' }}
+                  </span>
+                </button>
               </h3>
-              <ul class="divide-y divide-hairline">
+              <ul v-show="expandedDays.includes(group.day)" class="divide-y divide-hairline">
                 <li
                   v-for="schedule in group.entries"
                   :key="schedule.id"
