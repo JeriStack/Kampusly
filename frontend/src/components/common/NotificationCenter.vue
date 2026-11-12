@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { apiClient } from '@/services/api/client'
 import { API_ENDPOINTS } from '@/services/api/endpoints'
@@ -10,6 +11,8 @@ interface NotificationItem {
   title: string
   message: string
   type: string
+  reference_type: string
+  reference_id: number
   read_at: string | null
   created_at: string
 }
@@ -19,6 +22,7 @@ interface NotificationResponse {
   unread_count: number
 }
 
+const router = useRouter()
 const notifications = ref<NotificationItem[]>([])
 const unreadCount = ref(0)
 const isOpen = ref(false)
@@ -46,6 +50,22 @@ async function markRead(notification: NotificationItem): Promise<void> {
     unreadCount.value = Math.max(0, unreadCount.value - 1)
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'Unable to update this notification.'
+  }
+}
+
+async function openNotification(notification: NotificationItem): Promise<void> {
+  await markRead(notification)
+
+  if (
+    notification.type === 'announcement' &&
+    notification.reference_type === 'announcement' &&
+    notification.reference_id > 0
+  ) {
+    isOpen.value = false
+    await router.push({
+      name: 'student-dashboard',
+      query: { announcement: String(notification.reference_id) },
+    })
   }
 }
 
@@ -110,7 +130,7 @@ onBeforeUnmount(() => {
             type="button"
             class="block w-full px-4 py-3 text-left hover:bg-canvas"
             :class="{ 'bg-primary-50/60 dark:bg-primary-950/20': !notification.read_at }"
-            @click="markRead(notification)"
+            @click="openNotification(notification)"
           >
             <span class="flex items-center justify-between gap-2">
               <span class="text-xs font-semibold text-ink">{{ notification.title }}</span>
