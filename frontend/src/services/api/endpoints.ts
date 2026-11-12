@@ -81,6 +81,7 @@ export const API_ENDPOINTS = {
     schedule: '/student/schedule',
     scheduleChangeRequests: '/student/schedule-change-requests',
     announcements: '/student/announcements',
+    announcementArchive: (id: number | string) => `/student/announcements/${id}/archive`,
   },
   instructor: {
     announcements: '/instructor/announcements',
