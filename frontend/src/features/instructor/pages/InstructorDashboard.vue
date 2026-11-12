@@ -70,9 +70,9 @@ async function handleLogout(): Promise<void> {
               <span class="text-muted">Department</span>
               <span class="font-semibold">{{ user?.profile?.department || 'College of Computer Studies' }}</span>
             </div>
-            <div class="flex justify-between border-b border-hairline py-1.5">
-              <span class="text-muted">Institutional Email</span>
-              <span class="font-medium">{{ user?.email }}</span>
+            <div class="flex justify-between gap-4 border-b border-hairline py-1.5">
+              <span class="shrink-0 text-muted">Institutional Email</span>
+              <span class="min-w-0 break-all text-right font-medium">{{ user?.email }}</span>
             </div>
             <div class="flex justify-between py-1.5">
               <span class="text-muted">Account Status</span>
