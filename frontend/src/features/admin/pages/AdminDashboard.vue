@@ -7,6 +7,7 @@ import { API_ENDPOINTS } from '@/services/api/endpoints'
 import KampuslyLogo from '@/components/common/KampuslyLogo.vue'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import PaginationBar from '@/features/academic/components/PaginationBar.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -76,13 +77,17 @@ const error = ref<string | null>(null)
 
 const accounts = ref<UserAccount[]>([])
 const accountPage = ref(1)
+const accountPerPage = ref(10)
 const accountTotal = ref(0)
 const accountTotalPages = ref(0)
 const isLoadingAccounts = ref(true)
 const accountError = ref<string | null>(null)
-const isLoadingMoreAccounts = ref(false)
 
 const activeSubjects = ref<Subject[]>([])
+const subjectPage = ref(1)
+const subjectPerPage = ref(10)
+const subjectTotal = ref(0)
+const subjectTotalPages = ref(0)
 const isLoadingSubjects = ref(true)
 const subjectsError = ref<string | null>(null)
 
@@ -120,7 +125,6 @@ const todayWeekday = new Intl.DateTimeFormat('en', {
   timeZone: 'Asia/Manila',
 }).format(new Date())
 
-const hasMoreAccounts = computed(() => accountPage.value < accountTotalPages.value)
 const accountRoleFilter = computed<'student' | 'instructor' | null>(() => {
   if (route.path === '/admin/students') return 'student'
   if (route.path === '/admin/instructors') return 'instructor'
@@ -146,24 +150,21 @@ async function fetchSummary(): Promise<void> {
   }
 }
 
-async function fetchAccounts(append = false): Promise<void> {
-  if (append) {
-    isLoadingMoreAccounts.value = true
-  } else {
-    isLoadingAccounts.value = true
-    accountError.value = null
-  }
-
+async function fetchAccounts(page = accountPage.value): Promise<void> {
+  isLoadingAccounts.value = true
+  accountError.value = null
   try {
-    const nextPage = append ? accountPage.value + 1 : 1
-    const query = new URLSearchParams({ page: String(nextPage), per_page: '100' })
+    const query = new URLSearchParams({
+      page: String(page),
+      per_page: String(accountPerPage.value),
+    })
     if (accountRoleFilter.value) {
       query.set('role', accountRoleFilter.value)
     }
     const response = await apiClient.get<PaginatedResponse<UserAccount>>(
       `${API_ENDPOINTS.users.list}?${query.toString()}`,
     )
-    accounts.value = append ? [...accounts.value, ...response.data] : response.data
+    accounts.value = response.data
     accountPage.value = response.meta.page
     accountTotal.value = response.meta.total
     accountTotalPages.value = response.meta.total_pages
@@ -171,24 +172,48 @@ async function fetchAccounts(append = false): Promise<void> {
     accountError.value = messageFromError(err, 'Failed to load user accounts.')
   } finally {
     isLoadingAccounts.value = false
-    isLoadingMoreAccounts.value = false
   }
 }
 
-async function fetchActiveSubjects(): Promise<void> {
+function handleAccountPageChange(page: number): void {
+  void fetchAccounts(page)
+}
+
+function handleAccountPerPageChange(perPage: number): void {
+  accountPerPage.value = perPage
+  void fetchAccounts(1)
+}
+
+async function fetchActiveSubjects(page = subjectPage.value): Promise<void> {
   isLoadingSubjects.value = true
   subjectsError.value = null
   try {
-    const query = new URLSearchParams({ page: '1', per_page: '100', status: 'active' })
+    const query = new URLSearchParams({
+      page: String(page),
+      per_page: String(subjectPerPage.value),
+      status: 'active',
+    })
     const response = await apiClient.get<PaginatedResponse<Subject>>(
       `${API_ENDPOINTS.academic.subjects}?${query.toString()}`,
     )
     activeSubjects.value = response.data
+    subjectPage.value = response.meta.page
+    subjectTotal.value = response.meta.total
+    subjectTotalPages.value = response.meta.total_pages
   } catch (err: unknown) {
     subjectsError.value = messageFromError(err, 'Failed to load active subjects.')
   } finally {
     isLoadingSubjects.value = false
   }
+}
+
+function handleSubjectPageChange(page: number): void {
+  void fetchActiveSubjects(page)
+}
+
+function handleSubjectPerPageChange(perPage: number): void {
+  subjectPerPage.value = perPage
+  void fetchActiveSubjects(1)
 }
 
 async function fetchTodaysClasses(): Promise<void> {
@@ -497,18 +522,19 @@ watch(accountRoleFilter, () => {
               </tr>
             </tbody>
           </table>
-          <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
-            <span>Showing {{ accounts.length }} of {{ accountTotal }} accounts</span>
-            <button
-              v-if="hasMoreAccounts"
-              type="button"
-              class="rounded-lg border border-hairline px-3 py-2 font-semibold text-ink hover:bg-canvas disabled:opacity-60"
-              :disabled="isLoadingMoreAccounts"
-              @click="fetchAccounts(true)"
-            >
-              {{ isLoadingMoreAccounts ? 'Loading...' : 'Load more accounts' }}
-            </button>
-          </div>
+          <PaginationBar
+            v-if="accountTotal > 0"
+            class="mt-4 rounded-lg border border-hairline bg-canvas"
+            :meta="{
+              page: accountPage,
+              per_page: accountPerPage,
+              total: accountTotal,
+              total_pages: accountTotalPages,
+            }"
+            :disabled="isLoadingAccounts"
+            @change-page="handleAccountPageChange"
+            @change-per-page="handleAccountPerPageChange"
+          />
         </div>
       </section>
 
@@ -520,12 +546,12 @@ watch(accountRoleFilter, () => {
               <p class="mt-1 text-sm text-muted">Subjects currently available.</p>
             </div>
             <span class="rounded-full bg-navy-50 px-3 py-1 text-xs font-semibold text-navy">
-              {{ activeSubjects.length }}
+              {{ subjectTotal }}
             </span>
           </div>
           <p v-if="subjectsError" class="mt-4 text-sm text-rose-700" role="alert">
             {{ subjectsError }}
-            <button type="button" class="ml-2 font-semibold underline" @click="fetchActiveSubjects">Retry</button>
+            <button type="button" class="ml-2 font-semibold underline" @click="fetchActiveSubjects()">Retry</button>
           </p>
           <div v-else-if="isLoadingSubjects" class="mt-5 h-24 animate-pulse rounded-lg bg-canvas" />
           <div v-else-if="activeSubjects.length === 0" class="mt-5 rounded-lg bg-canvas p-4 text-sm text-muted">
@@ -540,6 +566,19 @@ watch(accountRoleFilter, () => {
               <span class="shrink-0 text-xs text-muted">{{ subject.units }} units</span>
             </li>
           </ul>
+          <PaginationBar
+            v-if="!subjectsError && subjectTotal > 0"
+            class="mt-4 rounded-lg border border-hairline bg-canvas"
+            :meta="{
+              page: subjectPage,
+              per_page: subjectPerPage,
+              total: subjectTotal,
+              total_pages: subjectTotalPages,
+            }"
+            :disabled="isLoadingSubjects"
+            @change-page="handleSubjectPageChange"
+            @change-per-page="handleSubjectPerPageChange"
+          />
         </section>
 
         <section class="rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
