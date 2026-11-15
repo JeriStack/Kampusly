@@ -5,6 +5,7 @@ import type { PaginationMeta } from '../types'
 
 const props = defineProps<{
   meta: PaginationMeta
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -22,7 +23,7 @@ const to = computed(() => {
 })
 
 function goTo(page: number): void {
-  if (page < 1 || page > props.meta.total_pages || page === props.meta.page) return
+  if (props.disabled || page < 1 || page > props.meta.total_pages || page === props.meta.page) return
   emit('changePage', page)
 }
 </script>
@@ -38,7 +39,7 @@ function goTo(page: number): void {
     <div class="flex items-center gap-1.5">
       <button
         type="button"
-        :disabled="meta.page <= 1"
+        :disabled="disabled || meta.page <= 1"
         class="inline-flex h-8 items-center justify-center rounded-lg border border-hairline bg-surface px-2.5 text-xs text-ink transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="First page"
         @click="goTo(1)"
@@ -48,7 +49,7 @@ function goTo(page: number): void {
 
       <button
         type="button"
-        :disabled="meta.page <= 1"
+        :disabled="disabled || meta.page <= 1"
         class="inline-flex h-8 items-center justify-center rounded-lg border border-hairline bg-surface px-2.5 text-xs text-ink transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Previous page"
         @click="goTo(meta.page - 1)"
@@ -63,7 +64,7 @@ function goTo(page: number): void {
 
       <button
         type="button"
-        :disabled="meta.page >= meta.total_pages"
+        :disabled="disabled || meta.page >= meta.total_pages"
         class="inline-flex h-8 items-center justify-center rounded-lg border border-hairline bg-surface px-2.5 text-xs text-ink transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Next page"
         @click="goTo(meta.page + 1)"
@@ -73,7 +74,7 @@ function goTo(page: number): void {
 
       <button
         type="button"
-        :disabled="meta.page >= meta.total_pages"
+        :disabled="disabled || meta.page >= meta.total_pages"
         class="inline-flex h-8 items-center justify-center rounded-lg border border-hairline bg-surface px-2.5 text-xs text-ink transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Last page"
         @click="goTo(meta.total_pages)"
@@ -83,6 +84,7 @@ function goTo(page: number): void {
 
       <select
         :value="meta.per_page"
+        :disabled="disabled"
         class="ml-2 h-8 rounded-lg border border-hairline bg-surface px-2 text-xs text-ink focus:border-navy focus:outline-none"
         @change="(e) => emit('changePerPage', Number((e.target as HTMLSelectElement).value))"
       >
@@ -93,4 +95,3 @@ function goTo(page: number): void {
     </div>
   </div>
 </template>
-
