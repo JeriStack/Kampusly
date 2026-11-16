@@ -613,23 +613,6 @@ watch(accountRoleFilter, () => {
       </div>
 
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div class="rounded-2xl border border-hairline bg-surface p-6 shadow-card lg:col-span-2">
-          <h2 class="text-base font-semibold text-ink">Administrative Capabilities</h2>
-          <p class="mt-1 text-xs text-muted">
-            Manage accounts, academic information, and schedules with role-based access controls.
-          </p>
-          <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div class="rounded-xl border border-hairline bg-canvas p-4">
-              <div class="text-xs font-bold text-ink">Account &amp; Role Management</div>
-              <p class="mt-1 text-[11px] text-muted">Create and review student and instructor accounts.</p>
-            </div>
-            <div class="rounded-xl border border-hairline bg-canvas p-4">
-              <div class="text-xs font-bold text-ink">Conflict-Free Scheduling</div>
-              <p class="mt-1 text-[11px] text-muted">Review published classes across campus.</p>
-            </div>
-          </div>
-        </div>
-
         <div class="rounded-2xl border border-hairline bg-surface p-6 shadow-card">
           <h2 class="text-base font-semibold text-ink">Your Session</h2>
           <div class="mt-4 space-y-2 text-xs">
