@@ -119,6 +119,8 @@ const selectedRequestSchedule = computed(() =>
   publishedSchedules.value.find((schedule) => schedule.id === requestForm.value.schedule_id),
 )
 let updatesTimer: ReturnType<typeof setInterval> | undefined
+let announcementsTimer: ReturnType<typeof setInterval> | undefined
+let isPollingAnnouncements = false
 
 function instructorLabel(schedule: Schedule): string {
   const name = schedule.instructor_name
@@ -147,26 +149,70 @@ async function loadSchedule(): Promise<void> {
   await loadStudentUpdates()
 }
 
+async function loadAnnouncements(): Promise<void> {
+  const [activeResponse, archivedResponse] = await Promise.all([
+    apiClient.get<{ data: Announcement[] }>(
+      `${API_ENDPOINTS.student.announcements}?page=1&per_page=100`,
+    ),
+    apiClient.get<{ data: Announcement[] }>(
+      `${API_ENDPOINTS.student.announcements}?page=1&per_page=100&archived=1`,
+    ),
+  ])
+  announcements.value = activeResponse.data
+  archivedAnnouncements.value = archivedResponse.data
+}
+
 async function loadStudentUpdates(): Promise<void> {
   try {
-    const [requestResponse, announcementResponse, archivedResponse] = await Promise.all([
+    const [requestResponse] = await Promise.all([
       apiClient.get<{ data: ScheduleChangeRequest[] }>(
         `${API_ENDPOINTS.student.scheduleChangeRequests}?page=1&per_page=100`,
       ),
-      apiClient.get<{ data: Announcement[] }>(
-        `${API_ENDPOINTS.student.announcements}?page=1&per_page=100`,
-      ),
-      apiClient.get<{ data: Announcement[] }>(
-        `${API_ENDPOINTS.student.announcements}?page=1&per_page=100&archived=1`,
-      ),
+      loadAnnouncements(),
     ])
     requests.value = requestResponse.data
-    announcements.value = announcementResponse.data
-    archivedAnnouncements.value = archivedResponse.data
     extrasError.value = null
   } catch (err) {
     extrasError.value = err instanceof ApiError ? err.message : 'Unable to load announcements or request history.'
   }
+}
+
+/**
+ * Real-time announcement refresh. Runs only while the tab is visible and keeps the current
+ * list when a poll fails, so a brief network blip does not replace the card with an error.
+ */
+async function pollAnnouncements(): Promise<void> {
+  if (document.visibilityState !== 'visible' || isPollingAnnouncements) return
+  isPollingAnnouncements = true
+  try {
+    await loadAnnouncements()
+    extrasError.value = null
+  } catch {
+    // Keep showing the last known announcements; the next poll will retry.
+  } finally {
+    isPollingAnnouncements = false
+  }
+}
+
+function handleVisibilityChange(): void {
+  if (document.visibilityState === 'visible') void pollAnnouncements()
+}
+
+const ANNOUNCEMENT_POLL_MS = 5_000
+const manilaDateTime = new Intl.DateTimeFormat('en-PH', {
+  timeZone: 'Asia/Manila',
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+})
+
+/** The API returns server time (Asia/Manila) as `YYYY-MM-DD HH:MM:SS` without an offset. */
+function formatAnnouncedAt(value: string | null): string {
+  if (!value) return ''
+  const date = new Date(`${value.replace(' ', 'T')}+08:00`)
+  return Number.isNaN(date.getTime()) ? value : manilaDateTime.format(date)
 }
 
 const visibleAnnouncements = computed(() =>
@@ -294,10 +340,14 @@ onMounted(async () => {
   await loadSchedule()
   await focusAnnouncementFromRoute()
   updatesTimer = setInterval(() => void loadStudentUpdates(), 30_000)
+  announcementsTimer = setInterval(() => void pollAnnouncements(), ANNOUNCEMENT_POLL_MS)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onBeforeUnmount(() => {
   if (updatesTimer) clearInterval(updatesTimer)
+  if (announcementsTimer) clearInterval(announcementsTimer)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
   if (highlightTimer) clearTimeout(highlightTimer)
 })
 </script>
@@ -561,13 +611,20 @@ onBeforeUnmount(() => {
                     <span class="min-w-0">
                       <span class="block truncate text-xs font-bold text-ink">{{ announcementSubject(announcement) }}</span>
                       <span class="block truncate text-[11px] text-muted">{{ announcement.author_name || 'Instructor' }}</span>
+                      <span v-if="announcement.published_at" class="block truncate text-[10px] text-muted">
+                        Announced {{ formatAnnouncedAt(announcement.published_at) }}
+                      </span>
                     </span>
                   </button>
                   <div v-show="expandedAnnouncements.includes(announcement.id)" class="border-t border-hairline px-3 py-3">
                     <h3 class="text-sm font-semibold text-ink">{{ announcement.title }}</h3>
                     <p class="mt-1 whitespace-pre-wrap text-xs text-muted">{{ announcement.message }}</p>
                     <div class="mt-3 flex items-center justify-between gap-3">
-                      <time v-if="announcement.published_at" class="text-[10px] text-muted">{{ announcement.published_at }}</time>
+                      <time
+                        v-if="announcement.published_at"
+                        class="text-[10px] text-muted"
+                        :datetime="announcement.published_at.replace(' ', 'T') + '+08:00'"
+                      >{{ formatAnnouncedAt(announcement.published_at) }}</time>
                       <span v-else />
                       <button
                         type="button"
