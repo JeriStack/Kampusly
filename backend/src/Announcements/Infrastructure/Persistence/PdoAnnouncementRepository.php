@@ -53,6 +53,19 @@ final class PdoAnnouncementRepository implements AnnouncementRepositoryInterface
             $params[':instructor_id'] = $filters['instructor_id'];
         }
 
+        // Instructor-side archive state. 'active' hides archived rows; 'archived' only shows
+        // archives still inside the retention window (expired ones are about to be purged).
+        if (isset($filters['archive_state']) && is_string($filters['archive_state'])) {
+            $stateDays = isset($filters['archive_retention_days']) && is_int($filters['archive_retention_days'])
+                ? max(1, $filters['archive_retention_days'])
+                : 7;
+            if ($filters['archive_state'] === 'archived') {
+                $conditions[] = "a.`status` = 'archived' AND a.`archived_at` >= DATE_SUB(NOW(), INTERVAL {$stateDays} DAY)";
+            } else {
+                $conditions[] = "a.`status` <> 'archived'";
+            }
+        }
+
         // Per-student archive view. 'active' hides any archived row (including expired ones),
         // 'archived' only shows archives still inside the retention window.
         $archiveJoin = '';
@@ -168,6 +181,45 @@ final class PdoAnnouncementRepository implements AnnouncementRepositoryInterface
         ]);
 
         return $this->findById($id) ?? $announcement;
+    }
+
+    public function archive(int $id): void
+    {
+        // published_at is left untouched so the original announcement time is kept.
+        $stmt = $this->pdo->prepare(
+            "UPDATE `announcements`
+             SET `status` = 'archived', `archived_at` = CURRENT_TIMESTAMP
+             WHERE `id` = :id AND `status` <> 'archived'"
+        );
+        $stmt->execute([':id' => $id]);
+    }
+
+    public function restore(int $id, int $retentionDays): bool
+    {
+        $days = max(1, $retentionDays);
+        $stmt = $this->pdo->prepare(
+            "UPDATE `announcements`
+             SET `status` = 'published', `archived_at` = NULL
+             WHERE `id` = :id
+               AND `status` = 'archived'
+               AND `archived_at` >= DATE_SUB(NOW(), INTERVAL {$days} DAY)"
+        );
+        $stmt->execute([':id' => $id]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    public function purgeExpiredArchived(int $retentionDays): int
+    {
+        $days = max(1, $retentionDays);
+        $stmt = $this->pdo->prepare(
+            "DELETE FROM `announcements`
+             WHERE `status` = 'archived'
+               AND `archived_at` < DATE_SUB(NOW(), INTERVAL {$days} DAY)"
+        );
+        $stmt->execute();
+
+        return $stmt->rowCount();
     }
 
     public function archiveForStudent(int $studentId, int $announcementId): void

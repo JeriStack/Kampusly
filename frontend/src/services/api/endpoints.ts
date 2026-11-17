@@ -86,6 +86,7 @@ export const API_ENDPOINTS = {
   instructor: {
     announcements: '/instructor/announcements',
     announcement: (id: number | string) => `/instructor/announcements/${id}`,
+    announcementArchive: (id: number | string) => `/instructor/announcements/${id}/archive`,
   },
   notifications: {
     list: '/notifications',

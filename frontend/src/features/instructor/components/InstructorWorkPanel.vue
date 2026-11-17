@@ -13,6 +13,7 @@ interface Announcement {
   message: string
   status: string
   published_at: string | null
+  archived_at?: string | null
 }
 
 interface AssignedClass {
@@ -25,6 +26,9 @@ interface AssignedClass {
 
 const schedules = ref<Schedule[]>([])
 const announcements = ref<Announcement[]>([])
+const archivedAnnouncements = ref<Announcement[]>([])
+const announcementTab = ref<'active' | 'archived'>('active')
+const busyAnnouncementId = ref<number | null>(null)
 const isLoading = ref(true)
 const isAnnouncementsLoading = ref(true)
 const isSaving = ref(false)
@@ -99,11 +103,18 @@ async function loadSchedules(): Promise<void> {
 
 async function loadAnnouncements(): Promise<void> {
   try {
-    const response = await apiClient.get<{ data: Announcement[] }>(
-      `${API_ENDPOINTS.instructor.announcements}?page=1&per_page=100`,
-      { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
-    )
-    announcements.value = response.data
+    const [activeResponse, archivedResponse] = await Promise.all([
+      apiClient.get<{ data: Announcement[] }>(
+        `${API_ENDPOINTS.instructor.announcements}?page=1&per_page=100`,
+        { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
+      ),
+      apiClient.get<{ data: Announcement[] }>(
+        `${API_ENDPOINTS.instructor.announcements}?page=1&per_page=100&archived=1`,
+        { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
+      ),
+    ])
+    announcements.value = activeResponse.data
+    archivedAnnouncements.value = archivedResponse.data
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'Unable to load your announcements.'
   } finally {
@@ -168,16 +179,38 @@ onMounted(() => {
   void loadData()
 })
 
-async function withdrawAnnouncement(announcement: Announcement): Promise<void> {
-  if (!window.confirm('Delete this announcement? Students will no longer see it in their announcements list.')) return
+const visibleAnnouncements = computed(() =>
+  announcementTab.value === 'active' ? announcements.value : archivedAnnouncements.value,
+)
+
+async function setAnnouncementArchived(announcement: Announcement, archive: boolean): Promise<void> {
+  if (
+    archive
+    && !window.confirm(
+      'Archive this announcement? Students will no longer see it, and it will be deleted automatically after 7 days.',
+    )
+  ) return
+  busyAnnouncementId.value = announcement.id
   error.value = null
+  success.value = null
   try {
-    await apiClient.delete(API_ENDPOINTS.instructor.announcement(announcement.id))
-    announcements.value = announcements.value.filter((item) => item.id !== announcement.id)
-    if (editingAnnouncementId.value === announcement.id) resetForm()
-    success.value = 'Announcement deleted.'
+    const path = API_ENDPOINTS.instructor.announcementArchive(announcement.id)
+    if (archive) {
+      await apiClient.post(path)
+    } else {
+      await apiClient.delete(path)
+    }
+    if (archive && editingAnnouncementId.value === announcement.id) resetForm()
+    await loadAnnouncements()
+    success.value = archive
+      ? 'Announcement archived. It will be deleted automatically after 7 days.'
+      : 'Announcement restored and visible to students again.'
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'Unable to delete this announcement.'
+    error.value = err instanceof ApiError
+      ? err.message
+      : `Unable to ${archive ? 'archive' : 'restore'} this announcement.`
+  } finally {
+    busyAnnouncementId.value = null
   }
 }
 </script>
@@ -260,8 +293,29 @@ async function withdrawAnnouncement(announcement: Announcement): Promise<void> {
 
       <div class="border-t border-hairline p-4">
         <h3 class="text-xs font-bold text-ink">Announcement history</h3>
-        <ul v-if="announcements.length" class="mt-3 divide-y divide-hairline">
-          <li v-for="announcement in announcements" :key="announcement.id" class="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+        <div class="mt-3 flex gap-1 rounded-lg bg-canvas p-1 text-xs font-semibold" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            class="flex-1 rounded-md px-3 py-1.5 transition-colors"
+            :class="announcementTab === 'active' ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'"
+            :aria-selected="announcementTab === 'active'"
+            @click="announcementTab = 'active'"
+          >Active ({{ announcements.length }})</button>
+          <button
+            type="button"
+            role="tab"
+            class="flex-1 rounded-md px-3 py-1.5 transition-colors"
+            :class="announcementTab === 'archived' ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'"
+            :aria-selected="announcementTab === 'archived'"
+            @click="announcementTab = 'archived'"
+          >Archived ({{ archivedAnnouncements.length }})</button>
+        </div>
+        <p v-if="announcementTab === 'archived'" class="mt-3 text-[11px] text-muted">
+          Archived announcements are hidden from students and deleted automatically after 7 days.
+        </p>
+        <ul v-if="visibleAnnouncements.length" class="mt-3 divide-y divide-hairline">
+          <li v-for="announcement in visibleAnnouncements" :key="announcement.id" class="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
             <div class="min-w-0 flex-1">
               <p class="text-xs font-semibold text-ink">{{ announcement.title }}</p>
               <p class="mt-1 whitespace-pre-wrap text-xs text-muted">{{ announcement.message }}</p>
@@ -270,14 +324,29 @@ async function withdrawAnnouncement(announcement: Announcement): Promise<void> {
                 · {{ announcement.status === 'withdrawn' ? 'Deleted' : announcement.status }}
               </p>
             </div>
-            <div v-if="announcement.status !== 'withdrawn'" class="flex gap-2">
+            <div v-if="announcementTab === 'archived'" class="flex gap-2">
+              <button
+                type="button"
+                class="text-xs font-semibold text-primary-700 hover:underline disabled:opacity-50"
+                :disabled="busyAnnouncementId === announcement.id"
+                @click="setAnnouncementArchived(announcement, false)"
+              >Restore</button>
+            </div>
+            <div v-else-if="announcement.status !== 'withdrawn'" class="flex gap-2">
               <button type="button" class="text-xs font-semibold text-primary-700 hover:underline" @click="editAnnouncement(announcement)">Edit</button>
-              <button type="button" class="text-xs font-semibold text-rose-700 hover:underline" @click="withdrawAnnouncement(announcement)">Delete</button>
+              <button
+                type="button"
+                class="text-xs font-semibold text-rose-700 hover:underline disabled:opacity-50"
+                :disabled="busyAnnouncementId === announcement.id"
+                @click="setAnnouncementArchived(announcement, true)"
+              >Archive</button>
             </div>
           </li>
         </ul>
         <p v-else-if="isAnnouncementsLoading" class="mt-2 text-xs text-muted">Loading announcements…</p>
-        <p v-else class="mt-2 text-xs text-muted">No announcements published yet.</p>
+        <p v-else class="mt-2 text-xs text-muted">
+          {{ announcementTab === 'active' ? 'No announcements published yet.' : 'No archived announcements.' }}
+        </p>
       </div>
     </section>
   </div>

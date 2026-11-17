@@ -19,6 +19,7 @@ final class Announcement
     private ?string $publishedAt;
     private ?string $createdAt;
     private ?string $updatedAt;
+    private ?string $archivedAt;
 
     public function __construct(
         ?int $id,
@@ -31,7 +32,8 @@ final class Announcement
         AnnouncementStatus $status = AnnouncementStatus::Published,
         ?string $publishedAt = null,
         ?string $createdAt = null,
-        ?string $updatedAt = null
+        ?string $updatedAt = null,
+        ?string $archivedAt = null
     ) {
         $this->id = $id;
         $this->authorUserId = $authorUserId;
@@ -44,6 +46,7 @@ final class Announcement
         $this->publishedAt = $publishedAt;
         $this->createdAt = $createdAt;
         $this->updatedAt = $updatedAt;
+        $this->archivedAt = $archivedAt;
     }
 
     /**
@@ -62,7 +65,8 @@ final class Announcement
             AnnouncementStatus::from((string) ($row['status'] ?? 'published')),
             isset($row['published_at']) && $row['published_at'] !== null ? (string) $row['published_at'] : null,
             isset($row['created_at']) ? (string) $row['created_at'] : null,
-            isset($row['updated_at']) ? (string) $row['updated_at'] : null
+            isset($row['updated_at']) ? (string) $row['updated_at'] : null,
+            isset($row['archived_at']) && $row['archived_at'] !== null ? (string) $row['archived_at'] : null
         );
     }
 
@@ -128,6 +132,7 @@ final class Announcement
             'published_at' => $this->publishedAt,
             'created_at' => $this->createdAt,
             'updated_at' => $this->updatedAt,
+            'archived_at' => $this->archivedAt,
         ];
     }
 }
