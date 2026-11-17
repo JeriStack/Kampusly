@@ -1088,11 +1088,17 @@ paths:
     get:
       tags: [Announcements]
       summary: "List announcements authored by the authenticated instructor"
+      description: Archived announcements are excluded unless archived=1. Archives older than 7 days are deleted.
       security:
         - sessionCookie: []
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
+        - name: archived
+          in: query
+          required: false
+          description: Set to 1 or true to list archived announcements (kept for 7 days).
+          schema: { type: string, enum: ['0', '1', 'true', 'false'] }
       responses:
         '200': { description: Instructor announcement history }
     post:
@@ -1133,9 +1139,12 @@ paths:
       responses:
         '200': { description: Announcement updated and section students notified }
         '403': { description: Announcement belongs to another instructor }
-    delete:
+
+  /instructor/announcements/{id}/archive:
+    post:
       tags: [Announcements]
-      summary: "Withdraw an announcement authored by the authenticated instructor"
+      summary: "Archive an announcement authored by the authenticated instructor"
+      description: Students stop seeing the announcement immediately. It is deleted automatically 7 days after archiving.
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -1145,7 +1154,23 @@ paths:
           required: true
           schema: { type: integer }
       responses:
-        '200': { description: Announcement withdrawn }
+        '200': { description: Announcement archived }
+        '403': { description: Announcement belongs to another instructor }
+        '409': { description: Only published announcements can be archived }
+    delete:
+      tags: [Announcements]
+      summary: "Restore an archived announcement to published"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Announcement restored }
+        '404': { description: Announcement is not archived or the 7-day retention period has ended }
 
   /student/announcements:
     get:

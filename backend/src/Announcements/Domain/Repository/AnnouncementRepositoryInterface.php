@@ -22,6 +22,24 @@ interface AnnouncementRepositoryInterface
     public function update(Announcement $announcement): Announcement;
 
     /**
+     * Archive an announcement for everyone: it is hidden from students and kept only until the
+     * retention window ends. The original published_at is preserved.
+     */
+    public function archive(int $id): void;
+
+    /**
+     * Restore an archived announcement to published. Expired archives cannot be restored.
+     */
+    public function restore(int $id, int $retentionDays): bool;
+
+    /**
+     * Permanently delete archived announcements older than the retention window.
+     *
+     * @return int Number of deleted announcements
+     */
+    public function purgeExpiredArchived(int $retentionDays): int;
+
+    /**
      * Archive an announcement for one student. Archiving twice keeps the original archive time.
      */
     public function archiveForStudent(int $studentId, int $announcementId): void;

@@ -397,11 +397,25 @@ return static function (Router $router, Container $container): void {
         return $controller->update($request, $params);
     }, [$authenticate, $authorizeRoles(['instructor'])]);
 
-    $router->delete('/instructor/announcements/{id}', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
-        /** @var InstructorAnnouncementController $controller */
-        $controller = $container->get(InstructorAnnouncementController::class);
-        return $controller->delete($request, $params);
-    }, [$authenticate, $authorizeRoles(['instructor'])]);
+    $router->post(
+        '/instructor/announcements/{id}/archive',
+        static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+            /** @var InstructorAnnouncementController $controller */
+            $controller = $container->get(InstructorAnnouncementController::class);
+            return $controller->archive($request, $params);
+        },
+        [$authenticate, $authorizeRoles(['instructor'])]
+    );
+
+    $router->delete(
+        '/instructor/announcements/{id}/archive',
+        static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+            /** @var InstructorAnnouncementController $controller */
+            $controller = $container->get(InstructorAnnouncementController::class);
+            return $controller->restore($request, $params);
+        },
+        [$authenticate, $authorizeRoles(['instructor'])]
+    );
 
     $router->get('/student/announcements', static function (HttpRequest $request) use ($container): JsonResponse {
         /** @var StudentAnnouncementController $controller */

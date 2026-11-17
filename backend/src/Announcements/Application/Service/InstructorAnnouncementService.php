@@ -62,9 +62,18 @@ final class InstructorAnnouncementService
             throw new ResourceNotFoundException('Instructor profile was not found.');
         }
 
+        // Expired archives are filtered out by the query anyway; this physically removes them.
+        $this->announcements->purgeExpiredArchived(self::ARCHIVE_RETENTION_DAYS);
+
+        $archived = in_array(strtolower((string) ($query['archived'] ?? '')), ['1', 'true'], true);
+
         return $this->announcements->paginate(
             PaginationQuery::fromQuery($query),
-            ['instructor_id' => $instructor->getId()]
+            [
+                'instructor_id' => $instructor->getId(),
+                'archive_state' => $archived ? 'archived' : 'active',
+                'archive_retention_days' => self::ARCHIVE_RETENTION_DAYS,
+            ]
         );
     }
 
@@ -153,6 +162,12 @@ final class InstructorAnnouncementService
     public function update(int $id, User $user, array $payload, ?string $requestId): Announcement
     {
         $existing = $this->requireOwnedAnnouncement($id, $user);
+        if ($existing->getStatus() === AnnouncementStatus::Archived) {
+            throw new ConflictException(
+                'Archived announcements cannot be edited. Restore it first.',
+                'ANNOUNCEMENT_ARCHIVED'
+            );
+        }
         $data = $this->validatePayload($payload);
         if ($existing->getSectionId() !== $data['section_id']
             || $existing->getSubjectId() !== $data['subject_id']
@@ -191,28 +206,49 @@ final class InstructorAnnouncementService
         });
     }
 
-    public function withdraw(int $id, User $user, ?string $requestId): void
+    /**
+     * Archive an announcement. Students stop seeing it right away and it is deleted
+     * automatically once it has been archived for ARCHIVE_RETENTION_DAYS days.
+     */
+    public function archive(int $id, User $user, ?string $requestId): void
     {
         $existing = $this->requireOwnedAnnouncement($id, $user);
-        $withdrawn = new Announcement(
-            $id,
-            $existing->getAuthorUserId(),
-            $existing->getInstructorId(),
-            $existing->getSubjectId(),
-            $existing->getSectionId(),
-            $existing->getTitle(),
-            $existing->getMessage(),
-            AnnouncementStatus::Withdrawn,
-            $existing->getPublishedAt()
-        );
+        if ($existing->getStatus() === AnnouncementStatus::Archived) {
+            return;
+        }
+        if ($existing->getStatus() !== AnnouncementStatus::Published) {
+            throw new ConflictException(
+                'Only published announcements can be archived.',
+                'ANNOUNCEMENT_NOT_PUBLISHED'
+            );
+        }
 
-        $this->transactions->transactional(function () use ($withdrawn, $requestId): void {
-            $this->announcements->update($withdrawn);
+        $this->transactions->transactional(function () use ($id, $existing, $requestId): void {
+            $this->announcements->archive($id);
             $this->auditLogger->record(
-                $withdrawn->getAuthorUserId(),
-                'announcement.withdrawn',
+                $existing->getAuthorUserId(),
+                'announcement.archived',
                 'announcement',
-                $withdrawn->getId(),
+                $id,
+                [],
+                $requestId
+            );
+        });
+    }
+
+    public function restore(int $id, User $user, ?string $requestId): void
+    {
+        $existing = $this->requireOwnedAnnouncement($id, $user);
+
+        $this->transactions->transactional(function () use ($id, $existing, $requestId): void {
+            if (!$this->announcements->restore($id, self::ARCHIVE_RETENTION_DAYS)) {
+                throw new ResourceNotFoundException('Archived announcement not found or already deleted.');
+            }
+            $this->auditLogger->record(
+                $existing->getAuthorUserId(),
+                'announcement.restored',
+                'announcement',
+                $id,
                 [],
                 $requestId
             );

@@ -64,15 +64,27 @@ final class InstructorAnnouncementController
     }
 
     /** @param array<string, string> $params */
-    public function delete(HttpRequest $request, array $params): JsonResponse
+    public function archive(HttpRequest $request, array $params): JsonResponse
     {
-        $this->service->withdraw(
+        $this->service->archive(
             (int) ($params['id'] ?? 0),
             $this->requireUser($request),
             $request->getRequestId()
         );
 
-        return new JsonResponse(['message' => 'Announcement withdrawn.'], 200, [], $request->getRequestId());
+        return new JsonResponse(['message' => 'Announcement archived.'], 200, [], $request->getRequestId());
+    }
+
+    /** @param array<string, string> $params */
+    public function restore(HttpRequest $request, array $params): JsonResponse
+    {
+        $this->service->restore(
+            (int) ($params['id'] ?? 0),
+            $this->requireUser($request),
+            $request->getRequestId()
+        );
+
+        return new JsonResponse(['message' => 'Announcement restored.'], 200, [], $request->getRequestId());
     }
 
     private function requireUser(HttpRequest $request): User
