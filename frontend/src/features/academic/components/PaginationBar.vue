@@ -29,14 +29,14 @@ function goTo(page: number): void {
 </script>
 
 <template>
-  <div class="flex flex-col items-center justify-between gap-3 border-t border-hairline px-4 py-3 sm:flex-row">
-    <div class="text-xs text-muted">
+  <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-hairline px-4 py-3">
+    <div class="whitespace-nowrap text-xs text-muted">
       Showing <span class="font-semibold text-ink">{{ from }}</span> to
       <span class="font-semibold text-ink">{{ to }}</span> of
       <span class="font-semibold text-ink">{{ meta.total }}</span> results
     </div>
 
-    <div class="flex items-center gap-1.5">
+    <div class="flex flex-wrap items-center gap-1.5">
       <button
         type="button"
         :disabled="disabled || meta.page <= 1"
@@ -57,7 +57,7 @@ function goTo(page: number): void {
         <AppIcon name="chevron-left" class="h-3.5 w-3.5" />
       </button>
 
-      <span class="px-2 text-xs text-muted">
+      <span class="whitespace-nowrap px-2 text-xs text-muted">
         Page <span class="font-semibold text-ink">{{ meta.page }}</span> of
         <span class="font-semibold text-ink">{{ Math.max(1, meta.total_pages) }}</span>
       </span>
@@ -85,7 +85,7 @@ function goTo(page: number): void {
       <select
         :value="meta.per_page"
         :disabled="disabled"
-        class="ml-2 h-8 rounded-lg border border-hairline bg-surface px-2 text-xs text-ink focus:border-navy focus:outline-none"
+        class="h-8 shrink-0 rounded-lg border border-hairline bg-surface px-2 text-xs text-ink focus:border-navy focus:outline-none"
         @change="(e) => emit('changePerPage', Number((e.target as HTMLSelectElement).value))"
       >
         <option :value="10">10 / page</option>
