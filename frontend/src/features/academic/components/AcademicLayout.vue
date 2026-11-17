@@ -31,7 +31,7 @@ async function handleLogout(): Promise<void> {
 </script>
 
 <template>
-  <div class="min-h-screen bg-canvas text-ink flex flex-col">
+  <div class="dashboard-readable min-h-screen bg-canvas text-ink flex flex-col">
     <!-- Top Navigation Header -->
     <header class="sticky top-0 z-30 border-b border-hairline bg-surface/90 backdrop-blur-md">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
