@@ -389,7 +389,7 @@ onBeforeUnmount(() => {
           {{ user?.name }}
         </h1>
         <p class="mt-1 text-sm text-muted">
-          Your Campus. Your Classes. Your Time.
+          Your Schedule
         </p>
       </div>
 

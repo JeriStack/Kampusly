@@ -53,7 +53,7 @@ async function handleLogout(): Promise<void> {
           {{ user?.name }}
         </h1>
         <p class="mt-1 text-sm text-muted">
-          Instructor Portal &bull; Department of {{ user?.profile?.department || 'Information Technology' }}
+          Your Schedule
         </p>
       </div>
 
