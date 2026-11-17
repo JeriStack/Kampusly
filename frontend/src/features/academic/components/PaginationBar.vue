@@ -88,6 +88,7 @@ function goTo(page: number): void {
         class="h-8 shrink-0 rounded-lg border border-hairline bg-surface px-2 text-xs text-ink focus:border-navy focus:outline-none"
         @change="(e) => emit('changePerPage', Number((e.target as HTMLSelectElement).value))"
       >
+        <option :value="5">5 / page</option>
         <option :value="10">10 / page</option>
         <option :value="25">25 / page</option>
         <option :value="50">50 / page</option>

@@ -3,6 +3,8 @@ import { onMounted, ref } from 'vue'
 import { API_ENDPOINTS } from '@/services/api/endpoints'
 import { apiClient } from '@/services/api/client'
 import { ApiError } from '@/services/api/errors'
+import PaginationBar from '@/features/academic/components/PaginationBar.vue'
+import type { PaginationMeta } from '@/features/academic/types'
 
 interface ScheduleChangeRequest {
   id: number
@@ -27,31 +29,50 @@ interface ScheduleChangeRequest {
 
 interface RequestResponse {
   data: ScheduleChangeRequest[]
-  meta: { page: number; total_pages: number }
+  meta: PaginationMeta
 }
 
 const requests = ref<ScheduleChangeRequest[]>([])
-const page = ref(1)
-const totalPages = ref(0)
+const meta = ref<PaginationMeta>({ page: 1, per_page: 5, total: 0, total_pages: 0 })
 const isLoading = ref(true)
 const busyId = ref<number | null>(null)
 const error = ref<string | null>(null)
 const notes = ref<Record<number, string>>({})
 
-async function loadRequests(): Promise<void> {
+async function fetchRequestPage(page: number): Promise<void> {
+  const response = await apiClient.get<RequestResponse>(
+    `${API_ENDPOINTS.scheduling.scheduleChangeRequests}?status=pending&page=${page}&per_page=${meta.value.per_page}`,
+  )
+
+  // The last request on a page may have just been reviewed; step back to the last page.
+  if (response.data.length === 0 && response.meta.total_pages > 0 && page > response.meta.total_pages) {
+    await fetchRequestPage(response.meta.total_pages)
+    return
+  }
+
+  requests.value = response.data
+  meta.value = { ...response.meta, page: response.meta.total === 0 ? 1 : response.meta.page }
+}
+
+async function loadRequests(page = meta.value.page): Promise<void> {
   isLoading.value = true
   error.value = null
   try {
-    const response = await apiClient.get<RequestResponse>(
-      `${API_ENDPOINTS.scheduling.scheduleChangeRequests}?status=pending&page=${page.value}&per_page=20`,
-    )
-    requests.value = response.data
-    totalPages.value = response.meta.total_pages
+    await fetchRequestPage(page)
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'Unable to load schedule change requests.'
   } finally {
     isLoading.value = false
   }
+}
+
+function handlePageChange(page: number): void {
+  void loadRequests(page)
+}
+
+function handlePerPageChange(perPage: number): void {
+  meta.value.per_page = perPage
+  void loadRequests(1)
 }
 
 async function review(request: ScheduleChangeRequest, status: 'approved' | 'rejected'): Promise<void> {
@@ -64,8 +85,6 @@ async function review(request: ScheduleChangeRequest, status: 'approved' | 'reje
       status,
       review_note: notes.value[request.id]?.trim() || null,
     })
-    requests.value = requests.value.filter((item) => item.id !== request.id)
-    if (requests.value.length === 0 && page.value > 1) page.value -= 1
     await loadRequests()
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : `Unable to ${action} this request.`
@@ -91,7 +110,7 @@ onMounted(loadRequests)
 
     <p v-if="error" class="m-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800" role="alert">
       {{ error }}
-      <button type="button" class="ml-2 font-semibold underline" @click="loadRequests">Retry</button>
+      <button type="button" class="ml-2 font-semibold underline" @click="loadRequests()">Retry</button>
     </p>
     <p v-else-if="isLoading" class="p-8 text-center text-sm text-muted" role="status">Loading requests…</p>
     <p v-else-if="requests.length === 0" class="p-8 text-center text-sm text-muted">
@@ -149,10 +168,13 @@ onMounted(loadRequests)
       </li>
     </ul>
 
-    <div v-if="totalPages > 1" class="flex items-center justify-between border-t border-hairline px-5 py-3">
-      <button type="button" :disabled="page <= 1 || isLoading" class="text-xs font-semibold disabled:opacity-40" @click="page--; loadRequests()">Previous</button>
-      <span class="text-xs text-muted">Page {{ page }} of {{ totalPages }}</span>
-      <button type="button" :disabled="page >= totalPages || isLoading" class="text-xs font-semibold disabled:opacity-40" @click="page++; loadRequests()">Next</button>
-    </div>
+    <PaginationBar
+      v-if="!error && meta.total > 0"
+      class="bg-canvas"
+      :meta="meta"
+      :disabled="isLoading"
+      @change-page="handlePageChange"
+      @change-per-page="handlePerPageChange"
+    />
   </section>
 </template>
