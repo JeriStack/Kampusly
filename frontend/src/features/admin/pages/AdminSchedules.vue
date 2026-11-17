@@ -3,12 +3,14 @@ import { onMounted, reactive, ref } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import ScheduleChangeRequestsPanel from '@/features/admin/components/ScheduleChangeRequestsPanel.vue'
 import AcademicLayout from '@/features/academic/components/AcademicLayout.vue'
+import PaginationBar from '@/features/academic/components/PaginationBar.vue'
 import { API_ENDPOINTS } from '@/services/api/endpoints'
 import { apiClient } from '@/services/api/client'
 import { ApiError } from '@/services/api/errors'
 import type {
   Instructor,
   PaginatedResponse,
+  PaginationMeta,
   Room,
   Schedule,
   Section,
@@ -20,6 +22,8 @@ const instructors = ref<Instructor[]>([])
 const rooms = ref<Room[]>([])
 const sections = ref<Section[]>([])
 const schedules = ref<Schedule[]>([])
+const scheduleMeta = ref<PaginationMeta>({ page: 1, per_page: 10, total: 0, total_pages: 0 })
+const isSchedulesLoading = ref(false)
 const isLoading = ref(true)
 const isSubmitting = ref(false)
 const error = ref<string | null>(null)
@@ -45,12 +49,48 @@ function collectionUrl(path: string): string {
   return `${path}?page=1&per_page=100&status=active`
 }
 
+async function fetchSchedules(page: number): Promise<void> {
+  const response = await apiClient.get<PaginatedResponse<Schedule>>(
+    `${API_ENDPOINTS.scheduling.schedules}?page=${page}&per_page=${scheduleMeta.value.per_page}`,
+  )
+
+  // The last entry on a page may have just been removed; step back to the last page.
+  if (response.data.length === 0 && response.meta.total_pages > 0 && page > response.meta.total_pages) {
+    await fetchSchedules(response.meta.total_pages)
+    return
+  }
+
+  schedules.value = response.data
+  scheduleMeta.value = { ...response.meta, page: response.meta.total === 0 ? 1 : response.meta.page }
+}
+
+/** Reloads the schedule table (e.g. after adding an entry) and reports failures on the page. */
+async function refreshSchedules(page = scheduleMeta.value.page): Promise<void> {
+  isSchedulesLoading.value = true
+  try {
+    await fetchSchedules(page)
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : 'Failed to load schedule entries.'
+  } finally {
+    isSchedulesLoading.value = false
+  }
+}
+
+function handleSchedulePageChange(page: number): void {
+  void refreshSchedules(page)
+}
+
+function handleSchedulePerPageChange(perPage: number): void {
+  scheduleMeta.value.per_page = perPage
+  void refreshSchedules(1)
+}
+
 async function loadData(): Promise<void> {
   isLoading.value = true
   error.value = null
 
   try {
-    const [subjectResponse, instructorResponse, roomResponse, sectionResponse, scheduleResponse] =
+    const [subjectResponse, instructorResponse, roomResponse, sectionResponse] =
       await Promise.all([
         apiClient.get<PaginatedResponse<Subject>>(collectionUrl(API_ENDPOINTS.academic.subjects)),
         apiClient.get<PaginatedResponse<Instructor>>(
@@ -58,16 +98,13 @@ async function loadData(): Promise<void> {
         ),
         apiClient.get<PaginatedResponse<Room>>(collectionUrl(API_ENDPOINTS.academic.rooms)),
         apiClient.get<PaginatedResponse<Section>>(collectionUrl(API_ENDPOINTS.academic.sections)),
-        apiClient.get<PaginatedResponse<Schedule>>(
-          `${API_ENDPOINTS.scheduling.schedules}?page=1&per_page=100`,
-        ),
+        fetchSchedules(scheduleMeta.value.page),
       ])
 
     subjects.value = subjectResponse.data
     instructors.value = instructorResponse.data
     rooms.value = roomResponse.data
     sections.value = sectionResponse.data
-    schedules.value = scheduleResponse.data
 
     if (sections.value.length > 0) {
       form.section_id = sections.value[0].id
@@ -152,8 +189,8 @@ async function saveSchedule(): Promise<void> {
         API_ENDPOINTS.scheduling.schedules,
         payload,
       )
-      schedules.value = [response.data, ...schedules.value]
       successMessage.value = `${response.data.subject_code ?? 'Class'} added as ${response.data.status}.`
+      await refreshSchedules()
     }
   } catch (err) {
     formError.value = err instanceof ApiError ? err.message : 'Failed to save the schedule entry.'
@@ -389,46 +426,46 @@ onMounted(async () => {
     </section>
 
     <section class="overflow-hidden rounded-2xl border border-hairline bg-surface shadow-sm">
-      <div class="border-b border-hairline px-5 py-4">
-        <h2 class="text-base font-bold text-ink">Schedule entries</h2>
-        <p class="mt-1 text-xs text-muted">Use the actions to edit, publish, republish, or cancel entries.</p>
+      <div class="border-b border-hairline px-6 py-5">
+        <h2 class="text-xl font-bold text-ink">Schedule entries</h2>
+        <p class="mt-1.5 text-sm text-muted">Use the actions to edit, publish, republish, or cancel entries.</p>
       </div>
 
-      <div v-if="isLoading" class="p-8 text-center text-sm text-muted" role="status">
+      <div v-if="isLoading" class="p-8 text-center text-base text-muted" role="status">
         Loading schedule entries…
       </div>
-      <div v-else-if="schedules.length === 0" class="p-10 text-center">
-        <p class="text-sm font-semibold text-ink">No schedule entries yet</p>
-        <p class="mt-1 text-xs text-muted">Use the form above to add the first class meeting.</p>
+      <div v-else-if="scheduleMeta.total === 0" class="p-10 text-center">
+        <p class="text-lg font-semibold text-ink">No schedule entries yet</p>
+        <p class="mt-1.5 text-sm text-muted">Use the form above to add the first class meeting.</p>
       </div>
-      <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[760px] text-left text-sm">
-          <thead class="bg-canvas text-[11px] uppercase tracking-wide text-muted">
+      <div v-else class="overflow-x-auto" :class="{ 'opacity-60': isSchedulesLoading }">
+        <table class="w-full min-w-[900px] text-left text-base">
+          <thead class="bg-canvas text-sm uppercase tracking-wide text-muted">
             <tr>
-              <th scope="col" class="px-5 py-3 font-semibold">Class</th>
-              <th scope="col" class="px-5 py-3 font-semibold">Section</th>
-              <th scope="col" class="px-5 py-3 font-semibold">Meeting</th>
-              <th scope="col" class="px-5 py-3 font-semibold">Room</th>
-              <th scope="col" class="px-5 py-3 font-semibold">Instructor</th>
-              <th scope="col" class="px-5 py-3 font-semibold">Status</th>
-              <th scope="col" class="px-5 py-3 text-right font-semibold">Actions</th>
+              <th scope="col" class="px-6 py-4 font-semibold">Class</th>
+              <th scope="col" class="px-6 py-4 font-semibold">Section</th>
+              <th scope="col" class="px-6 py-4 font-semibold">Meeting</th>
+              <th scope="col" class="px-6 py-4 font-semibold">Room</th>
+              <th scope="col" class="px-6 py-4 font-semibold">Instructor</th>
+              <th scope="col" class="px-6 py-4 font-semibold">Status</th>
+              <th scope="col" class="px-6 py-4 text-right font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-hairline">
             <tr v-for="schedule in schedules" :key="schedule.id">
-              <td class="px-5 py-3">
+              <td class="px-6 py-4">
                 <p class="font-semibold text-ink">{{ schedule.subject_code }}</p>
-                <p class="mt-0.5 text-xs text-muted">{{ schedule.subject_name }}</p>
+                <p class="mt-0.5 text-sm text-muted">{{ schedule.subject_name }}</p>
               </td>
-              <td class="px-5 py-3 text-ink">{{ schedule.section_name }}</td>
-              <td class="px-5 py-3 whitespace-nowrap text-ink">
+              <td class="px-6 py-4 text-ink">{{ schedule.section_name }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-ink">
                 {{ schedule.day_of_week }}, {{ schedule.start_time.slice(0, 5) }}–{{ schedule.end_time.slice(0, 5) }}
               </td>
-              <td class="px-5 py-3 text-ink">{{ schedule.room_code }}</td>
-              <td class="px-5 py-3 text-ink">{{ schedule.instructor_name }}</td>
-              <td class="px-5 py-3">
+              <td class="px-6 py-4 text-ink">{{ schedule.room_code }}</td>
+              <td class="px-6 py-4 text-ink">{{ schedule.instructor_name }}</td>
+              <td class="px-6 py-4">
                 <span
-                  class="inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold capitalize"
+                  class="inline-flex rounded-full border px-3 py-1 text-sm font-semibold capitalize"
                   :class="{
                     'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200': schedule.status === 'draft',
                     'border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-200': schedule.status === 'published',
@@ -438,11 +475,11 @@ onMounted(async () => {
                   {{ schedule.status }}
                 </span>
               </td>
-              <td class="px-5 py-3">
+              <td class="px-6 py-4">
                 <div class="flex justify-end gap-2">
                   <button
                     type="button"
-                    class="rounded-md border border-hairline px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy"
+                    class="rounded-md border border-hairline px-3 py-2 text-sm font-semibold text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy"
                     @click="openEditForm(schedule)"
                   >
                     Edit
@@ -450,7 +487,7 @@ onMounted(async () => {
                   <button
                     v-if="schedule.status !== 'published'"
                     type="button"
-                    class="rounded-md border border-teal-300 px-2.5 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:border-teal-800 dark:text-teal-200 dark:hover:bg-teal-950/40"
+                    class="rounded-md border border-teal-300 px-3 py-2 text-sm font-semibold text-teal-800 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:border-teal-800 dark:text-teal-200 dark:hover:bg-teal-950/40"
                     @click="changeScheduleStatus(schedule, 'published')"
                   >
                     {{ schedule.status === 'cancelled' ? 'Republish' : 'Publish' }}
@@ -458,7 +495,7 @@ onMounted(async () => {
                   <button
                     v-if="schedule.status === 'published'"
                     type="button"
-                    class="rounded-md border border-rose-300 px-2.5 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 dark:border-rose-800 dark:text-rose-200 dark:hover:bg-rose-950/40"
+                    class="rounded-md border border-rose-300 px-3 py-2 text-sm font-semibold text-rose-800 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 dark:border-rose-800 dark:text-rose-200 dark:hover:bg-rose-950/40"
                     @click="changeScheduleStatus(schedule, 'cancelled')"
                   >
                     Cancel
@@ -469,6 +506,14 @@ onMounted(async () => {
           </tbody>
         </table>
       </div>
+      <PaginationBar
+        v-if="!isLoading && scheduleMeta.total > 0"
+        class="bg-canvas"
+        :meta="scheduleMeta"
+        :disabled="isSchedulesLoading"
+        @change-page="handleSchedulePageChange"
+        @change-per-page="handleSchedulePerPageChange"
+      />
     </section>
   </AcademicLayout>
 </template>
