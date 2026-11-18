@@ -519,17 +519,16 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, password, student_number, first_name, last_name, program, section_id]
+              required: [email, student_number, first_name, last_name, program, section_id]
               properties:
                 email: { type: string, format: email }
-                password: { type: string, minLength: 8 }
                 student_number: { type: string }
                 first_name: { type: string }
                 last_name: { type: string }
                 program: { type: string }
                 section_id: { type: integer }
       responses:
-        '201': { description: Student created }
+        '201': { description: "Student created. data.generated_password holds the randomly generated permanent password and is returned only in this response." }
         '422':
           description: Validation error (e.g., duplicate student_number or email)
           content:
@@ -588,16 +587,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, password, employee_number, first_name, last_name, department]
+              required: [email, employee_number, first_name, last_name, department]
               properties:
                 email: { type: string, format: email }
-                password: { type: string, minLength: 8 }
                 employee_number: { type: string }
                 first_name: { type: string }
                 last_name: { type: string }
                 department: { type: string }
       responses:
-        '201': { description: Instructor created }
+        '201': { description: "Instructor created. data.generated_password holds the randomly generated permanent password and is returned only in this response." }
 
   /instructors/{id}:
     get:

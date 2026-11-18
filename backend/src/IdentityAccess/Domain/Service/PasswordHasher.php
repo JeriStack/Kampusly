@@ -34,6 +34,43 @@ final class PasswordHasher
     }
 
     /**
+     * Generate a random password that always satisfies the password policy.
+     *
+     * Uses a cryptographically secure source, avoids look-alike characters (I, O, l, 0, 1)
+     * and guarantees at least one letter, one number and one symbol.
+     */
+    public function generate(int $length = 12): string
+    {
+        $length = max(self::MIN_LENGTH, min($length, self::MAX_LENGTH));
+        $letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+        $digits = '23456789';
+        $symbols = '!@#$%&*?-_';
+        $all = $letters . $digits . $symbols;
+
+        $characters = [
+            $this->pick($letters),
+            $this->pick($digits),
+            $this->pick($symbols),
+        ];
+        while (count($characters) < $length) {
+            $characters[] = $this->pick($all);
+        }
+
+        // Fisher-Yates shuffle with a secure RNG so the guaranteed characters are not at fixed positions.
+        for ($i = count($characters) - 1; $i > 0; $i--) {
+            $j = random_int(0, $i);
+            [$characters[$i], $characters[$j]] = [$characters[$j], $characters[$i]];
+        }
+
+        return implode('', $characters);
+    }
+
+    private function pick(string $set): string
+    {
+        return $set[random_int(0, strlen($set) - 1)];
+    }
+
+    /**
      * Validate password complexity against organizational requirements.
      *
      * @return list<string> Validation error messages (empty if valid)

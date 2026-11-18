@@ -105,13 +105,36 @@ const accountForm = reactive({
   firstName: '',
   lastName: '',
   email: '',
-  password: '',
   studentNumber: '',
   program: '',
   sectionId: '',
   employeeNumber: '',
   department: '',
 })
+
+/** Shown once after an account is created; the password is never stored on the client. */
+interface CreatedCredentials {
+  name: string
+  email: string
+  password: string
+}
+const createdCredentials = ref<CreatedCredentials | null>(null)
+const isPasswordCopied = ref(false)
+
+function closeCredentials(): void {
+  createdCredentials.value = null
+  isPasswordCopied.value = false
+}
+
+async function copyGeneratedPassword(): Promise<void> {
+  if (!createdCredentials.value) return
+  try {
+    await navigator.clipboard.writeText(createdCredentials.value.password)
+    isPasswordCopied.value = true
+  } catch {
+    isPasswordCopied.value = false
+  }
+}
 
 const todayLabel = new Intl.DateTimeFormat('en', {
   weekday: 'long',
@@ -250,7 +273,6 @@ function resetAccountForm(): void {
   accountForm.firstName = ''
   accountForm.lastName = ''
   accountForm.email = ''
-  accountForm.password = ''
   accountForm.studentNumber = ''
   accountForm.program = ''
   accountForm.sectionId = ''
@@ -279,24 +301,34 @@ async function createAccount(): Promise<void> {
     first_name: accountForm.firstName.trim(),
     last_name: accountForm.lastName.trim(),
     email: accountForm.email.trim(),
-    password: accountForm.password,
     status: 'active',
   }
 
   try {
+    let response: { data: { generated_password?: string } }
     if (accountForm.role === 'student') {
-      await apiClient.post(API_ENDPOINTS.academic.students, {
+      response = await apiClient.post(API_ENDPOINTS.academic.students, {
         ...shared,
         student_number: accountForm.studentNumber.trim(),
         program: accountForm.program.trim(),
         section_id: Number(accountForm.sectionId),
       })
     } else {
-      await apiClient.post(API_ENDPOINTS.academic.instructors, {
+      response = await apiClient.post(API_ENDPOINTS.academic.instructors, {
         ...shared,
         employee_number: accountForm.employeeNumber.trim(),
         department: accountForm.department.trim(),
       })
+    }
+
+    const generatedPassword = response.data.generated_password
+    if (generatedPassword) {
+      createdCredentials.value = {
+        name: `${shared.first_name} ${shared.last_name}`,
+        email: shared.email,
+        password: generatedPassword,
+      }
+      isPasswordCopied.value = false
     }
 
     isCreateFormOpen.value = false
@@ -688,11 +720,9 @@ watch(accountRoleFilter, () => {
             <label for="account-email" class="mb-1 block text-sm font-medium text-ink">Email</label>
             <input id="account-email" v-model="accountForm.email" type="email" required maxlength="191" autocomplete="email" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
           </div>
-          <div>
-            <label for="account-password" class="mb-1 block text-sm font-medium text-ink">Temporary password</label>
-            <input id="account-password" v-model="accountForm.password" type="password" required minlength="8" maxlength="128" autocomplete="new-password" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
-            <p class="mt-1 text-xs text-muted">At least 8 characters and include a letter plus a number or symbol.</p>
-          </div>
+          <p class="rounded-lg bg-canvas p-3 text-sm text-muted">
+            A secure password is generated automatically. It is shown once after the account is created.
+          </p>
 
           <template v-if="accountForm.role === 'student'">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -747,6 +777,57 @@ watch(accountRoleFilter, () => {
             </button>
           </div>
         </form>
+      </section>
+    </div>
+
+    <div
+      v-if="createdCredentials"
+      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-4"
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="credentials-title"
+        class="my-8 w-full max-w-lg rounded-2xl border border-hairline bg-surface p-6 shadow-2xl"
+      >
+        <h2 id="credentials-title" class="text-xl font-bold text-ink">Account created</h2>
+        <p class="mt-1 text-sm text-muted">
+          Give these sign-in details to {{ createdCredentials.name }}. The password is permanent.
+        </p>
+
+        <dl class="mt-5 space-y-4">
+          <div>
+            <dt class="text-sm font-medium text-muted">Email</dt>
+            <dd class="mt-1 break-all font-semibold text-ink">{{ createdCredentials.email }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-muted">Password</dt>
+            <dd class="mt-1 flex items-center gap-2">
+              <code class="min-w-0 flex-1 select-all break-all rounded-lg bg-canvas px-3 py-2 font-mono text-base font-semibold text-ink">{{ createdCredentials.password }}</code>
+              <button
+                type="button"
+                class="shrink-0 rounded-lg border border-hairline px-3 py-2 text-sm font-semibold text-ink hover:bg-canvas"
+                @click="copyGeneratedPassword"
+              >
+                {{ isPasswordCopied ? 'Copied' : 'Copy' }}
+              </button>
+            </dd>
+          </div>
+        </dl>
+
+        <p class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200" role="alert">
+          Copy this password now. It will not be shown again.
+        </p>
+
+        <div class="mt-5 flex justify-end">
+          <button
+            type="button"
+            class="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-700"
+            @click="closeCredentials"
+          >
+            Done
+          </button>
+        </div>
       </section>
     </div>
   </div>
