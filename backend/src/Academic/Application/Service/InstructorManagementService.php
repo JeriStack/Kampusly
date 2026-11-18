@@ -87,7 +87,6 @@ final class InstructorManagementService
             ->requireString('last_name', 2, 80)
             ->requireEmail('email')
             ->requireString('department', 2, 120)
-            ->optionalString('password', 128)
             ->optionalIn('status', AccountStatus::values())
             ->validateOrThrow();
 
@@ -107,15 +106,9 @@ final class InstructorManagementService
             );
         }
 
-        $rawPassword = isset($payload['password']) && is_string($payload['password']) && $payload['password'] !== ''
-            ? (string) $payload['password']
-            : 'ChangeMe123!';
-
-        $passwordErrors = $this->passwordHasher->validatePolicy($rawPassword);
-        if ($passwordErrors !== []) {
-            throw new \Kampusly\Shared\Domain\Exception\ValidationException(['password' => $passwordErrors]);
-        }
-
+        // Every account gets its own randomly generated, permanent password. It is returned once in
+        // the create response so the administrator can hand it over, and only its hash is stored.
+        $rawPassword = $this->passwordHasher->generate();
         $passwordHash = $this->passwordHasher->hash($rawPassword);
         $fullName = trim((string) $payload['first_name'] . ' ' . (string) $payload['last_name']);
         $accountStatus = AccountStatus::from((string) ($payload['status'] ?? 'active'));
@@ -167,7 +160,7 @@ final class InstructorManagementService
             return $persistedInstructor;
         });
 
-        return $this->getInstructor((int) $createdInstructor->getId());
+        return $this->getInstructor((int) $createdInstructor->getId()) + ['generated_password' => $rawPassword];
     }
 
     /**

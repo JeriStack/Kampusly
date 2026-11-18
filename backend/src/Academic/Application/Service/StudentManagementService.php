@@ -92,7 +92,6 @@ final class StudentManagementService
             ->requireEmail('email')
             ->requireString('program', 2, 120)
             ->requireInt('section_id', 1)
-            ->optionalString('password', 128)
             ->optionalIn('status', AccountStatus::values())
             ->validateOrThrow();
 
@@ -118,15 +117,9 @@ final class StudentManagementService
             throw new ResourceNotFoundException('Assigned section does not exist.');
         }
 
-        $rawPassword = isset($payload['password']) && is_string($payload['password']) && $payload['password'] !== ''
-            ? (string) $payload['password']
-            : 'ChangeMe123!';
-
-        $passwordErrors = $this->passwordHasher->validatePolicy($rawPassword);
-        if ($passwordErrors !== []) {
-            throw new \Kampusly\Shared\Domain\Exception\ValidationException(['password' => $passwordErrors]);
-        }
-
+        // Every account gets its own randomly generated, permanent password. It is returned once in
+        // the create response so the administrator can hand it over, and only its hash is stored.
+        $rawPassword = $this->passwordHasher->generate();
         $passwordHash = $this->passwordHasher->hash($rawPassword);
         $fullName = trim((string) $payload['first_name'] . ' ' . (string) $payload['last_name']);
         $accountStatus = AccountStatus::from((string) ($payload['status'] ?? 'active'));
@@ -180,7 +173,7 @@ final class StudentManagementService
             return $persistedStudent;
         });
 
-        return $this->getStudent((int) $createdStudent->getId());
+        return $this->getStudent((int) $createdStudent->getId()) + ['generated_password' => $rawPassword];
     }
 
     /**
