@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { API_ENDPOINTS } from '@/services/api/endpoints'
 import { apiClient } from '@/services/api/client'
 import { ApiError } from '@/services/api/errors'
+import { toTinyText } from '@/utils/tinyText'
 import AppIcon from '@/components/common/AppIcon.vue'
 import PaginationBar from '@/features/academic/components/PaginationBar.vue'
 import type { PaginationMeta, Schedule } from '@/features/academic/types'
@@ -159,7 +160,36 @@ async function goToAnnouncementPage(page: number, perPage?: number): Promise<voi
   }
 }
 
+const messageField = ref<HTMLTextAreaElement | null>(null)
+const tinyUndo = ref<string | null>(null)
+
+/** Converts the selected text (or the whole message when nothing is selected) to tiny text. */
+async function applyTinyText(): Promise<void> {
+  const field = messageField.value
+  if (!field || !form.message) return
+  let start = field.selectionStart ?? 0
+  let end = field.selectionEnd ?? 0
+  if (start === end) {
+    start = 0
+    end = form.message.length
+  }
+  const converted = toTinyText(form.message.slice(start, end))
+  tinyUndo.value = form.message
+  form.message = form.message.slice(0, start) + converted + form.message.slice(end)
+  await nextTick()
+  field.focus()
+  field.setSelectionRange(start, start + converted.length)
+}
+
+function undoTinyText(): void {
+  if (tinyUndo.value === null) return
+  form.message = tinyUndo.value
+  tinyUndo.value = null
+  messageField.value?.focus()
+}
+
 function resetForm(): void {
+  tinyUndo.value = null
   editingAnnouncementId.value = null
   form.title = ''
   form.message = ''
@@ -169,6 +199,7 @@ function resetForm(): void {
 }
 
 function editAnnouncement(announcement: Announcement): void {
+  tinyUndo.value = null
   editingAnnouncementId.value = announcement.id
   form.title = announcement.title
   form.message = announcement.message
@@ -322,9 +353,41 @@ async function setAnnouncementArchived(announcement: Announcement, archive: bool
         <label class="text-xs font-semibold text-ink">Title
           <input v-model="form.title" required minlength="3" maxlength="180" class="mt-1 w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-xs" />
         </label>
-        <label class="text-xs font-semibold text-ink">Message
-          <textarea v-model="form.message" required minlength="3" maxlength="5000" rows="4" class="mt-1 w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-xs font-normal" />
-        </label>
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <label for="announcement-message" class="text-xs font-semibold text-ink">Message</label>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="rounded-md border border-hairline bg-canvas px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-surface disabled:opacity-50"
+                :disabled="!form.message"
+                title="Turns the selected text (or the whole message if nothing is selected) into tiny text"
+                @click="applyTinyText"
+              >
+                Tiny text: ᵗⁱⁿʸ
+              </button>
+              <button
+                v-if="tinyUndo !== null"
+                type="button"
+                class="text-[11px] font-semibold text-primary-700 hover:underline dark:text-primary-300"
+                @click="undoTinyText"
+              >
+                Undo
+              </button>
+            </div>
+          </div>
+          <textarea
+            id="announcement-message"
+            ref="messageField"
+            v-model="form.message"
+            required
+            minlength="3"
+            maxlength="5000"
+            rows="4"
+            class="mt-1 w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-xs font-normal"
+            @input="tinyUndo = null"
+          />
+        </div>
         <div class="flex flex-wrap gap-2">
           <button type="submit" :disabled="isSaving || !assignedClasses.length" class="rounded-lg bg-navy px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
             {{ isSaving ? 'Saving…' : editingAnnouncementId ? 'Save announcement' : 'Publish announcement' }}
