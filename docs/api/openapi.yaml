@@ -1117,7 +1117,14 @@ paths:
                 section_id: { type: integer }
                 subject_id: { type: integer }
                 title: { type: string, minLength: 3, maxLength: 180 }
-                message: { type: string, minLength: 3, maxLength: 5000 }
+                message:
+                  type: string
+                  minLength: 3
+                  maxLength: 5000
+                  description: >-
+                    Plain text with optional formatting tags: [b] [i] [u] [s], [size=8..96],
+                    [color=#rrggbb], [bg=#rrggbb], [left] [center] [right]. The text without tags must be
+                    at least 3 characters. Student notifications receive the message without tags.
       responses:
         '201': { description: Published announcement }
         '403': { description: Instructor is not assigned to the selected section and subject }

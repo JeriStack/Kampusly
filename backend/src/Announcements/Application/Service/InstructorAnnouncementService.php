@@ -9,6 +9,7 @@ use Kampusly\Academic\Domain\Entity\InstructorProfile;
 use Kampusly\Academic\Domain\Repository\StudentRepositoryInterface;
 use Kampusly\Announcements\Domain\Entity\Announcement;
 use Kampusly\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
+use Kampusly\Announcements\Domain\Service\AnnouncementMarkup;
 use Kampusly\Announcements\Domain\ValueObject\AnnouncementStatus;
 use Kampusly\IdentityAccess\Domain\Entity\User;
 use Kampusly\Notifications\Domain\Entity\Notification;
@@ -21,6 +22,7 @@ use Kampusly\Shared\Application\DTO\PaginatedResult;
 use Kampusly\Shared\Domain\Exception\ForbiddenException;
 use Kampusly\Shared\Domain\Exception\ConflictException;
 use Kampusly\Shared\Domain\Exception\ResourceNotFoundException;
+use Kampusly\Shared\Domain\Exception\ValidationException;
 use Kampusly\Shared\Domain\ValueObject\PaginationQuery;
 use Kampusly\Shared\Infrastructure\Http\RequestValidator;
 
@@ -266,6 +268,13 @@ final class InstructorAnnouncementService
             ->requireString('message', 3, 5000)
             ->validateOrThrow();
 
+        // Formatting tags do not count: the message must contain real text.
+        if (mb_strlen(AnnouncementMarkup::toPlainText((string) $payload['message'])) < 3) {
+            throw new ValidationException(
+                ['message' => ['The message must contain at least 3 characters of text, not only formatting.']]
+            );
+        }
+
         return [
             'section_id' => (int) $payload['section_id'],
             'subject_id' => (int) $payload['subject_id'],
@@ -315,7 +324,7 @@ final class InstructorAnnouncementService
                 null,
                 $studentUserId,
                 $isUpdate ? 'Class announcement updated' : $announcement->getTitle(),
-                $announcement->getMessage(),
+                AnnouncementMarkup::toPlainText($announcement->getMessage()),
                 NotificationType::Announcement,
                 'announcement',
                 $announcement->getId(),
