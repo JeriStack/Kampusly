@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<ruleset name="Kampusly Backend Coding Standard">
+    <description>PSR-12 coding standard for Kampusly native PHP REST API backend.</description>
+
+    <arg name="basepath" value="."/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <file>config</file>
+    <file>public</file>
+    <file>routes</file>
+    <file>src</file>
+    <file>bin</file>
+    <file>tests</file>
+
+    <rule ref="PSR12"/>
+</ruleset>
+
