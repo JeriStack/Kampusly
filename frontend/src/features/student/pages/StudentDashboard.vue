@@ -6,6 +6,7 @@ import KampuslyLogo from '@/components/common/KampuslyLogo.vue'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import NotificationCenter from '@/components/common/NotificationCenter.vue'
+import FormattedText from '@/components/common/FormattedText.vue'
 import { apiClient } from '@/services/api/client'
 import { API_ENDPOINTS } from '@/services/api/endpoints'
 import { ApiError } from '@/services/api/errors'
@@ -618,7 +619,7 @@ onBeforeUnmount(() => {
                   </button>
                   <div v-show="expandedAnnouncements.includes(announcement.id)" class="border-t border-hairline px-3 py-3">
                     <h3 class="text-sm font-semibold text-ink">{{ announcement.title }}</h3>
-                    <p class="mt-1 whitespace-pre-wrap text-xs text-muted">{{ announcement.message }}</p>
+                    <FormattedText :text="announcement.message" class="mt-1 text-xs text-muted" />
                     <div class="mt-3 flex items-center justify-between gap-3">
                       <time
                         v-if="announcement.published_at"
