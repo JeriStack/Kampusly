@@ -1,22 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { API_ENDPOINTS } from '@/services/api/endpoints'
 import { apiClient } from '@/services/api/client'
 import { ApiError } from '@/services/api/errors'
-import {
-  MAX_FONT_SIZE,
-  MIN_FONT_SIZE,
-  applyTag,
-  clampFontSize,
-  clearFormatting,
-  tinyTextRange,
-  toggleBullets,
-  toggleTag,
-  type EditResult,
-  type RichTag,
-} from '@/utils/richText'
+import { stripRichText } from '@/utils/richText'
 import AppIcon from '@/components/common/AppIcon.vue'
 import FormattedText from '@/components/common/FormattedText.vue'
+import RichTextEditor from '@/components/common/RichTextEditor.vue'
 import PaginationBar from '@/features/academic/components/PaginationBar.vue'
 import type { PaginationMeta, Schedule } from '@/features/academic/types'
 
@@ -172,86 +162,7 @@ async function goToAnnouncementPage(page: number, perPage?: number): Promise<voi
   }
 }
 
-const messageField = ref<HTMLTextAreaElement | null>(null)
-const formatUndo = ref<string | null>(null)
-
-const MESSAGE_MAX_LENGTH = 5000
-const formatError = ref<string | null>(null)
-const fontSize = ref(18)
-const textColor = ref('#dc2626')
-const highlightColor = ref('#fde047')
-const FONT_SIZE_PRESETS = [10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 96]
-const toolButtonClass =
-  'rounded-md border border-hairline bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-canvas disabled:opacity-50'
-
-/**
- * Runs a formatting edit on the selected text, or on the whole message when nothing is selected.
- * The previous text is kept so the change can be undone.
- */
-async function editMessage(edit: (text: string, start: number, end: number) => EditResult): Promise<void> {
-  const field = messageField.value
-  if (!field || !form.message) return
-  let start = field.selectionStart ?? 0
-  let end = field.selectionEnd ?? 0
-  if (start === end) {
-    start = 0
-    end = form.message.length
-  }
-
-  const result = edit(form.message, start, end)
-  if (result.text.length > MESSAGE_MAX_LENGTH) {
-    formatError.value = `Formatting would make the message longer than ${MESSAGE_MAX_LENGTH} characters.`
-    return
-  }
-  formatError.value = null
-  formatUndo.value = form.message
-  form.message = result.text
-  await nextTick()
-  field.focus()
-  field.setSelectionRange(result.selectionStart, result.selectionEnd)
-}
-
-function toggleFormat(tag: RichTag): Promise<void> {
-  return editMessage((text, start, end) => toggleTag(text, start, end, tag))
-}
-
-function applyFontSize(): Promise<void> {
-  const size = clampFontSize(Number(fontSize.value) || 16)
-  fontSize.value = size
-  return editMessage((text, start, end) => applyTag(text, start, end, 'size', size))
-}
-
-function applyColor(tag: 'color' | 'bg', value: string): Promise<void> {
-  return editMessage((text, start, end) => applyTag(text, start, end, tag, value))
-}
-
-function alignMessage(tag: 'left' | 'center' | 'right'): Promise<void> {
-  return editMessage((text, start, end) => applyTag(text, start, end, tag))
-}
-
-function applyTinyText(): Promise<void> {
-  return editMessage(tinyTextRange)
-}
-
-function applyBullets(): Promise<void> {
-  return editMessage(toggleBullets)
-}
-
-function removeFormatting(): Promise<void> {
-  return editMessage(clearFormatting)
-}
-
-function undoFormat(): void {
-  if (formatUndo.value === null) return
-  form.message = formatUndo.value
-  formatUndo.value = null
-  formatError.value = null
-  messageField.value?.focus()
-}
-
 function resetForm(): void {
-  formatUndo.value = null
-  formatError.value = null
   editingAnnouncementId.value = null
   form.title = ''
   form.message = ''
@@ -261,7 +172,6 @@ function resetForm(): void {
 }
 
 function editAnnouncement(announcement: Announcement): void {
-  formatUndo.value = null
   editingAnnouncementId.value = announcement.id
   form.title = announcement.title
   form.message = announcement.message
@@ -274,6 +184,14 @@ async function saveAnnouncement(): Promise<void> {
   const [sectionId, subjectId] = form.target.split(':').map(Number)
   if (!sectionId || !subjectId) {
     error.value = 'Select one of your assigned sections and subjects.'
+    return
+  }
+  if (stripRichText(form.message).trim().length < 3) {
+    error.value = 'The message must contain at least 3 characters of text.'
+    return
+  }
+  if (form.message.trim().length > 5000) {
+    error.value = 'The message is longer than 5000 characters. Shorten the text or remove some formatting.'
     return
   }
   isSaving.value = true
@@ -415,88 +333,7 @@ async function setAnnouncementArchived(announcement: Announcement, archive: bool
         <label class="text-xs font-semibold text-ink">Title
           <input v-model="form.title" required minlength="3" maxlength="180" class="mt-1 w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-xs" />
         </label>
-        <div>
-          <label for="announcement-message" class="text-xs font-semibold text-ink">Message</label>
-
-          <div
-            class="mt-1 flex flex-wrap items-center gap-1.5 rounded-t-lg border border-b-0 border-hairline bg-canvas p-2"
-            role="toolbar"
-            aria-label="Message formatting. Applies to the selected text, or the whole message if nothing is selected."
-          >
-            <button type="button" :class="toolButtonClass" :disabled="!form.message" title="Bold" @click="toggleFormat('b')"><strong>B</strong></button>
-            <button type="button" :class="toolButtonClass" :disabled="!form.message" title="Italic" @click="toggleFormat('i')"><em>I</em></button>
-            <button type="button" :class="toolButtonClass" :disabled="!form.message" title="Underline" @click="toggleFormat('u')"><u>U</u></button>
-            <button type="button" :class="toolButtonClass" :disabled="!form.message" title="Strikethrough" @click="toggleFormat('s')"><s>S</s></button>
-
-            <span class="mx-1 h-5 w-px bg-hairline" aria-hidden="true" />
-
-            <label class="flex items-center gap-1 text-[11px] font-semibold text-muted">
-              Size
-              <input
-                v-model.number="fontSize"
-                type="number"
-                :min="MIN_FONT_SIZE"
-                :max="MAX_FONT_SIZE"
-                list="announcement-font-sizes"
-                class="w-16 rounded-md border border-hairline bg-surface px-1.5 py-1 text-[11px] text-ink"
-                aria-label="Font size in pixels"
-                @keydown.enter.prevent="applyFontSize"
-              />
-              <span>px</span>
-            </label>
-            <datalist id="announcement-font-sizes">
-              <option v-for="size in FONT_SIZE_PRESETS" :key="size" :value="size" />
-            </datalist>
-            <button type="button" :class="toolButtonClass" :disabled="!form.message" title="Apply this font size" @click="applyFontSize">Set size</button>
-
-            <span class="mx-1 h-5 w-px bg-hairline" aria-hidden="true" />
-
-            <input v-model="textColor" type="color" class="h-7 w-8 cursor-pointer rounded border border-hairline bg-surface p-0.5" aria-label="Text color" />
-            <button type="button" :class="toolButtonClass" :disabled="!form.message" title="Apply text color" @click="applyColor('color', textColor)">Text color</button>
-            <input v-model="highlightColor" type="color" class="h-7 w-8 cursor-pointer rounded border border-hairline bg-surface p-0.5" aria-label="Highlight color" />
-            <button type="button" :class="toolButtonClass" :disabled="!form.message" title="Apply highlight" @click="applyColor('bg', highlightColor)">Highlight</button>
-
-            <span class="mx-1 h-5 w-px bg-hairline" aria-hidden="true" />
-
-            <button type="button" :class="toolButtonClass" :disabled="!form.message" title="Align left" @click="alignMessage('left')">Left</button>
-            <button type="button" :class="toolButtonClass" :disabled="!form.message" title="Center" @click="alignMessage('center')">Center</button>
-            <button type="button" :class="toolButtonClass" :disabled="!form.message" title="Align right" @click="alignMessage('right')">Right</button>
-
-            <span class="mx-1 h-5 w-px bg-hairline" aria-hidden="true" />
-
-            <button type="button" :class="toolButtonClass" :disabled="!form.message" title="Add or remove bullets on the selected lines" @click="applyBullets">• List</button>
-            <button type="button" :class="toolButtonClass" :disabled="!form.message" title="Turns text into tiny text" @click="applyTinyText">ᵗⁱⁿʸ</button>
-            <button type="button" :class="toolButtonClass" :disabled="!form.message" title="Remove all formatting" @click="removeFormatting">Clear</button>
-            <button
-              v-if="formatUndo !== null"
-              type="button"
-              class="text-[11px] font-semibold text-primary-700 hover:underline dark:text-primary-300"
-              @click="undoFormat"
-            >
-              Undo
-            </button>
-          </div>
-          <textarea
-            id="announcement-message"
-            ref="messageField"
-            v-model="form.message"
-            required
-            minlength="3"
-            maxlength="5000"
-            rows="5"
-            class="w-full rounded-b-lg border border-hairline bg-canvas px-3 py-2 text-xs font-normal"
-            @input="formatUndo = null"
-          />
-          <p v-if="formatError" class="mt-1 text-[11px] text-rose-700" role="alert">{{ formatError }}</p>
-          <p class="mt-1 text-[11px] text-muted">
-            Select text, then use the toolbar. With nothing selected, the whole message is changed.
-          </p>
-
-          <div v-if="form.message" class="mt-2 rounded-lg border border-dashed border-hairline bg-surface p-3">
-            <p class="text-[10px] font-semibold uppercase tracking-wide text-muted">Preview</p>
-            <FormattedText :text="form.message" class="mt-1 text-xs text-ink" />
-          </div>
-        </div>
+        <RichTextEditor v-model="form.message" />
         <div class="flex flex-wrap gap-2">
           <button type="submit" :disabled="isSaving || !assignedClasses.length" class="rounded-lg bg-navy px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
             {{ isSaving ? 'Saving…' : editingAnnouncementId ? 'Save announcement' : 'Publish announcement' }}

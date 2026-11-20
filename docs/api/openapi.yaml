@@ -1123,7 +1123,8 @@ paths:
                   maxLength: 5000
                   description: >-
                     Plain text with optional formatting tags: [b] [i] [u] [s], [size=8..96],
-                    [color=#rrggbb], [bg=#rrggbb], [left] [center] [right]. The text without tags must be
+                    [color=#rrggbb], [bg=#rrggbb], [left] [center] [right]; a backslash escapes a literal
+                    "[" or "\" (written \[ and \\). The text without tags must be
                     at least 3 characters. Student notifications receive the message without tags.
       responses:
         '201': { description: Published announcement }
