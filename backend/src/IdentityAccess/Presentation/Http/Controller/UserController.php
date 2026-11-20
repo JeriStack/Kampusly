@@ -110,5 +110,24 @@ final class UserController
             $request->getRequestId()
         );
     }
+
+    /**
+     * @param array<string, string> $params
+     */
+    public function resetPassword(HttpRequest $request, array $params): JsonResponse
+    {
+        $user = $request->getAttribute('user');
+        if (!$user instanceof User) {
+            throw new UnauthorizedException();
+        }
+
+        $result = $this->userService->resetUserPassword(
+            (int) ($params['id'] ?? 0),
+            $user,
+            $request->getRequestId()
+        );
+
+        return new JsonResponse(['data' => $result], 200, [], $request->getRequestId());
+    }
 }
 

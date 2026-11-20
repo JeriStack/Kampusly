@@ -146,6 +146,12 @@ return static function (Router $router, Container $container): void {
         return $userController->updateStatus($request, $params);
     }, [$authenticate, $authorizeRoles(['admin'])]);
 
+    $router->post('/users/{id}/reset-password', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+        /** @var UserController $userController */
+        $userController = $container->get(UserController::class);
+        return $userController->resetPassword($request, $params);
+    }, [$authenticate, $authorizeRoles(['admin'])]);
+
     // Admin dashboard summary
     $router->get('/admin/dashboard-summary', static function (HttpRequest $request) use ($container): JsonResponse {
         /** @var AdminDashboardController $adminController */
