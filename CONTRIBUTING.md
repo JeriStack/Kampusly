@@ -1,6 +1,10 @@
 # Contributing to Kampusly
 
+<div align="justify">
+
 Thank you for contributing to **Kampusly** ([github.com/JeriStack/Kampusly](https://github.com/JeriStack/Kampusly)). This guide covers our branching rules, commit format, pull request workflow, and quality gates.
+
+</div>
 
 > **Community Standards & Security**
 > - All contributors are expected to follow our [Code of Conduct](./CODE_OF_CONDUCT.md).
@@ -17,13 +21,21 @@ Thank you for contributing to **Kampusly** ([github.com/JeriStack/Kampusly](http
 
 ## 1. Local Setup
 
+<div align="justify">
+
 Follow [`docs/runbooks/local-setup.md`](./docs/runbooks/local-setup.md) to configure `.env` files, start Docker Compose, and apply database migrations.
+
+</div>
 
 ---
 
 ## 2. Branching Strategy
 
+<div align="justify">
+
 Kampusly uses short-lived branches merged via Pull Requests. Direct pushes to `main` are prohibited.
+
+</div>
 
 | Branch Pattern | Purpose | Target |
 | :--- | :--- | :--- |
@@ -96,9 +108,18 @@ docs(database): align schema design spec with migrations 000600-000800
 
 ## 5. Required CI Checks & Branch Protection
 
+<div align="justify">
+
 `main` requires all status checks to pass and all review conversations to be resolved before merging:
+
+</div>
+
 - `Vue 3 + TypeScript Quality & Build` (`.github/workflows/frontend-ci.yml`)
 - `Native PHP 8.3 Quality, Tests & OpenAPI Contract` (`.github/workflows/backend-ci.yml`)
 - `Secret Hygiene, Docker Compose & Nginx Validation` (`.github/workflows/repo-hygiene.yml`)
 
+<div align="justify">
+
 Never bypass failing checks. If a merge conflict occurs, rebase onto `origin/main`, resolve conflicts file-by-file, re-run the checks above, and push with `git push --force-with-lease`.
+
+</div>

@@ -1,6 +1,10 @@
 # Kampusly Documentation
 
-Central index for all Kampusly project documentation, organized by category.
+<div align="justify">
+
+Central index for all Kampusly project documentation, organized by category so contributors and maintainers can quickly locate requirements, architecture diagrams, design specifications, database schemas, API contracts, and operational runbooks.
+
+</div>
 
 ---
 
@@ -61,7 +65,11 @@ Central index for all Kampusly project documentation, organized by category.
 
 ## Repository Root Guides
 
-These standard files remain at the repository root for GitHub auto-discovery:
+<div align="justify">
+
+These standard governance and onboarding files remain at the repository root for GitHub auto-discovery:
+
+</div>
 - [README.md](../README.md) — Project overview, stack, quick start, and commands.
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — Branching strategy, commit conventions, and PR workflow.
 - [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) — Community standards and enforcement guidelines.
