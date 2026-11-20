@@ -66,20 +66,31 @@ async function handleLogout(): Promise<void> {
       </div>
 
       <!-- Navigation Tabs -->
-      <nav class="mx-auto flex max-w-7xl gap-1 overflow-x-auto border-t border-hairline/60 px-4 sm:px-6 lg:px-8" aria-label="Admin navigation">
+      <nav
+        class="mx-auto flex max-w-7xl items-center gap-1.5 overflow-x-auto border-t border-hairline/60 px-4 py-2 sm:px-6 lg:px-8"
+        aria-label="Admin navigation"
+      >
         <RouterLink
           v-for="tab in tabs"
           :key="tab.path"
           :to="tab.path"
           :aria-current="route.path.startsWith(tab.path) ? 'page' : undefined"
-          class="relative flex items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-xs font-semibold transition-colors whitespace-nowrap"
-          :class="[
+          class="group inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
+          :class="
             route.path.startsWith(tab.path)
-              ? 'border-action text-navy dark:border-sky-400 dark:text-sky-300'
-              : 'border-transparent text-muted hover:border-hairline hover:text-ink',
-          ]"
+              ? 'bg-action/10 text-navy ring-1 ring-inset ring-action/20 shadow-sm dark:bg-sky-500/15 dark:text-sky-200 dark:ring-sky-400/30'
+              : 'text-muted hover:bg-canvas hover:text-ink'
+          "
         >
-          <AppIcon :name="tab.icon" class="h-4 w-4" />
+          <AppIcon
+            :name="tab.icon"
+            class="h-4 w-4 transition-colors"
+            :class="
+              route.path.startsWith(tab.path)
+                ? 'text-action dark:text-sky-300'
+                : 'text-subtle group-hover:text-ink'
+            "
+          />
           <span>{{ tab.name }}</span>
         </RouterLink>
       </nav>
