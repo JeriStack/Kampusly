@@ -2,7 +2,7 @@
 
 **Project:** Kampusly: A Web-Based Class Schedule Management and Notification System  
 **Tagline:** *“Your Campus. Your Classes. Your Time.”*  
-**Document:** `docs/phase-2/phase-2-design-system.md`  
+**Document:** `docs/design/design-system.md`  
 **Version:** 1.0 • 28 October 2026  
 
 ---

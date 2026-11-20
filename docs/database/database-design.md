@@ -1,7 +1,7 @@
 # Kampusly — Phase 2: Database Design and ER Specification
 
 **Project:** Kampusly: A Web-Based Class Schedule Management and Notification System  
-**Document:** `docs/phase-2/phase-2-database-design.md`  
+**Document:** `docs/database/database-design.md`  
 **Database Engine:** MySQL 8.4 (`InnoDB`, `utf8mb4`, `utf8mb4_unicode_ci`)  
 **Version:** 1.0 • 28 October 2026  
 

@@ -1,7 +1,7 @@
 # Kampusly — Phase 2: UML Diagrams Specification
 
 **Project:** Kampusly: A Web-Based Class Schedule Management and Notification System  
-**Document:** `docs/phase-2/phase-2-uml-diagrams.md`  
+**Document:** `docs/architecture/uml-diagrams.md`  
 **Version:** 1.0 • 28 October 2026  
 
 All diagrams below are authored in version-controlled Mermaid syntax and verified against the approved Phase 1 requirements and Phase 2 API/database specifications.

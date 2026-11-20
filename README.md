@@ -66,8 +66,7 @@ kampusly/
 │   ├── database/
 │   │   ├── migrations/        # Versioned SQL migrations (0001_..._schema_migrations.sql)
 │   │   ├── seeders/           # Optional development data seeders (none enabled by default)
-│   │   ├── factories/         # Test fixture factories
-│   │   └── README.md          # Database naming & migration conventions
+│   │   └── factories/         # Test fixture factories
 │   ├── public/
 │   │   └── index.php          # Single HTTP entry point (Nginx document root)
 │   ├── routes/
@@ -99,8 +98,12 @@ kampusly/
 │       ├── conf.d/default.conf
 │       └── snippets/security-headers.conf
 ├── docs/
-│   ├── requirements/          # Phase 1 functional, non-functional & acceptance specs
-│   ├── phase-2/               # Phase 2 UI/UX, UML, DB schema, OpenAPI 3.1, Architecture
+│   ├── README.md              # Central documentation index
+│   ├── api/                   # OpenAPI 3.1 contract (openapi.yaml)
+│   ├── architecture/          # System architecture, UML diagrams, and ADRs
+│   ├── database/              # Relational database design, migrations & seeding guide
+│   ├── design/                # Design system tokens and UI/UX specifications
+│   ├── requirements/          # Functional, non-functional, acceptance & traceability specs
 │   └── runbooks/              # Local setup & operational runbooks
 ├── .github/
 │   ├── workflows/             # Frontend CI, Backend CI, and Repo Hygiene workflows
@@ -180,7 +183,7 @@ composer --working-dir=backend migrate -- --rollback
 composer --working-dir=backend seed
 ```
 
-See [`backend/database/README.md`](./backend/database/README.md) for full table schemas, foreign key rules, PDO configuration, and seeding policies.
+See [`docs/database/migrations-and-seeding.md`](./docs/database/migrations-and-seeding.md) for full table schemas, foreign key rules, PDO configuration, and seeding policies.
 
 ---
 
@@ -247,7 +250,11 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for full branching, review, conflict 
 
 ## 12. Project Documentation Index
 
-- **Phase 1 — Foundation:** [`docs/requirements/`](./docs/requirements) (`functional-requirements.md`, `non-functional-requirements.md`, `acceptance-criteria.md`)
-- **Phase 2 — UI/UX & System Design:** [`docs/phase-2/`](./docs/phase-2) (`phase-2-design-system.md`, `phase-2-ui-ux-specification.md`, `phase-2-uml-diagrams.md`, `phase-2-database-design.md`, `phase-2-api-contract.yaml`, `phase-2-system-architecture.md`, `phase-2-traceability-matrix.md`)
-- **Phase 3 — Runbooks & Contribution:** [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`docs/runbooks/local-setup.md`](./docs/runbooks/local-setup.md), [`backend/database/README.md`](./backend/database/README.md)
-- **Phase 4 — Database & Backend Foundation:** [`backend/database/README.md`](./backend/database/README.md), [`docs/api/openapi.yaml`](./docs/api/openapi.yaml) (OpenAPI 3.1 contract and Swagger UI at `/api/v1/docs`)
+See [`docs/README.md`](./docs/README.md) for the full categorized index:
+
+- **Requirements & Traceability:** [`docs/requirements/`](./docs/requirements) (`functional-requirements.md`, `non-functional-requirements.md`, `acceptance-criteria.md`, `traceability-matrix.md`)
+- **Architecture:** [`docs/architecture/`](./docs/architecture) (`system-architecture.md`, `uml-diagrams.md`)
+- **Design & UI/UX:** [`docs/design/`](./docs/design) (`design-system.md`, `ui-ux-specification.md`)
+- **Database:** [`docs/database/`](./docs/database) (`database-design.md`, `migrations-and-seeding.md`)
+- **API Contract:** [`docs/api/openapi.yaml`](./docs/api/openapi.yaml) (OpenAPI 3.1 contract and Swagger UI at `/api/v1/docs`)
+- **Runbooks & Contribution:** [`docs/runbooks/local-setup.md`](./docs/runbooks/local-setup.md), [`CONTRIBUTING.md`](./CONTRIBUTING.md)

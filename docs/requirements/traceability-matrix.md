@@ -1,7 +1,7 @@
 # Kampusly — Phase 2: Design-to-Development Traceability Matrix
 
 **Project:** Kampusly: A Web-Based Class Schedule Management and Notification System  
-**Document:** `docs/phase-2/phase-2-traceability-matrix.md`  
+**Document:** `docs/requirements/traceability-matrix.md`  
 **Version:** 1.0 • 28 October 2026  
 
 ---

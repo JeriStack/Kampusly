@@ -1,7 +1,7 @@
 # Kampusly — Phase 2: System Architecture Specification
 
 **Project:** Kampusly: A Web-Based Class Schedule Management and Notification System  
-**Document:** `docs/phase-2/phase-2-system-architecture.md`  
+**Document:** `docs/architecture/system-architecture.md`  
 **Version:** 1.0 • 28 October 2026  
 
 ---
