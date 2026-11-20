@@ -13,33 +13,43 @@ backend/database/
 │   ├── 2026_11_01_000300_create_schedules_table.sql
 │   ├── 2026_11_01_000400_create_announcements_and_notices_tables.sql
 │   ├── 2026_11_01_000500_create_notifications_tables.sql
+│   ├── 2026_11_09_000600_add_schedule_change_requests_and_term_dates.sql
+│   ├── 2026_11_12_000700_create_student_announcement_archives.sql
+│   ├── 2026_11_12_000800_add_announcements_archived_at.sql
 │   └── rollbacks/
 │       ├── 2026_11_01_000100_create_users_and_auth_tables.down.sql
 │       ├── 2026_11_01_000200_create_academic_reference_tables.down.sql
 │       ├── 2026_11_01_000300_create_schedules_table.down.sql
 │       ├── 2026_11_01_000400_create_announcements_and_notices_tables.down.sql
-│       └── 2026_11_01_000500_create_notifications_tables.down.sql
+│       ├── 2026_11_01_000500_create_notifications_tables.down.sql
+│       ├── 2026_11_09_000600_add_schedule_change_requests_and_term_dates.down.sql
+│       ├── 2026_11_12_000700_create_student_announcement_archives.down.sql
+│       └── 2026_11_12_000800_add_announcements_archived_at.down.sql
 ├── seeders/
 │   └── (optional development seeders; none are registered by default)
-└── README.md
+└── factories/
+    └── (test fixture factories)
 ```
 
-## Schema Inventory (14 Approved Tables)
+## Schema Inventory (16 Application Tables + `schema_migrations`)
 
 1. `users`: Core identity, roles (`admin`, `instructor`, `student`), email uniqueness, bcrypt password hash.
 2. `password_reset_tokens`: 64-character SHA-256 tokens with expiry and single-use audit timestamps.
 3. `audit_logs`: Administrative actions, entity references, JSON metadata, request correlation ID.
-4. `sections`: Program, year level (1-6), term uniqueness `uq_sections_term_name (school_year, semester, section_name)`.
+4. `sections`: Program, year level (1-6), `term_start_date`, term uniqueness `uq_sections_term_name (school_year, semester, section_name)`.
 5. `subjects`: Subject code, name, description, unit range constraint (1-12 units).
 6. `rooms`: Unique room codes/names, building, positive capacity constraint.
 7. `students`: References user and section; unique student number.
 8. `instructors`: References user; unique employee number, department.
 9. `schedules`: Composite conflict-detection indexes, term/day, time order constraint `chk_schedules_time_order (start_time < end_time)`.
-10. `announcements`: Author, instructor, subject, section scoping, status (`draft`, `published`, `archived`, `withdrawn`).
-11. `announcement_attachments`: Safe storage keys, MIME type, size limit constraint ($\le 10\text{ MB}$).
-12. `class_notices`: Notice types (`unavailable`, `cancelled`, `rescheduled`, `room_change`), approval review workflow.
-13. `notifications`: In-app notification delivery, unique deduplication key to prevent duplicate alerts.
-14. `notification_deliveries`: Email delivery status tracking, attempt counters, and error logs.
+10. `schedule_change_requests`: Student-submitted schedule change requests with stored generated column `pending_schedule_id` enforcing at most one pending request per `(student_id, schedule_id)` and `chk_schedule_change_request_time_pair`.
+11. `announcements`: Author, instructor, subject, section scoping, status (`draft`, `published`, `archived`, `withdrawn`), `published_at`, and `archived_at` (7-day retention window).
+12. `announcement_attachments`: Safe storage keys, MIME type, size limit constraint (`<= 10 MB`).
+13. `student_announcement_archives`: Per-student announcement archive table with unique `(student_id, announcement_id)` pair and 7-day retention index on `archived_at`.
+14. `class_notices`: Notice types (`unavailable`, `cancelled`, `rescheduled`, `room_change`), approval review workflow.
+15. `notifications`: In-app notification delivery, unique deduplication key to prevent duplicate alerts.
+16. `notification_deliveries`: Email delivery status tracking, attempt counters, and error logs.
+17. `schema_migrations`: Forward-only migration ledger storing `version`, `description`, SHA-256 `checksum`, `executed_at`, and `execution_time_ms`.
 
 ## Naming Conventions & Encoding
 

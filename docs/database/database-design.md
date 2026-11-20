@@ -1,9 +1,9 @@
-# Kampusly — Phase 2: Database Design and ER Specification
+# Kampusly — Finalized Database Design and ER Specification
 
 **Project:** Kampusly: A Web-Based Class Schedule Management and Notification System  
 **Document:** `docs/database/database-design.md`  
 **Database Engine:** MySQL 8.4 (`InnoDB`, `utf8mb4`, `utf8mb4_unicode_ci`)  
-**Version:** 1.0 • 28 October 2026  
+**Version:** 2.0 (Finalized & Aligned with Migrations `000100`–`000800`) • 21 November 2026  
 
 ---
 
@@ -15,12 +15,14 @@ At the conceptual domain level (matching Diagram 4 and Diagram 6 of the system b
 - **Academic Reference Data:** `Section`, `Subject`, `Room`
 - **Core Scheduling & Communication:** `Schedule`, `Announcement`, `ClassNotice`, `Notification`
 
-### 1.2 Physical Schema Extensions (Justified by Approved Phase 1 Requirements)
-To satisfy the approved security, reliability, and attachment requirements (`FR-AUTH-05`–`06`, `FR-ANN-03`, `FR-NOTIF-06`, `FR-ADM-02`, `NFR-SEC-02`, `NFR-SEC-07`), the physical MySQL 8.4 schema adds **4 focused supporting tables** (for a total of **14 tables**):
+### 1.2 Physical Schema Extensions
+To satisfy the approved security, reliability, attachment, schedule-change workflow, and archive retention requirements (`FR-AUTH-05`–`06`, `FR-ANN-03`, `FR-NOTIF-06`, `FR-ADM-02`, `NFR-SEC-02`, `NFR-SEC-07`), the physical MySQL 8.4 schema adds **6 focused supporting tables** (for a total of **16 application tables** + **`schema_migrations`** = **17 tables**):
 1. **`password_reset_tokens`:** Stores single-use SHA-256 token hashes (`token_hash`), expiration (`expires_at`), and consumption (`used_at`) timestamps (`FR-AUTH-05`, `FR-AUTH-06`).
 2. **`announcement_attachments`:** Stores metadata and private storage keys (`storage_key`) for files attached to announcements outside the public web root (`FR-ANN-03`, `NFR-SEC-07`).
 3. **`audit_logs`:** Records security-sensitive and administrative mutations (`actor_user_id`, `action`, `entity_type`, `entity_id`, `metadata_json`, `request_id`) (`FR-ADM-02`).
 4. **`notification_deliveries`:** Tracks external channel delivery state (`email` via PHPMailer/SMTP, `attempt_count`, `status`, `last_error`) independently of the in-app `notifications` record (`FR-NOTIF-06`, `NFR-REL-03`).
+5. **`schedule_change_requests`:** Tracks student-submitted schedule-change requests with a stored generated column (`pending_schedule_id`) enforcing at most one pending request per `(student_id, schedule_id)` (`migration 000600`).
+6. **`student_announcement_archives`:** Tracks per-student announcement archives with a 7-day retention window (`migration 000700`), complementing instructor-side `announcements.archived_at` (`migration 000800`).
 
 > **Harmonization Note (`DEC-06`):** The physical schema reconciles all field names between Diagram 6 (ERD) and System Development Plan Section 10 (e.g., `users.full_name` alongside `first_name`/`last_name` on profiles; `announcements` supporting `author_user_id`, `instructor_id`, `subject_id`, `section_id`, and `message`).
 
@@ -52,12 +54,18 @@ erDiagram
     ROOMS ||--o{ CLASS_NOTICES : "new room for (0..*)"
 
     SCHEDULES ||--o{ CLASS_NOTICES : "relates to (0..*)"
+    SCHEDULES ||--o{ SCHEDULE_CHANGE_REQUESTS : "requested for (0..*)"
+    STUDENTS ||--o{ SCHEDULE_CHANGE_REQUESTS : "submits (0..*)"
+    ROOMS ||--o{ SCHEDULE_CHANGE_REQUESTS : "preferred room for (0..*)"
+    USERS ||--o{ SCHEDULE_CHANGE_REQUESTS : "reviews (0..*)"
     ANNOUNCEMENTS ||--o{ ANNOUNCEMENT_ATTACHMENTS : "has (0..*)"
+    ANNOUNCEMENTS ||--o{ STUDENT_ANNOUNCEMENT_ARCHIVES : "archived by (0..*)"
+    STUDENTS ||--o{ STUDENT_ANNOUNCEMENT_ARCHIVES : "archives (0..*)"
     NOTIFICATIONS ||--o{ NOTIFICATION_DELIVERIES : "delivered via (0..*)"
 
     USERS {
         bigint_unsigned id PK
-        varchar_150 full_name
+        varchar_120 full_name
         varchar_191 email UK
         varchar_255 password_hash
         enum role "admin, instructor, student"
@@ -70,11 +78,12 @@ erDiagram
 
     SECTIONS {
         bigint_unsigned id PK
-        varchar_80 section_name
+        varchar_60 section_name
         varchar_120 program
         tinyint_unsigned year_level
         varchar_20 school_year
         enum semester "1st, 2nd, Summer"
+        date term_start_date
         enum status "active, inactive"
         datetime created_at
         datetime updated_at
@@ -84,7 +93,7 @@ erDiagram
         bigint_unsigned id PK
         bigint_unsigned user_id FK, UK
         bigint_unsigned section_id FK
-        varchar_50 student_number UK
+        varchar_32 student_number UK
         varchar_80 first_name
         varchar_80 last_name
         varchar_120 program
@@ -95,7 +104,7 @@ erDiagram
     INSTRUCTORS {
         bigint_unsigned id PK
         bigint_unsigned user_id FK, UK
-        varchar_50 employee_number UK
+        varchar_32 employee_number UK
         varchar_80 first_name
         varchar_80 last_name
         varchar_120 department
@@ -105,7 +114,7 @@ erDiagram
 
     SUBJECTS {
         bigint_unsigned id PK
-        varchar_40 subject_code UK
+        varchar_30 subject_code UK
         varchar_150 subject_name
         text description
         tinyint_unsigned units
@@ -116,7 +125,7 @@ erDiagram
 
     ROOMS {
         bigint_unsigned id PK
-        varchar_40 room_code UK
+        varchar_30 room_code UK
         varchar_100 room_name UK
         varchar_100 building
         smallint_unsigned capacity
@@ -147,10 +156,40 @@ erDiagram
         bigint_unsigned instructor_id FK
         bigint_unsigned subject_id FK
         bigint_unsigned section_id FK
-        varchar_150 title
+        varchar_180 title
         text message
         enum status "draft, published, archived, withdrawn"
         datetime published_at
+        datetime archived_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    STUDENT_ANNOUNCEMENT_ARCHIVES {
+        bigint_unsigned id PK
+        bigint_unsigned student_id FK
+        bigint_unsigned announcement_id FK
+        datetime archived_at
+    }
+
+    SCHEDULE_CHANGE_REQUESTS {
+        bigint_unsigned id PK
+        bigint_unsigned student_id FK
+        bigint_unsigned schedule_id FK
+        enum current_day_of_week "Monday..Saturday"
+        time current_start_time
+        time current_end_time
+        varchar_30 current_room_code
+        enum preferred_day_of_week "Monday..Saturday"
+        time preferred_start_time
+        time preferred_end_time
+        bigint_unsigned preferred_room_id FK
+        varchar_1000 reason
+        enum status "pending, approved, rejected"
+        bigint_unsigned pending_schedule_id "STORED GENERATED"
+        bigint_unsigned reviewed_by_user_id FK
+        varchar_1000 review_note
+        datetime reviewed_at
         datetime created_at
         datetime updated_at
     }
@@ -263,8 +302,9 @@ Represents academic class groups/cohorts (e.g., `BSCS 2A`).
 | `program` | `VARCHAR(120)` | `NO` | — | e.g., `'BS Computer Science'` |
 | `year_level` | `TINYINT UNSIGNED` | `NO` | — | `1` to `6` |
 | `school_year` | `VARCHAR(20)` | `NO` | — | e.g., `'2026-2027'` (maps to ERD `academic_year`) |
-| `semester` | `ENUM('1st','2nd','Summer')` | `NO` | `'1st'` | `UNIQUE KEY uk_sections_term_name (school_year, semester, section_name)` |
-| `status` | `ENUM('active','inactive')` | `NO` | `'active'` | `INDEX idx_sections_status (status)` |
+| `semester` | `ENUM('1st','2nd','Summer')` | `NO` | — | `UNIQUE KEY uq_sections_term_name (school_year, semester, section_name)` |
+| `term_start_date` | `DATE` | `YES` | `NULL` | Explicit academic term start date (`migration 000600`) |
+| `status` | `ENUM('active','inactive')` | `NO` | `'active'` | `INDEX idx_sections_program_year (program, year_level, status)` |
 | `created_at` | `DATETIME` | `NO` | `CURRENT_TIMESTAMP` | — |
 | `updated_at` | `DATETIME` | `NO` | `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` | — |
 
@@ -378,6 +418,7 @@ Subject/section announcements authored by an assigned Instructor or an Administr
 | `message` | `TEXT` | `NO` | — | Maps to ERD `content` |
 | `status` | `ENUM('draft','published','archived','withdrawn')` | `NO` | `'draft'` | `INDEX idx_announcements_feed (subject_id, status, published_at DESC)` |
 | `published_at` | `DATETIME` | `YES` | `NULL` | Set when transitioning to `'published'` |
+| `archived_at` | `DATETIME` | `YES` | `NULL` | Instructor-side archive timestamp; 7-day retention window (`INDEX idx_announcements_status_archived_at (status, archived_at)`) |
 | `created_at` | `DATETIME` | `NO` | `CURRENT_TIMESTAMP` | — |
 | `updated_at` | `DATETIME` | `NO` | `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` | — |
 
@@ -387,10 +428,10 @@ Subject/section announcements authored by an assigned Instructor or an Administr
 | :--- | :--- | :---: | :--- | :--- |
 | `id` | `BIGINT UNSIGNED` | `NO` | `AUTO_INCREMENT` | `PRIMARY KEY` |
 | `announcement_id` | `BIGINT UNSIGNED` | `NO` | — | `FK -> announcements(id) ON DELETE CASCADE` |
-| `storage_key` | `VARCHAR(255)` | `NO` | — | `UNIQUE KEY uk_attachments_storage_key` (path inside `backend/storage/uploads/`) |
+| `storage_key` | `VARCHAR(255)` | `NO` | — | `UNIQUE KEY uq_announcement_attachments_storage_key` (path inside `backend/storage/uploads/`) |
 | `original_name` | `VARCHAR(255)` | `NO` | — | Sanitized display filename |
 | `mime_type` | `VARCHAR(100)` | `NO` | — | Allow-listed (`application/pdf`, `image/png`, `image/jpeg`) |
-| `size_bytes` | `INT UNSIGNED` | `NO` | — | $\le 5,242,880$ bytes (`5 MB`) |
+| `size_bytes` | `INT UNSIGNED` | `NO` | — | `CHECK (size_bytes <= 10485760)` (`10 MB`) |
 | `created_at` | `DATETIME` | `NO` | `CURRENT_TIMESTAMP` | — |
 
 ---
@@ -479,6 +520,47 @@ Recipient-owned in-app notifications and optional external email delivery tracki
 | `metadata_json` | `JSON` | `YES` | `NULL` | Non-sensitive before/after diff context |
 | `request_id` | `VARCHAR(64)` | `YES` | `NULL` | Correlation ID from HTTP request or CLI run |
 | `created_at` | `DATETIME` | `NO` | `CURRENT_TIMESTAMP` | — |
+
+---
+
+### 3.12 `schedule_change_requests`
+Student-submitted requests to move a scheduled class to a preferred day/time/room (`migration 000600`).
+
+| Column | Type | Null | Default | Constraints & Notes |
+| :--- | :--- | :---: | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | `NO` | `AUTO_INCREMENT` | `PRIMARY KEY` |
+| `student_id` | `BIGINT UNSIGNED` | `NO` | — | `FK -> students(id) ON DELETE CASCADE ON UPDATE CASCADE` |
+| `schedule_id` | `BIGINT UNSIGNED` | `NO` | — | `FK -> schedules(id) ON DELETE RESTRICT ON UPDATE RESTRICT` |
+| `current_day_of_week` | `ENUM('Monday'..'Saturday')` | `NO` | — | Snapshot of current schedule day |
+| `current_start_time` | `TIME` | `NO` | — | Snapshot of current start time |
+| `current_end_time` | `TIME` | `NO` | — | Snapshot of current end time |
+| `current_room_code` | `VARCHAR(30)` | `NO` | — | Snapshot of current room code |
+| `preferred_day_of_week` | `ENUM('Monday'..'Saturday')` | `YES` | `NULL` | Optional preferred day |
+| `preferred_start_time` | `TIME` | `YES` | `NULL` | Paired with `preferred_end_time` via `chk_schedule_change_request_time_pair` |
+| `preferred_end_time` | `TIME` | `YES` | `NULL` | Must satisfy `preferred_start_time < preferred_end_time` when non-null |
+| `preferred_room_id` | `BIGINT UNSIGNED` | `YES` | `NULL` | `FK -> rooms(id) ON DELETE SET NULL ON UPDATE CASCADE` |
+| `reason` | `VARCHAR(1000)` | `NO` | — | Student justification |
+| `status` | `ENUM('pending','approved','rejected')` | `NO` | `'pending'` | `INDEX idx_schedule_change_requests_student_status (student_id, status, created_at DESC)` |
+| `pending_schedule_id` | `BIGINT UNSIGNED` | `YES` | `GENERATED STORED` | `CASE WHEN status = 'pending' THEN schedule_id ELSE NULL END`; `UNIQUE KEY uq_schedule_change_requests_one_pending (student_id, pending_schedule_id)` |
+| `reviewed_by_user_id` | `BIGINT UNSIGNED` | `YES` | `NULL` | `FK -> users(id) ON DELETE SET NULL ON UPDATE CASCADE` |
+| `review_note` | `VARCHAR(1000)` | `YES` | `NULL` | Reviewer decision note |
+| `reviewed_at` | `DATETIME` | `YES` | `NULL` | Decision timestamp |
+| `created_at` | `DATETIME` | `NO` | `CURRENT_TIMESTAMP` | — |
+| `updated_at` | `DATETIME` | `NO` | `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` | — |
+
+---
+
+### 3.13 `student_announcement_archives`
+Per-student announcement archive ledger hiding archived announcements from a student's inbox (`migration 000700`).
+
+| Column | Type | Null | Default | Constraints & Notes |
+| :--- | :--- | :---: | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | `NO` | `AUTO_INCREMENT` | `PRIMARY KEY` |
+| `student_id` | `BIGINT UNSIGNED` | `NO` | — | `FK -> students(id) ON DELETE CASCADE ON UPDATE CASCADE` |
+| `announcement_id` | `BIGINT UNSIGNED` | `NO` | — | `FK -> announcements(id) ON DELETE CASCADE ON UPDATE CASCADE` |
+| `archived_at` | `DATETIME` | `NO` | `CURRENT_TIMESTAMP` | `INDEX idx_student_announcement_archives_archived_at (archived_at)`; rows older than 7 days treated as deleted |
+
+- **Unique Key:** `uq_student_announcement_archives_pair (student_id, announcement_id)`
 
 ---
 
