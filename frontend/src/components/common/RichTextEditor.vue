@@ -20,6 +20,7 @@ const fontSize = ref(18)
 const textColor = ref('#dc2626')
 const highlightColor = ref('#fde047')
 const undoStack = ref<string[]>([])
+const isToolbarOpen = ref(false)
 const FONT_SIZE_PRESETS = [10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 96]
 const toolButtonClass =
   'rounded-md border border-hairline bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-canvas disabled:opacity-50'
@@ -207,8 +208,24 @@ function undo(): void {
 
 <template>
   <div>
+    <div class="mb-1 flex justify-end">
+      <button
+        type="button"
+        class="inline-flex items-center gap-1 rounded-md border border-hairline bg-canvas px-3 py-1 text-[11px] font-semibold text-ink hover:bg-surface"
+        :aria-expanded="isToolbarOpen"
+        aria-controls="rich-text-toolbar"
+        title="Show or hide the formatting tools"
+        @mousedown.prevent
+        @click="isToolbarOpen = !isToolbarOpen"
+      >
+        Edit
+        <span aria-hidden="true" class="inline-block transition-transform" :class="{ 'rotate-90': isToolbarOpen }">&rsaquo;</span>
+      </button>
+    </div>
     <div
+      id="rich-text-toolbar"
       class="flex flex-wrap items-center gap-1.5 rounded-t-lg border border-b-0 border-hairline bg-canvas p-2"
+      v-show="isToolbarOpen"
       role="toolbar"
       aria-label="Message formatting. Applies to the selected text, or the whole message if nothing is selected."
     >
@@ -274,7 +291,8 @@ function undo(): void {
         role="textbox"
         aria-multiline="true"
         :aria-label="ariaLabel"
-        class="min-h-[9rem] w-full whitespace-pre-wrap break-words rounded-b-lg border border-hairline bg-canvas px-3 py-2 text-xs font-normal text-ink focus:outline-none focus:ring-2 focus:ring-action"
+        :class="isToolbarOpen ? 'rounded-b-lg' : 'rounded-lg'"
+        class="min-h-[9rem] w-full whitespace-pre-wrap break-words border border-hairline bg-canvas px-3 py-2 text-xs font-normal text-ink focus:outline-none focus:ring-2 focus:ring-action"
         @input="onInput"
         @paste="onPaste"
       />
