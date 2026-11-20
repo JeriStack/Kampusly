@@ -64,4 +64,6 @@ Central index for all Kampusly project documentation, organized by category.
 These standard files remain at the repository root for GitHub auto-discovery:
 - [README.md](../README.md) — Project overview, stack, quick start, and commands.
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — Branching strategy, commit conventions, and PR workflow.
+- [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) — Community standards and enforcement guidelines.
+- [SECURITY.md](../SECURITY.md) — Vulnerability disclosure policy and security practices.
 - [.github/PULL_REQUEST_TEMPLATE.md](../.github/PULL_REQUEST_TEMPLATE.md) — Pull request checklist template.
