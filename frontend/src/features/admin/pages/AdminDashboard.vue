@@ -117,23 +117,78 @@ interface CreatedCredentials {
   name: string
   email: string
   password: string
+  isReset: boolean
 }
 const createdCredentials = ref<CreatedCredentials | null>(null)
 const isPasswordCopied = ref(false)
+const passwordText = ref<HTMLElement | null>(null)
 
 function closeCredentials(): void {
+  if (
+    !isPasswordCopied.value &&
+    !window.confirm(
+      'Hindi mo pa nako-copy o nada-download ang password. Hindi na ito makikita ulit. ' +
+        'Kung mawala, pwede kang mag-Reset password para makagawa ng bago. Isara pa rin?',
+    )
+  ) {
+    return
+  }
   createdCredentials.value = null
   isPasswordCopied.value = false
 }
 
+function selectPasswordText(): void {
+  const node = passwordText.value
+  const selection = window.getSelection()
+  if (!node || !selection) return
+  const range = document.createRange()
+  range.selectNodeContents(node)
+  selection.removeAllRanges()
+  selection.addRange(range)
+}
+
+function legacyCopy(text: string): boolean {
+  const field = document.createElement('textarea')
+  field.value = text
+  field.setAttribute('readonly', '')
+  field.style.position = 'fixed'
+  field.style.opacity = '0'
+  document.body.appendChild(field)
+  field.select()
+  try {
+    return document.execCommand('copy')
+  } catch {
+    return false
+  } finally {
+    document.body.removeChild(field)
+  }
+}
+
 async function copyGeneratedPassword(): Promise<void> {
   if (!createdCredentials.value) return
+  const text = createdCredentials.value.password
   try {
-    await navigator.clipboard.writeText(createdCredentials.value.password)
+    await navigator.clipboard.writeText(text)
     isPasswordCopied.value = true
   } catch {
-    isPasswordCopied.value = false
+    isPasswordCopied.value = legacyCopy(text)
+    if (!isPasswordCopied.value) selectPasswordText()
   }
+}
+
+function downloadCredentials(): void {
+  const creds = createdCredentials.value
+  if (!creds) return
+  const body = `Kampusly sign-in details\r\nName: ${creds.name}\r\nEmail: ${creds.email}\r\nPassword: ${creds.password}\r\n`
+  const url = URL.createObjectURL(new Blob([body], { type: 'text/plain;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'kampusly-credentials.txt'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  isPasswordCopied.value = true
 }
 
 const todayLabel = new Intl.DateTimeFormat('en', {
@@ -152,6 +207,14 @@ const accountRoleFilter = computed<'student' | 'instructor' | null>(() => {
   if (route.path === '/admin/students') return 'student'
   if (route.path === '/admin/instructors') return 'instructor'
   return null
+})
+
+/** The role the form creates: fixed on the Students and Instructors pages, selectable on the dashboard. */
+const formRole = computed<'student' | 'instructor'>(() => accountRoleFilter.value ?? accountForm.role)
+const roleLabel = computed(() => {
+  if (accountRoleFilter.value === 'student') return 'Student'
+  if (accountRoleFilter.value === 'instructor') return 'Instructor'
+  return 'User'
 })
 
 function messageFromError(err: unknown, fallback: string): string {
@@ -306,7 +369,7 @@ async function createAccount(): Promise<void> {
 
   try {
     let response: { data: { generated_password?: string } }
-    if (accountForm.role === 'student') {
+    if (formRole.value === 'student') {
       response = await apiClient.post(API_ENDPOINTS.academic.students, {
         ...shared,
         student_number: accountForm.studentNumber.trim(),
@@ -327,6 +390,7 @@ async function createAccount(): Promise<void> {
         name: `${shared.first_name} ${shared.last_name}`,
         email: shared.email,
         password: generatedPassword,
+        isReset: false,
       }
       isPasswordCopied.value = false
     }
@@ -357,6 +421,34 @@ async function toggleAccountStatus(account: UserAccount): Promise<void> {
     await Promise.all([fetchAccounts(), fetchSummary()])
   } catch (err: unknown) {
     accountError.value = messageFromError(err, 'Failed to update account status.')
+  }
+}
+
+async function resetAccountPassword(account: UserAccount): Promise<void> {
+  if (account.id === user.value?.id || account.role === 'admin') return
+  const prompt =
+    `Mag-generate ng bagong password para kay ${account.full_name}? ` +
+    'Hindi na gagana ang lumang password niya.'
+  if (!window.confirm(prompt)) return
+
+  accountError.value = null
+  successMessage.value = null
+  try {
+    const response = await apiClient.post<{ data: { generated_password?: string } }>(
+      API_ENDPOINTS.users.resetPassword(account.id),
+      {},
+    )
+    const password = response.data.generated_password
+    if (!password) throw new Error('No password returned.')
+    createdCredentials.value = {
+      name: account.full_name,
+      email: account.email,
+      password,
+      isReset: true,
+    }
+    isPasswordCopied.value = false
+  } catch (err: unknown) {
+    accountError.value = messageFromError(err, 'Failed to reset password.')
   }
 }
 
@@ -497,7 +589,7 @@ watch(accountRoleFilter, () => {
             @click="openCreateForm"
           >
             <AppIcon name="plus" class="h-4 w-4" />
-            Add User
+            Add {{ roleLabel }}
           </button>
         </div>
 
@@ -536,7 +628,15 @@ watch(accountRoleFilter, () => {
                     {{ account.status }}
                   </span>
                 </td>
-                <td class="px-3 py-3 text-right">
+                <td class="space-x-2 px-3 py-3 text-right">
+                  <button
+                    v-if="account.role !== 'admin' && account.id !== user?.id"
+                    type="button"
+                    class="rounded-md border border-hairline px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-canvas"
+                    @click="resetAccountPassword(account)"
+                  >
+                    Reset password
+                  </button>
                   <button
                     type="button"
                     class="rounded-md border border-hairline px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
@@ -678,8 +778,10 @@ watch(accountRoleFilter, () => {
       >
         <div class="flex items-start justify-between gap-4">
           <div>
-            <h2 id="create-user-title" class="text-xl font-bold text-ink">Add User Account</h2>
-            <p class="mt-1 text-sm text-muted">Create an active account with the selected role.</p>
+            <h2 id="create-user-title" class="text-xl font-bold text-ink">Add {{ roleLabel }} Account</h2>
+            <p class="mt-1 text-sm text-muted">
+              {{ accountRoleFilter ? `Create an active ${accountRoleFilter} account.` : 'Create an active account with the selected role.' }}
+            </p>
           </div>
           <button
             type="button"
@@ -692,7 +794,7 @@ watch(accountRoleFilter, () => {
         </div>
 
         <form class="mt-5 space-y-4" @submit.prevent="createAccount">
-          <div>
+          <div v-if="!accountRoleFilter">
             <label for="account-role" class="mb-1 block text-sm font-medium text-ink">Role</label>
             <select
               id="account-role"
@@ -724,7 +826,7 @@ watch(accountRoleFilter, () => {
             A secure password is generated automatically. It is shown once after the account is created.
           </p>
 
-          <template v-if="accountForm.role === 'student'">
+          <template v-if="formRole === 'student'">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label for="student-number" class="mb-1 block text-sm font-medium text-ink">Student number</label>
@@ -771,7 +873,7 @@ watch(accountRoleFilter, () => {
             <button
               type="submit"
               class="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-700 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="isCreatingAccount || (accountForm.role === 'student' && sections.length === 0)"
+              :disabled="isCreatingAccount || (formRole === 'student' && sections.length === 0)"
             >
               {{ isCreatingAccount ? 'Creating...' : 'Create Account' }}
             </button>
@@ -790,9 +892,12 @@ watch(accountRoleFilter, () => {
         aria-labelledby="credentials-title"
         class="my-8 w-full max-w-lg rounded-2xl border border-hairline bg-surface p-6 shadow-2xl"
       >
-        <h2 id="credentials-title" class="text-xl font-bold text-ink">Account created</h2>
+        <h2 id="credentials-title" class="text-xl font-bold text-ink">
+          {{ createdCredentials.isReset ? 'Password reset' : 'Account created' }}
+        </h2>
         <p class="mt-1 text-sm text-muted">
           Give these sign-in details to {{ createdCredentials.name }}. The password is permanent.
+          <template v-if="createdCredentials.isReset"> The old password no longer works.</template>
         </p>
 
         <dl class="mt-5 space-y-4">
@@ -802,8 +907,13 @@ watch(accountRoleFilter, () => {
           </div>
           <div>
             <dt class="text-sm font-medium text-muted">Password</dt>
-            <dd class="mt-1 flex items-center gap-2">
-              <code class="min-w-0 flex-1 select-all break-all rounded-lg bg-canvas px-3 py-2 font-mono text-base font-semibold text-ink">{{ createdCredentials.password }}</code>
+            <dd class="mt-1 flex flex-wrap items-center gap-2">
+              <code
+                ref="passwordText"
+                class="min-w-0 flex-1 cursor-pointer select-all break-all rounded-lg bg-canvas px-3 py-2 font-mono text-base font-semibold text-ink"
+                title="Click to select"
+                @click="selectPasswordText"
+              >{{ createdCredentials.password }}</code>
               <button
                 type="button"
                 class="shrink-0 rounded-lg border border-hairline px-3 py-2 text-sm font-semibold text-ink hover:bg-canvas"
@@ -811,12 +921,20 @@ watch(accountRoleFilter, () => {
               >
                 {{ isPasswordCopied ? 'Copied' : 'Copy' }}
               </button>
+              <button
+                type="button"
+                class="shrink-0 rounded-lg border border-hairline px-3 py-2 text-sm font-semibold text-ink hover:bg-canvas"
+                @click="downloadCredentials"
+              >
+                Download .txt
+              </button>
             </dd>
           </div>
         </dl>
 
         <p class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200" role="alert">
-          Copy this password now. It will not be shown again.
+          Copy or download this password now. It will not be shown again. If it gets lost, use
+          "Reset password" on the account to generate a new one.
         </p>
 
         <div class="mt-5 flex justify-end">

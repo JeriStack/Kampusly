@@ -50,6 +50,7 @@ export const API_ENDPOINTS = {
     create: '/users',
     get: (id: number | string) => `/users/${id}`,
     updateStatus: (id: number | string) => `/users/${id}/status`,
+    resetPassword: (id: number | string) => `/users/${id}/reset-password`,
   },
   admin: {
     dashboardSummary: '/admin/dashboard-summary',

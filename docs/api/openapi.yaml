@@ -1123,7 +1123,8 @@ paths:
                   maxLength: 5000
                   description: >-
                     Plain text with optional formatting tags: [b] [i] [u] [s], [size=8..96],
-                    [color=#rrggbb], [bg=#rrggbb], [left] [center] [right]. The text without tags must be
+                    [color=#rrggbb], [bg=#rrggbb], [left] [center] [right]; a backslash escapes a literal
+                    "[" or "\" (written \[ and \\). The text without tags must be
                     at least 3 characters. Student notifications receive the message without tags.
       responses:
         '201': { description: Published announcement }
@@ -1144,6 +1145,27 @@ paths:
       responses:
         '200': { description: Announcement updated and section students notified }
         '403': { description: Announcement belongs to another instructor }
+
+  /users/{id}/reset-password:
+    post:
+      tags: [Admin]
+      summary: "Generate a new password for a student or instructor account (Role: admin)"
+      description: >-
+        Replaces the account password and returns the new one once as generated_password.
+        It is never stored in plain text or written to the audit log. Admin accounts and the
+        caller's own account are rejected. Existing sessions of the target are not revoked.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Password replaced; response data includes generated_password }
+        '403': { description: Caller is not an admin, or target is an admin or the caller }
+        '404': { description: User not found }
 
   /instructor/announcements/{id}/archive:
     post:

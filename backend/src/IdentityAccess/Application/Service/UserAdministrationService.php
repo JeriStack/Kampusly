@@ -180,5 +180,47 @@ final class UserAdministrationService
         $updated = $this->userRepository->findById($targetUserId);
         return $updated !== null ? $updated->toArray() : [];
     }
+
+    /**
+     * Replaces a student's or instructor's password with a new generated one.
+     * The plain password is returned once and never stored or logged.
+     *
+     * @return array<string, mixed>
+     */
+    public function resetUserPassword(int $targetUserId, User $caller, ?string $requestId = null): array
+    {
+        if (!$this->adminPolicy->canManageUsers($caller)) {
+            throw new ForbiddenException();
+        }
+
+        $target = $this->userRepository->findById($targetUserId);
+        if ($target === null) {
+            throw new ResourceNotFoundException('User not found.');
+        }
+
+        if ($caller->getId() === $targetUserId) {
+            throw new ForbiddenException('Use the change password option for your own account.');
+        }
+        if ($target->getRole() === UserRole::Admin) {
+            throw new ForbiddenException('Administrator passwords cannot be reset from here.');
+        }
+
+        $plain = $this->passwordHasher->generate();
+        $this->userRepository->updatePassword($targetUserId, $this->passwordHasher->hash($plain));
+
+        $this->auditLogger->record(
+            $caller->getId(),
+            'user.password_reset',
+            'user',
+            $targetUserId,
+            ['email' => $target->getEmail(), 'role' => $target->getRole()->value],
+            $requestId
+        );
+
+        $data = $target->toArray();
+        $data['generated_password'] = $plain;
+
+        return $data;
+    }
 }
 
