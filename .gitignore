@@ -168,6 +168,7 @@ composer.phar
 /backend/.phpcs-cache
 
 # Backend runtime storage (keep the directories, ignore their contents)
+!/backend/storage/logs/
 /backend/storage/logs/*
 /backend/storage/cache/*
 /backend/storage/tmp/*
