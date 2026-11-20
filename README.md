@@ -2,7 +2,11 @@
 
 **“Your Campus. Your Classes. Your Time.”**
 
+<div align="justify">
+
 Kampusly is a web-based class schedule management and notification system for higher-education academic departments. It centralizes class scheduling with automated room, instructor, and section conflict detection, targeted academic announcements, instructor class-unavailability notices, student schedule-change requests, in-app/email notifications, and timetable exports.
+
+</div>
 
 ---
 
@@ -25,7 +29,11 @@ Kampusly is a web-based class schedule management and notification system for hi
 | **Database** | MySQL 8.4 (`InnoDB`, `utf8mb4_unicode_ci`), versioned forward-only SQL migrations (`schema_migrations`) |
 | **Infrastructure** | Docker & Docker Compose, Nginx `1.27-alpine`, PHP-FPM `8.3-alpine`, Mailpit `v1.21`, GitHub Actions CI |
 
+<div align="justify">
+
 Architecture: **Modular Monolith** with DDD-inspired bounded contexts (`IdentityAccess`, `Academic`, `Scheduling`, `Announcements`, `ClassNotices`, `Notifications`, `Shared`).
+
+</div>
 
 ---
 
@@ -114,7 +122,11 @@ composer --working-dir=backend check
 
 ## Documentation
 
+<div align="justify">
+
 All project specifications, architecture diagrams, database designs, and runbooks are indexed in [`docs/README.md`](./docs/README.md):
+
+</div>
 
 - **Requirements & Traceability:** [`docs/requirements/`](./docs/requirements)
 - **Architecture & UML:** [`docs/architecture/`](./docs/architecture)
