@@ -154,6 +154,14 @@ const accountRoleFilter = computed<'student' | 'instructor' | null>(() => {
   return null
 })
 
+/** The role the form creates: fixed on the Students and Instructors pages, selectable on the dashboard. */
+const formRole = computed<'student' | 'instructor'>(() => accountRoleFilter.value ?? accountForm.role)
+const roleLabel = computed(() => {
+  if (accountRoleFilter.value === 'student') return 'Student'
+  if (accountRoleFilter.value === 'instructor') return 'Instructor'
+  return 'User'
+})
+
 function messageFromError(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback
 }
@@ -306,7 +314,7 @@ async function createAccount(): Promise<void> {
 
   try {
     let response: { data: { generated_password?: string } }
-    if (accountForm.role === 'student') {
+    if (formRole.value === 'student') {
       response = await apiClient.post(API_ENDPOINTS.academic.students, {
         ...shared,
         student_number: accountForm.studentNumber.trim(),
@@ -497,7 +505,7 @@ watch(accountRoleFilter, () => {
             @click="openCreateForm"
           >
             <AppIcon name="plus" class="h-4 w-4" />
-            Add User
+            Add {{ roleLabel }}
           </button>
         </div>
 
@@ -678,8 +686,10 @@ watch(accountRoleFilter, () => {
       >
         <div class="flex items-start justify-between gap-4">
           <div>
-            <h2 id="create-user-title" class="text-xl font-bold text-ink">Add User Account</h2>
-            <p class="mt-1 text-sm text-muted">Create an active account with the selected role.</p>
+            <h2 id="create-user-title" class="text-xl font-bold text-ink">Add {{ roleLabel }} Account</h2>
+            <p class="mt-1 text-sm text-muted">
+              {{ accountRoleFilter ? `Create an active ${accountRoleFilter} account.` : 'Create an active account with the selected role.' }}
+            </p>
           </div>
           <button
             type="button"
@@ -692,7 +702,7 @@ watch(accountRoleFilter, () => {
         </div>
 
         <form class="mt-5 space-y-4" @submit.prevent="createAccount">
-          <div>
+          <div v-if="!accountRoleFilter">
             <label for="account-role" class="mb-1 block text-sm font-medium text-ink">Role</label>
             <select
               id="account-role"
@@ -724,7 +734,7 @@ watch(accountRoleFilter, () => {
             A secure password is generated automatically. It is shown once after the account is created.
           </p>
 
-          <template v-if="accountForm.role === 'student'">
+          <template v-if="formRole === 'student'">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label for="student-number" class="mb-1 block text-sm font-medium text-ink">Student number</label>
@@ -771,7 +781,7 @@ watch(accountRoleFilter, () => {
             <button
               type="submit"
               class="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-700 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="isCreatingAccount || (accountForm.role === 'student' && sections.length === 0)"
+              :disabled="isCreatingAccount || (formRole === 'student' && sections.length === 0)"
             >
               {{ isCreatingAccount ? 'Creating...' : 'Create Account' }}
             </button>
