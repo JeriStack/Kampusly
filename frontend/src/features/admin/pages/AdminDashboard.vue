@@ -957,115 +957,221 @@ watch(accountRoleFilter, () => {
 
     <div
       v-if="isCreateFormOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-4"
+      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm"
       @click.self="isCreateFormOpen = false"
     >
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-user-title"
-        class="my-8 w-full max-w-2xl rounded-2xl border border-hairline bg-surface p-6 shadow-2xl"
+        class="my-8 w-full max-w-xl overflow-hidden rounded-2xl border border-hairline bg-surface shadow-2xl"
       >
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <h2 id="create-user-title" class="text-xl font-bold text-ink">Add {{ roleLabel }} Account</h2>
-            <p class="mt-1 text-sm text-muted">
-              {{ accountRoleFilter ? `Create an active ${accountRoleFilter} account.` : 'Create an active account with the selected role.' }}
-            </p>
+        <div class="h-1 w-full bg-gradient-to-r from-navy via-action to-accent" />
+
+        <div class="flex items-center justify-between gap-4 border-b border-hairline px-6 py-4">
+          <div class="flex items-center gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
+              <AppIcon name="users" class="h-5 w-5" />
+            </span>
+            <div>
+              <h2 id="create-user-title" class="text-lg font-bold text-ink">Add {{ roleLabel }} Account</h2>
+              <p class="mt-0.5 text-xs text-subtle">
+                {{ accountRoleFilter ? `Create an active ${accountRoleFilter} account.` : 'Create an active account with the selected role.' }}
+              </p>
+            </div>
           </div>
           <button
             type="button"
-            class="rounded-lg px-2 py-1 text-muted hover:bg-canvas hover:text-ink"
+            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-hairline bg-canvas text-subtle transition-colors hover:text-ink"
             aria-label="Close form"
             @click="isCreateFormOpen = false"
           >
-            ✕
+            <AppIcon name="close" class="h-4 w-4" />
           </button>
         </div>
 
-        <form class="mt-5 space-y-4" @submit.prevent="createAccount">
+        <form class="space-y-4 p-6" @submit.prevent="createAccount">
           <div v-if="!accountRoleFilter">
-            <label for="account-role" class="mb-1 block text-sm font-medium text-ink">Role</label>
-            <select
-              id="account-role"
-              v-model="accountForm.role"
-              required
-              class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action"
-            >
-              <option value="student">Student</option>
-              <option value="instructor">Instructor</option>
-            </select>
+            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">Role</span>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                class="flex items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all"
+                :class="
+                  accountForm.role === 'student'
+                    ? 'border-action bg-action/10 text-navy ring-1 ring-inset ring-action/25 dark:border-sky-400/50 dark:bg-sky-500/15 dark:text-sky-200'
+                    : 'border-hairline bg-canvas text-muted hover:text-ink'
+                "
+                @click="accountForm.role = 'student'"
+              >
+                <AppIcon name="student" class="h-4 w-4" />
+                <span>Student</span>
+              </button>
+              <button
+                type="button"
+                class="flex items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all"
+                :class="
+                  accountForm.role === 'instructor'
+                    ? 'border-action bg-action/10 text-navy ring-1 ring-inset ring-action/25 dark:border-sky-400/50 dark:bg-sky-500/15 dark:text-sky-200'
+                    : 'border-hairline bg-canvas text-muted hover:text-ink'
+                "
+                @click="accountForm.role = 'instructor'"
+              >
+                <AppIcon name="instructor" class="h-4 w-4" />
+                <span>Instructor</span>
+              </button>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label for="account-first-name" class="mb-1 block text-sm font-medium text-ink">First name</label>
-              <input id="account-first-name" v-model="accountForm.firstName" required minlength="2" maxlength="80" autocomplete="given-name" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+              <label for="account-first-name" class="mb-1.5 block text-xs font-semibold text-ink">First name</label>
+              <input
+                id="account-first-name"
+                v-model="accountForm.firstName"
+                required
+                minlength="2"
+                maxlength="80"
+                autocomplete="given-name"
+                placeholder="e.g. Maria"
+                class="w-full rounded-xl border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder-subtle/60 transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+              />
             </div>
             <div>
-              <label for="account-last-name" class="mb-1 block text-sm font-medium text-ink">Last name</label>
-              <input id="account-last-name" v-model="accountForm.lastName" required minlength="2" maxlength="80" autocomplete="family-name" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+              <label for="account-last-name" class="mb-1.5 block text-xs font-semibold text-ink">Last name</label>
+              <input
+                id="account-last-name"
+                v-model="accountForm.lastName"
+                required
+                minlength="2"
+                maxlength="80"
+                autocomplete="family-name"
+                placeholder="e.g. Santos"
+                class="w-full rounded-xl border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder-subtle/60 transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+              />
             </div>
           </div>
 
           <div>
-            <label for="account-email" class="mb-1 block text-sm font-medium text-ink">Email</label>
-            <input id="account-email" v-model="accountForm.email" type="email" required maxlength="191" autocomplete="email" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+            <label for="account-email" class="mb-1.5 block text-xs font-semibold text-ink">Institutional Email</label>
+            <input
+              id="account-email"
+              v-model="accountForm.email"
+              type="email"
+              required
+              maxlength="191"
+              autocomplete="email"
+              spellcheck="false"
+              placeholder="name@kampusly.edu.ph"
+              class="w-full rounded-xl border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder-subtle/60 transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+            />
           </div>
-          <p class="rounded-lg bg-canvas p-3 text-sm text-muted">
-            A secure password is generated automatically. It is shown once after the account is created.
-          </p>
+
+          <div class="flex items-start gap-2.5 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3.5 py-3 text-xs text-navy dark:text-sky-200">
+            <AppIcon name="info" class="mt-0.5 h-4 w-4 shrink-0 text-action dark:text-sky-300" />
+            <p class="leading-relaxed">
+              A secure password is generated automatically and shown once after the account is created.
+            </p>
+          </div>
 
           <template v-if="formRole === 'student'">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label for="student-number" class="mb-1 block text-sm font-medium text-ink">Student number</label>
-                <input id="student-number" v-model="accountForm.studentNumber" required minlength="3" maxlength="32" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+                <label for="student-number" class="mb-1.5 block text-xs font-semibold text-ink">Student number</label>
+                <input
+                  id="student-number"
+                  v-model="accountForm.studentNumber"
+                  required
+                  minlength="3"
+                  maxlength="32"
+                  placeholder="e.g. 2026-00105"
+                  class="w-full rounded-xl border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder-subtle/60 transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+                />
               </div>
               <div>
-                <label for="student-program" class="mb-1 block text-sm font-medium text-ink">Program</label>
-                <input id="student-program" v-model="accountForm.program" required minlength="2" maxlength="120" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+                <label for="student-program" class="mb-1.5 block text-xs font-semibold text-ink">Program</label>
+                <input
+                  id="student-program"
+                  v-model="accountForm.program"
+                  required
+                  minlength="2"
+                  maxlength="120"
+                  placeholder="e.g. BS Computer Science"
+                  class="w-full rounded-xl border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder-subtle/60 transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+                />
               </div>
             </div>
             <div>
-              <label for="student-section" class="mb-1 block text-sm font-medium text-ink">Section</label>
-              <select id="student-section" v-model="accountForm.sectionId" required class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action">
+              <label for="student-section" class="mb-1.5 block text-xs font-semibold text-ink">Section</label>
+              <select
+                id="student-section"
+                v-model="accountForm.sectionId"
+                required
+                class="w-full rounded-xl border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+              >
                 <option value="" disabled>Select a section</option>
                 <option v-for="section in sections" :key="section.id" :value="String(section.id)">
                   {{ section.section_name }} · {{ section.program }}
                 </option>
               </select>
-              <p v-if="sections.length === 0" class="mt-1 text-xs text-amber-700">Create an active section before adding a student.</p>
+              <p v-if="sections.length === 0" class="mt-1.5 text-xs text-amber-700 dark:text-amber-300">
+                Create an active section before adding a student.
+              </p>
             </div>
           </template>
 
           <template v-else>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label for="employee-number" class="mb-1 block text-sm font-medium text-ink">Employee number</label>
-                <input id="employee-number" v-model="accountForm.employeeNumber" required minlength="3" maxlength="32" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+                <label for="employee-number" class="mb-1.5 block text-xs font-semibold text-ink">Employee number</label>
+                <input
+                  id="employee-number"
+                  v-model="accountForm.employeeNumber"
+                  required
+                  minlength="3"
+                  maxlength="32"
+                  placeholder="e.g. EMP-2026-010"
+                  class="w-full rounded-xl border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder-subtle/60 transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+                />
               </div>
               <div>
-                <label for="instructor-department" class="mb-1 block text-sm font-medium text-ink">Department</label>
-                <input id="instructor-department" v-model="accountForm.department" required minlength="2" maxlength="120" class="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-action" />
+                <label for="instructor-department" class="mb-1.5 block text-xs font-semibold text-ink">Department</label>
+                <input
+                  id="instructor-department"
+                  v-model="accountForm.department"
+                  required
+                  minlength="2"
+                  maxlength="120"
+                  placeholder="e.g. Dept. of Computer Science"
+                  class="w-full rounded-xl border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder-subtle/60 transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+                />
               </div>
             </div>
           </template>
 
-          <div v-if="createAccountError" class="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800" role="alert">
+          <div
+            v-if="createAccountError"
+            class="rounded-xl border border-rose-200 bg-rose-50/90 p-3 text-xs text-rose-800 dark:border-rose-500/30 dark:bg-rose-950/40 dark:text-rose-200"
+            role="alert"
+          >
             {{ createAccountError }}
           </div>
 
-          <div class="flex flex-wrap justify-end gap-3 border-t border-hairline pt-4">
-            <button type="button" class="rounded-lg border border-hairline px-4 py-2 text-sm font-semibold text-ink hover:bg-canvas" @click="isCreateFormOpen = false">
+          <div class="flex flex-wrap items-center justify-end gap-2.5 border-t border-hairline pt-4">
+            <button
+              type="button"
+              class="rounded-xl border border-hairline bg-canvas px-4 py-2.5 text-xs font-semibold text-ink transition-colors hover:bg-surface"
+              @click="isCreateFormOpen = false"
+            >
               Cancel
             </button>
             <button
               type="submit"
-              class="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-700 disabled:cursor-not-allowed disabled:opacity-60"
+              class="inline-flex items-center justify-center gap-2 rounded-xl bg-action px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-action-hover active:bg-action-active disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="isCreatingAccount || (formRole === 'student' && sections.length === 0)"
             >
-              {{ isCreatingAccount ? 'Creating...' : 'Create Account' }}
+              <AppIcon v-if="isCreatingAccount" name="loader" class="h-4 w-4 animate-spin" />
+              <span>{{ isCreatingAccount ? 'Creating...' : 'Create Account' }}</span>
             </button>
           </div>
         </form>
@@ -1074,67 +1180,77 @@ watch(accountRoleFilter, () => {
 
     <div
       v-if="createdCredentials"
-      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-4"
+      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm"
     >
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="credentials-title"
-        class="my-8 w-full max-w-lg rounded-2xl border border-hairline bg-surface p-6 shadow-2xl"
+        class="my-8 w-full max-w-lg overflow-hidden rounded-2xl border border-hairline bg-surface shadow-2xl"
       >
-        <h2 id="credentials-title" class="text-xl font-bold text-ink">
-          {{ createdCredentials.isReset ? 'Password reset' : 'Account created' }}
-        </h2>
-        <p class="mt-1 text-sm text-muted">
-          Give these sign-in details to {{ createdCredentials.name }}. The password is permanent.
-          <template v-if="createdCredentials.isReset"> The old password no longer works.</template>
-        </p>
-
-        <dl class="mt-5 space-y-4">
-          <div>
-            <dt class="text-sm font-medium text-muted">Email</dt>
-            <dd class="mt-1 break-all font-semibold text-ink">{{ createdCredentials.email }}</dd>
+        <div class="h-1 w-full bg-gradient-to-r from-navy via-action to-accent" />
+        <div class="p-6">
+          <div class="flex items-center gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
+              <AppIcon name="check" class="h-5 w-5" />
+            </span>
+            <div>
+              <h2 id="credentials-title" class="text-lg font-bold text-ink">
+                {{ createdCredentials.isReset ? 'Password reset' : 'Account created' }}
+              </h2>
+              <p class="mt-0.5 text-xs text-subtle">
+                Share these sign-in details with {{ createdCredentials.name }}.
+                <template v-if="createdCredentials.isReset"> The previous password no longer works.</template>
+              </p>
+            </div>
           </div>
-          <div>
-            <dt class="text-sm font-medium text-muted">Password</dt>
-            <dd class="mt-1 flex flex-wrap items-center gap-2">
-              <code
-                ref="passwordText"
-                class="min-w-0 flex-1 cursor-pointer select-all break-all rounded-lg bg-canvas px-3 py-2 font-mono text-base font-semibold text-ink"
-                title="Click to select"
-                @click="selectPasswordText"
-              >{{ createdCredentials.password }}</code>
-              <button
-                type="button"
-                class="shrink-0 rounded-lg border border-hairline px-3 py-2 text-sm font-semibold text-ink hover:bg-canvas"
-                @click="copyGeneratedPassword"
-              >
-                {{ isPasswordCopied ? 'Copied' : 'Copy' }}
-              </button>
-              <button
-                type="button"
-                class="shrink-0 rounded-lg border border-hairline px-3 py-2 text-sm font-semibold text-ink hover:bg-canvas"
-                @click="downloadCredentials"
-              >
-                Download .txt
-              </button>
-            </dd>
+
+          <dl class="mt-5 space-y-4">
+            <div class="rounded-xl border border-hairline bg-canvas/60 px-3.5 py-2.5">
+              <dt class="text-[11px] font-semibold uppercase tracking-wider text-subtle">Email</dt>
+              <dd class="mt-1 break-all text-sm font-semibold text-ink">{{ createdCredentials.email }}</dd>
+            </div>
+            <div>
+              <dt class="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-subtle">Generated Password</dt>
+              <dd class="flex flex-wrap items-center gap-2">
+                <code
+                  ref="passwordText"
+                  class="min-w-0 flex-1 cursor-pointer select-all break-all rounded-xl border border-hairline bg-canvas px-3.5 py-2.5 font-mono text-sm font-semibold text-ink"
+                  title="Click to select"
+                  @click="selectPasswordText"
+                >{{ createdCredentials.password }}</code>
+                <button
+                  type="button"
+                  class="shrink-0 rounded-xl border border-hairline bg-canvas px-3.5 py-2.5 text-xs font-semibold text-ink transition-colors hover:border-action/40 hover:text-action dark:hover:text-sky-300"
+                  @click="copyGeneratedPassword"
+                >
+                  {{ isPasswordCopied ? 'Copied' : 'Copy' }}
+                </button>
+                <button
+                  type="button"
+                  class="shrink-0 rounded-xl border border-hairline bg-canvas px-3.5 py-2.5 text-xs font-semibold text-ink transition-colors hover:border-action/40 hover:text-action dark:hover:text-sky-300"
+                  @click="downloadCredentials"
+                >
+                  Download .txt
+                </button>
+              </dd>
+            </div>
+          </dl>
+
+          <p class="mt-4 rounded-xl border border-amber-300/70 bg-amber-50/90 p-3 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-200" role="alert">
+            Copy or download this password now. It will not be shown again. If it gets lost, use
+            "Reset password" on the account to generate a new one.
+          </p>
+
+          <div class="mt-5 flex justify-end border-t border-hairline pt-4">
+            <button
+              type="button"
+              class="rounded-xl bg-action px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-action-hover active:bg-action-active"
+              @click="closeCredentials"
+            >
+              Done
+            </button>
           </div>
-        </dl>
-
-        <p class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200" role="alert">
-          Copy or download this password now. It will not be shown again. If it gets lost, use
-          "Reset password" on the account to generate a new one.
-        </p>
-
-        <div class="mt-5 flex justify-end">
-          <button
-            type="button"
-            class="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-700"
-            @click="closeCredentials"
-          >
-            Done
-          </button>
         </div>
       </section>
     </div>
