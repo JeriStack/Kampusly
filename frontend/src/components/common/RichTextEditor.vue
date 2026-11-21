@@ -276,7 +276,7 @@ function undo(): void {
       <button
         v-if="undoStack.length > 0"
         type="button"
-        class="text-[11px] font-semibold text-primary-700 hover:underline dark:text-primary-300"
+        class="text-[11px] font-semibold text-action hover:underline dark:text-sky-300"
         @mousedown.prevent
         @click="undo"
       >
