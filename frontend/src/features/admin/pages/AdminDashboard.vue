@@ -746,18 +746,19 @@ watch(accountRoleFilter, () => {
                     </span>
                   </td>
                   <td class="px-4 py-3.5">
-                    <div class="inline-flex items-center justify-center gap-2">
+                    <div class="inline-grid grid-cols-[10.5rem_7.75rem] items-center gap-2">
                       <button
                         v-if="account.role !== 'admin' && account.id !== user?.id"
                         type="button"
-                        class="rounded-lg border border-hairline bg-canvas px-2.5 py-1.5 text-xs font-semibold text-ink transition-colors hover:border-action/40 hover:text-action dark:hover:text-sky-300"
+                        class="w-full whitespace-nowrap rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:border-action/40 hover:text-action dark:hover:text-sky-300"
                         @click="resetAccountPassword(account)"
                       >
                         Reset password
                       </button>
+                      <span v-else aria-hidden="true" />
                       <button
                         type="button"
-                        class="rounded-lg border border-hairline bg-canvas px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45"
+                        class="w-full whitespace-nowrap rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45"
                         :class="
                           account.status === 'active'
                             ? 'text-rose-600 hover:border-rose-300 hover:bg-rose-50 dark:text-rose-400 dark:hover:border-rose-500/40 dark:hover:bg-rose-950/40'
