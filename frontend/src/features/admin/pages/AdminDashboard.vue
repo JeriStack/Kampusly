@@ -648,16 +648,26 @@ watch(accountRoleFilter, () => {
       </div>
 
       <section class="rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h2 class="text-lg font-semibold text-ink">
-              {{ accountRoleFilter ? `${accountRoleFilter === 'student' ? 'Student' : 'Instructor'} Accounts` : 'User Accounts' }}
-            </h2>
-            <p class="mt-1 text-sm text-muted">View, create, activate, or deactivate accounts.</p>
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-hairline pb-4">
+          <div class="flex items-center gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
+              <AppIcon name="users" class="h-5 w-5" />
+            </span>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-base font-bold text-ink">
+                  {{ accountRoleFilter ? `${accountRoleFilter === 'student' ? 'Student' : 'Instructor'} Accounts` : 'User Accounts' }}
+                </h2>
+                <span class="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-blue-700 dark:text-blue-300">
+                  {{ accountTotal }}
+                </span>
+              </div>
+              <p class="mt-0.5 text-xs text-subtle">View, create, activate, or deactivate accounts.</p>
+            </div>
           </div>
           <button
             type="button"
-            class="inline-flex items-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2"
+            class="inline-flex items-center gap-2 rounded-xl bg-action px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-action-hover active:bg-action-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
             @click="openCreateForm"
           >
             <AppIcon name="plus" class="h-4 w-4" />
@@ -665,70 +675,113 @@ watch(accountRoleFilter, () => {
           </button>
         </div>
 
-        <div v-if="successMessage" class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">
+        <div
+          v-if="successMessage"
+          class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/90 p-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-200"
+          role="status"
+        >
           {{ successMessage }}
         </div>
-        <div v-if="accountError" class="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800" role="alert">
+        <div
+          v-if="accountError"
+          class="mt-4 rounded-xl border border-rose-200 bg-rose-50/90 p-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-950/40 dark:text-rose-200"
+          role="alert"
+        >
           {{ accountError }}
           <button type="button" class="ml-2 font-semibold underline" @click="fetchAccounts()">Retry</button>
         </div>
 
-        <div v-if="isLoadingAccounts" class="mt-5 space-y-3" aria-label="Loading user accounts">
-          <div v-for="i in 3" :key="i" class="h-12 animate-pulse rounded-lg bg-canvas" />
+        <div v-if="isLoadingAccounts" class="mt-5 space-y-2.5" aria-label="Loading user accounts">
+          <div v-for="i in 3" :key="i" class="h-12 animate-pulse rounded-xl bg-canvas" />
         </div>
-        <div v-else-if="!accountError" class="mt-5 overflow-x-auto">
-          <table class="w-full min-w-[640px] text-left text-sm">
-            <thead class="border-b border-hairline text-xs uppercase tracking-wide text-muted">
-              <tr>
-                <th scope="col" class="px-3 py-3 font-semibold">Name</th>
-                <th scope="col" class="px-3 py-3 font-semibold">Email</th>
-                <th scope="col" class="px-3 py-3 font-semibold">Role</th>
-                <th scope="col" class="px-3 py-3 font-semibold">Status</th>
-                <th scope="col" class="px-3 py-3 text-right font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-hairline">
-              <tr v-for="account in accounts" :key="account.id">
-                <td class="px-3 py-3 font-medium text-ink">{{ account.full_name }}</td>
-                <td class="px-3 py-3 text-muted">{{ account.email }}</td>
-                <td class="px-3 py-3 capitalize text-ink">{{ account.role }}</td>
-                <td class="px-3 py-3">
-                  <span
-                    class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize"
-                    :class="account.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'"
-                  >
-                    {{ account.status }}
-                  </span>
-                </td>
-                <td class="space-x-2 px-3 py-3 text-right">
-                  <button
-                    v-if="account.role !== 'admin' && account.id !== user?.id"
-                    type="button"
-                    class="rounded-md border border-hairline px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-canvas"
-                    @click="resetAccountPassword(account)"
-                  >
-                    Reset password
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded-md border border-hairline px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
-                    :disabled="account.id === user?.id"
-                    @click="toggleAccountStatus(account)"
-                  >
-                    {{ account.status === 'active' ? 'Deactivate' : 'Activate' }}
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="accounts.length === 0">
-                <td colspan="5" class="px-3 py-8 text-center text-muted">
-                  No user accounts yet. Add a student or instructor to get started.
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div v-else-if="!accountError" class="mt-5">
+          <div class="overflow-x-auto rounded-xl border border-hairline">
+            <table class="w-full min-w-[680px] text-center text-sm">
+              <thead class="border-b border-hairline bg-canvas/70 text-[11px] uppercase tracking-wider text-subtle">
+                <tr>
+                  <th scope="col" class="px-4 py-3 font-semibold">Name</th>
+                  <th scope="col" class="px-4 py-3 font-semibold">Email</th>
+                  <th scope="col" class="px-4 py-3 font-semibold">Role</th>
+                  <th scope="col" class="px-4 py-3 font-semibold">Status</th>
+                  <th scope="col" class="px-4 py-3 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-hairline/70">
+                <tr
+                  v-for="account in accounts"
+                  :key="account.id"
+                  class="transition-colors hover:bg-canvas/60"
+                >
+                  <td class="px-4 py-3.5 font-semibold text-ink">{{ account.full_name }}</td>
+                  <td class="px-4 py-3.5 text-muted">{{ account.email }}</td>
+                  <td class="px-4 py-3.5">
+                    <span
+                      class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize"
+                      :class="
+                        account.role === 'admin'
+                          ? 'border-sky-500/20 bg-sky-500/10 text-navy dark:text-sky-300'
+                          : account.role === 'instructor'
+                            ? 'border-teal-500/20 bg-teal-500/10 text-teal-700 dark:text-teal-300'
+                            : 'border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-300'
+                      "
+                    >
+                      {{ account.role }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3.5">
+                    <span
+                      class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize"
+                      :class="
+                        account.status === 'active'
+                          ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                          : 'border-hairline bg-canvas text-subtle'
+                      "
+                    >
+                      <span
+                        class="h-1.5 w-1.5 rounded-full"
+                        :class="account.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'"
+                        aria-hidden="true"
+                      />
+                      {{ account.status }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3.5">
+                    <div class="inline-flex items-center justify-center gap-2">
+                      <button
+                        v-if="account.role !== 'admin' && account.id !== user?.id"
+                        type="button"
+                        class="rounded-lg border border-hairline bg-canvas px-2.5 py-1.5 text-xs font-semibold text-ink transition-colors hover:border-action/40 hover:text-action dark:hover:text-sky-300"
+                        @click="resetAccountPassword(account)"
+                      >
+                        Reset password
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded-lg border border-hairline bg-canvas px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45"
+                        :class="
+                          account.status === 'active'
+                            ? 'text-rose-600 hover:border-rose-300 hover:bg-rose-50 dark:text-rose-400 dark:hover:border-rose-500/40 dark:hover:bg-rose-950/40'
+                            : 'text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:border-emerald-500/40 dark:hover:bg-emerald-950/40'
+                        "
+                        :disabled="account.id === user?.id"
+                        @click="toggleAccountStatus(account)"
+                      >
+                        {{ account.status === 'active' ? 'Deactivate' : 'Activate' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="accounts.length === 0">
+                  <td colspan="5" class="px-4 py-10 text-center text-sm text-muted">
+                    No user accounts yet. Add a student or instructor to get started.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           <PaginationBar
             v-if="accountTotal > 0"
-            class="mt-4 rounded-lg border border-hairline bg-canvas"
+            class="mt-4 rounded-xl border border-hairline bg-canvas"
             :meta="{
               page: accountPage,
               per_page: accountPerPage,
