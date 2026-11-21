@@ -154,6 +154,8 @@ final class AcademicManagementEndpointsTest extends TestCase
 
     public function testListSubjectsReturns200WithPagination(): void
     {
+        $this->session->set('auth_user_id', 1);
+
         $request = new HttpRequest('GET', '/api/v1/subjects', ['per_page' => 10]);
         $response = $this->app->handle($request);
 
@@ -162,6 +164,24 @@ final class AcademicManagementEndpointsTest extends TestCase
         $this->assertArrayHasKey('data', $data);
         $this->assertSame(2, count($data['data']));
         $this->assertSame(2, $data['meta']['total']);
+    }
+
+    public function testAcademicCatalogRequiresAuthentication(): void
+    {
+        foreach (['/api/v1/subjects', '/api/v1/rooms', '/api/v1/sections'] as $path) {
+            $response = $this->app->handle(new HttpRequest('GET', $path));
+            $this->assertSame(401, $response->getStatusCode(), "Expected 401 for unauthenticated GET {$path}");
+        }
+    }
+
+    public function testStudentCannotEnumerateStudentsInstructorsOrSectionRosters(): void
+    {
+        $this->session->set('auth_user_id', 2); // Student role
+
+        foreach (['/api/v1/students', '/api/v1/instructors', '/api/v1/sections/1/students'] as $path) {
+            $response = $this->app->handle(new HttpRequest('GET', $path));
+            $this->assertSame(403, $response->getStatusCode(), "Expected 403 for student GET {$path}");
+        }
     }
 
     public function testAdminCanCreateSubject(): void
