@@ -743,36 +743,71 @@ watch(accountRoleFilter, () => {
       </section>
 
       <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <section class="rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
-          <div class="flex items-baseline justify-between gap-3">
-            <div>
-              <h2 class="text-lg font-semibold text-ink">Active Subjects</h2>
-              <p class="mt-1 text-sm text-muted">Subjects currently available.</p>
+        <!-- Active Subjects -->
+        <section class="flex flex-col rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
+          <div class="flex items-start justify-between gap-3 border-b border-hairline pb-4">
+            <div class="flex items-center gap-3">
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300">
+                <AppIcon name="book" class="h-5 w-5" />
+              </span>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-base font-bold text-ink">Active Subjects</h2>
+                  <span class="inline-flex items-center rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-violet-700 dark:text-violet-300">
+                    {{ subjectTotal }}
+                  </span>
+                </div>
+                <p class="mt-0.5 text-xs text-subtle">Subjects currently available in the curriculum</p>
+              </div>
             </div>
-            <span class="rounded-full bg-navy-50 px-3 py-1 text-xs font-semibold text-navy">
-              {{ subjectTotal }}
-            </span>
+            <RouterLink
+              to="/admin/subjects"
+              class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-action transition-colors hover:bg-action/10 dark:text-sky-300 dark:hover:bg-sky-500/15"
+            >
+              <span>Manage</span>
+              <AppIcon name="chevron-right" class="h-3.5 w-3.5" />
+            </RouterLink>
           </div>
-          <p v-if="subjectsError" class="mt-4 text-sm text-rose-700" role="alert">
+
+          <p v-if="subjectsError" class="mt-4 text-sm text-rose-600 dark:text-rose-400" role="alert">
             {{ subjectsError }}
             <button type="button" class="ml-2 font-semibold underline" @click="fetchActiveSubjects()">Retry</button>
           </p>
-          <div v-else-if="isLoadingSubjects" class="mt-5 h-24 animate-pulse rounded-lg bg-canvas" />
-          <div v-else-if="activeSubjects.length === 0" class="mt-5 rounded-lg bg-canvas p-4 text-sm text-muted">
-            No active subjects found.
+          <div v-else-if="isLoadingSubjects" class="mt-4 space-y-2.5">
+            <div v-for="n in 3" :key="n" class="h-14 animate-pulse rounded-xl bg-canvas" />
           </div>
-          <ul v-else class="mt-4 divide-y divide-hairline">
-            <li v-for="subject in activeSubjects" :key="subject.id" class="flex items-center justify-between gap-4 py-3">
-              <div>
-                <div class="font-semibold text-ink">{{ subject.subject_code }}</div>
-                <div class="text-sm text-muted">{{ subject.subject_name }}</div>
+          <div
+            v-else-if="activeSubjects.length === 0"
+            class="mt-5 flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-hairline bg-canvas/50 px-6 py-10 text-center"
+          >
+            <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-surface text-subtle shadow-sm ring-1 ring-hairline">
+              <AppIcon name="book" class="h-5 w-5" />
+            </span>
+            <p class="mt-3 text-sm font-semibold text-ink">No active subjects found</p>
+            <p class="mt-1 text-xs text-subtle">Add subjects to make them available for scheduling.</p>
+          </div>
+          <ul v-else class="mt-4 space-y-2">
+            <li
+              v-for="subject in activeSubjects"
+              :key="subject.id"
+              class="flex items-center justify-between gap-3 rounded-xl border border-hairline/70 bg-canvas/50 px-3.5 py-3 transition-colors hover:border-hairline hover:bg-canvas"
+            >
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="rounded-md border border-hairline bg-surface px-2 py-0.5 font-mono text-xs font-bold text-ink">
+                    {{ subject.subject_code }}
+                  </span>
+                </div>
+                <div class="mt-1 truncate text-sm font-medium text-muted">{{ subject.subject_name }}</div>
               </div>
-              <span class="shrink-0 text-xs text-muted">{{ subject.units }} units</span>
+              <span class="shrink-0 rounded-full border border-hairline bg-surface px-2.5 py-1 text-xs font-semibold tabular-nums text-muted">
+                {{ subject.units }} {{ subject.units === 1 ? 'unit' : 'units' }}
+              </span>
             </li>
           </ul>
           <PaginationBar
-            v-if="!subjectsError && subjectTotal > 0"
-            class="mt-4 rounded-lg border border-hairline bg-canvas"
+            v-if="!subjectsError && subjectTotalPages > 1"
+            class="mt-4 rounded-xl border border-hairline bg-canvas"
             :meta="{
               page: subjectPage,
               per_page: subjectPerPage,
@@ -785,29 +820,78 @@ watch(accountRoleFilter, () => {
           />
         </section>
 
-        <section class="rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
-          <div>
-            <h2 class="text-lg font-semibold text-ink">Classes Today</h2>
-            <p class="mt-1 text-sm text-muted">{{ todayLabel }} &middot; all sections and instructors</p>
+        <!-- Classes Today -->
+        <section class="flex flex-col rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
+          <div class="flex items-start justify-between gap-3 border-b border-hairline pb-4">
+            <div class="flex items-center gap-3">
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300">
+                <AppIcon name="calendar" class="h-5 w-5" />
+              </span>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-base font-bold text-ink">Classes Today</h2>
+                  <span class="inline-flex items-center rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-sky-700 dark:text-sky-300">
+                    {{ todaysClasses.length }}
+                  </span>
+                </div>
+                <p class="mt-0.5 text-xs text-subtle">{{ todayLabel }} &middot; all sections and instructors</p>
+              </div>
+            </div>
+            <RouterLink
+              to="/admin/schedules"
+              class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-action transition-colors hover:bg-action/10 dark:text-sky-300 dark:hover:bg-sky-500/15"
+            >
+              <span>Schedules</span>
+              <AppIcon name="chevron-right" class="h-3.5 w-3.5" />
+            </RouterLink>
           </div>
-          <p v-if="classesError" class="mt-4 text-sm text-rose-700" role="alert">
+
+          <p v-if="classesError" class="mt-4 text-sm text-rose-600 dark:text-rose-400" role="alert">
             {{ classesError }}
             <button type="button" class="ml-2 font-semibold underline" @click="fetchTodaysClasses">Retry</button>
           </p>
-          <div v-else-if="isLoadingClasses" class="mt-5 h-24 animate-pulse rounded-lg bg-canvas" />
-          <div v-else-if="todaysClasses.length === 0" class="mt-5 rounded-lg bg-canvas p-4 text-sm text-muted">
-            No published classes are scheduled for today.
+          <div v-else-if="isLoadingClasses" class="mt-4 space-y-2.5">
+            <div v-for="n in 3" :key="n" class="h-14 animate-pulse rounded-xl bg-canvas" />
           </div>
-          <ul v-else class="mt-4 divide-y divide-hairline">
-            <li v-for="item in todaysClasses" :key="item.id" class="py-3">
-              <div class="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <div class="font-semibold text-ink">{{ item.subject_code }} &middot; {{ item.subject_name }}</div>
-                  <div class="mt-1 text-sm text-muted">
+          <div
+            v-else-if="todaysClasses.length === 0"
+            class="mt-5 flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-hairline bg-canvas/50 px-6 py-10 text-center"
+          >
+            <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-surface text-subtle shadow-sm ring-1 ring-hairline">
+              <AppIcon name="calendar" class="h-5 w-5" />
+            </span>
+            <p class="mt-3 text-sm font-semibold text-ink">No published classes today</p>
+            <p class="mt-1 max-w-xs text-xs text-subtle">
+              There are no active timetable entries scheduled for {{ todayLabel }}.
+            </p>
+            <RouterLink
+              to="/admin/schedules"
+              class="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-hairline bg-surface px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:border-action/40 hover:text-action dark:hover:text-sky-300"
+            >
+              <span>Open Schedule Manager</span>
+              <AppIcon name="arrow-right" class="h-3.5 w-3.5" />
+            </RouterLink>
+          </div>
+          <ul v-else class="mt-4 space-y-2">
+            <li
+              v-for="item in todaysClasses"
+              :key="item.id"
+              class="rounded-xl border border-hairline/70 bg-canvas/50 px-3.5 py-3 transition-colors hover:border-hairline hover:bg-canvas"
+            >
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="rounded-md border border-hairline bg-surface px-2 py-0.5 font-mono text-xs font-bold text-ink">
+                      {{ item.subject_code }}
+                    </span>
+                    <span class="truncate text-sm font-semibold text-ink">{{ item.subject_name }}</span>
+                  </div>
+                  <div class="mt-1.5 text-xs text-muted">
                     {{ item.instructor_name }} &middot; {{ item.section_name }} &middot; {{ item.room_code }}
                   </div>
                 </div>
-                <span class="shrink-0 text-sm font-medium text-navy">
+                <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold tabular-nums text-navy dark:text-sky-300">
+                  <AppIcon name="clock" class="h-3.5 w-3.5" />
                   {{ formatTime(item.start_time) }}–{{ formatTime(item.end_time) }}
                 </span>
               </div>
