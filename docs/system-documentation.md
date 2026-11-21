@@ -47,15 +47,115 @@ Kampusly is engineered as a **modular monolith** backed by a **Vue 3 + TypeScrip
 
 ### C. Table of Contents, List of Figures, and List of Tables
 
-> **Submission Note (Microsoft Word):** When converting this document to `.docx`, right-click the Table of Contents field and select **Update Field** to regenerate page numbers. Insert the **List of Figures** and **List of Tables** via Word's **References** tab after applying captions to all diagrams, screenshots, and tables.
+#### Table of Contents
 
-**Quick Section Map:**
-- [Chapter 1: Introduction and Project Plan](#chapter-1-introduction-and-project-plan)
-- [Chapter 2: System Analysis and Requirements (SRS)](#chapter-2-system-analysis-and-requirements-srs)
-- [Chapter 3: System Design and Architecture (SDD)](#chapter-3-system-design-and-architecture-sdd)
-- [Chapter 4: Database Design and Data Models](#chapter-4-database-design-and-data-models)
-- [Chapter 5: Implementation and Code Structure](#chapter-5-implementation-and-code-structure)
-- [Appendices & References](#appendices--references)
+| Section | Page |
+| :--- | :---: |
+| **PRELIMINARY PAGES** | **2** |
+| A. Approval and Signature Sheet | 2 |
+| B. Abstract and Project Goals | 2 |
+| C. Table of Contents, List of Figures, and List of Tables | 3 |
+| **CHAPTER 1: INTRODUCTION AND PROJECT PLAN** | **7** |
+| 1.1 Background of the Study | 7 |
+| 1.2 Statement of the Problem | 7 |
+| 1.3 Objectives | 7 |
+| &nbsp;&nbsp;&nbsp;&nbsp;General Objective | 7 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Specific Objectives | 8 |
+| 1.4 Scope and Limitations | 8 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Implemented Scope (Current Release — Verified) | 8 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Schema-Provisioned & Future Release Items (Not Yet Exposed in End-User UI) | 9 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Operational Dependencies | 9 |
+| 1.5 Software Project Management Plan (SPMP) | 9 |
+| **CHAPTER 2: SYSTEM ANALYSIS AND REQUIREMENTS (SRS)** | **11** |
+| 2.1 Stakeholder Analysis and User Personas | 11 |
+| 2.2 Functional Requirements | 11 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Identity & Access Requirements | 11 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Administrator Requirements | 12 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Instructor Requirements | 12 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Student Requirements | 12 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Notification Requirements | 12 |
+| 2.3 Non-Functional Requirements | 13 |
+| 2.4 Use Case Diagram and Specifications | 14 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Use Case Specification 1: Manage Schedule (Create / Update with Conflict Validation) | 14 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Use Case Specification 2: Submit & Review Schedule Change Request | 15 |
+| **CHAPTER 3: SYSTEM DESIGN AND ARCHITECTURE (SDD)** | **17** |
+| 3.1 System Architecture | 17 |
+| 3.2 Deployment Diagram | 18 |
+| 3.3 Unified Modeling Language (UML) Diagrams | 18 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Activity Diagram: Schedule Creation & Conflict Validation | 18 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Sequence Diagram: Authenticated Request with Conflict Validation | 18 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Class Diagram (Core Implemented Domain Entities) | 19 |
+| 3.4 User Interface Architecture & Screen Inventory | 21 |
+| **CHAPTER 4: DATABASE DESIGN AND DATA MODELS** | **23** |
+| 4.1 Entity-Relationship Diagram (ERD) | 23 |
+| 4.2 Data Dictionary / Physical Schema Table Definitions | 23 |
+| &nbsp;&nbsp;&nbsp;&nbsp;1. `users` | 23 |
+| &nbsp;&nbsp;&nbsp;&nbsp;2. `sections` | 24 |
+| &nbsp;&nbsp;&nbsp;&nbsp;3. `students` | 25 |
+| &nbsp;&nbsp;&nbsp;&nbsp;4. `instructors` | 25 |
+| &nbsp;&nbsp;&nbsp;&nbsp;5. `subjects` | 25 |
+| &nbsp;&nbsp;&nbsp;&nbsp;6. `rooms` | 26 |
+| &nbsp;&nbsp;&nbsp;&nbsp;7. `schedules` | 26 |
+| &nbsp;&nbsp;&nbsp;&nbsp;8. `schedule_change_requests` | 27 |
+| &nbsp;&nbsp;&nbsp;&nbsp;9. `announcements`, `student_announcement_archives`, and `announcement_attachments` | 28 |
+| &nbsp;&nbsp;&nbsp;&nbsp;10. `notifications` and `notification_deliveries` | 28 |
+| &nbsp;&nbsp;&nbsp;&nbsp;11. Supporting Governance & Provisioned Tables | 28 |
+| 4.3 Normalization Analysis (Verified) | 29 |
+| **CHAPTER 5: IMPLEMENTATION AND CODE STRUCTURE** | **30** |
+| 5.1 Verified Technology Stack | 30 |
+| 5.2 Key Algorithms and Verified Core Module Snippets | 31 |
+| &nbsp;&nbsp;&nbsp;&nbsp;1. Half-Open Time Interval Overlap (`TimeSlot.php`) | 31 |
+| &nbsp;&nbsp;&nbsp;&nbsp;2. Multi-Dimension Schedule Conflict Detection (`ScheduleConflictChecker.php`) | 31 |
+| &nbsp;&nbsp;&nbsp;&nbsp;3. Student Schedule Change Window Rule (`ScheduleChangeWindow.php`) | 32 |
+| &nbsp;&nbsp;&nbsp;&nbsp;4. Global CSRF Protection Middleware (`CsrfMiddleware.php`) | 32 |
+| 5.3 System Verification Summary & GUI Walkthrough | 32 |
+| &nbsp;&nbsp;&nbsp;&nbsp;Automated & Live Verification Results (Verified November 21, 2026) | 32 |
+| &nbsp;&nbsp;&nbsp;&nbsp;GUI Walkthrough Checklist (Screenshots to Insert in Final Bound Copy) | 33 |
+| **APPENDICES & REFERENCES** | **35** |
+| Appendix A. Verified REST API Route Inventory (`backend/routes/api.php`) | 35 |
+| Appendix B. User Manuals | 36 |
+| &nbsp;&nbsp;&nbsp;&nbsp;B.1 Student User Manual | 36 |
+| &nbsp;&nbsp;&nbsp;&nbsp;B.2 Instructor User Manual | 37 |
+| &nbsp;&nbsp;&nbsp;&nbsp;B.3 Administrator User Manual | 37 |
+| Appendix C. Certificates and Turnover Logs | 37 |
+| Appendix D. References (APA 7th Edition) | 38 |
+
+#### List of Figures
+
+| Figure | Title | Page |
+| :---: | :--- | :---: |
+| **Figure 1** | Kampusly System Use Case Diagram | 14 |
+| **Figure 2** | Kampusly Modular Monolith System Architecture Diagram | 17 |
+| **Figure 3** | Kampusly Docker Compose Deployment Diagram | 18 |
+| **Figure 4** | Activity Diagram — Schedule Creation and Conflict Validation | 18 |
+| **Figure 5** | Sequence Diagram — Authenticated Schedule Creation with Conflict Validation | 19 |
+| **Figure 6** | Class Diagram — Core Implemented Domain Entities | 21 |
+| **Figure 7** | Kampusly Physical Entity-Relationship Diagram (ERD) | 23 |
+
+#### List of Tables
+
+| Table | Title | Page |
+| :---: | :--- | :---: |
+| **Table 1** | Approval and Signature Sheet | 2 |
+| **Table 2** | Software Project Management Plan (SPMP) Milestones and Verification Evidence | 9 |
+| **Table 3** | Stakeholder Analysis and User Personas | 11 |
+| **Table 4** | Non-Functional Requirements and Verified Implementations | 13 |
+| **Table 5** | Use Case Specification 1 — Manage Schedule (Create / Update with Conflict Validation) | 14 |
+| **Table 6** | Use Case Specification 2 — Submit and Review Schedule Change Request | 15 |
+| **Table 7** | User Interface Architecture and Screen Inventory | 21 |
+| **Table 8** | Data Dictionary — `users` Table | 23 |
+| **Table 9** | Data Dictionary — `sections` Table | 24 |
+| **Table 10** | Data Dictionary — `students` Table | 25 |
+| **Table 11** | Data Dictionary — `instructors` Table | 25 |
+| **Table 12** | Data Dictionary — `subjects` Table | 25 |
+| **Table 13** | Data Dictionary — `rooms` Table | 26 |
+| **Table 14** | Data Dictionary — `schedules` Table | 26 |
+| **Table 15** | Data Dictionary — `schedule_change_requests` Table | 27 |
+| **Table 16** | Verified Technology Stack (Planning Baseline vs. Repository Implementation) | 30 |
+| **Table 17** | Automated and Live System Verification Results | 32 |
+| **Table 18** | GUI Walkthrough Checklist | 33 |
+| **Table 19** | Verified REST API Route and Access Control Inventory | 35 |
+| **Table 20** | System Turnover Checklist and Logs | 37 |
 
 ---
 
