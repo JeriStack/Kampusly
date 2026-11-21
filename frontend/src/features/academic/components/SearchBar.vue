@@ -48,21 +48,21 @@ function handleClear(): void {
 </script>
 
 <template>
-  <div class="relative w-full max-w-sm">
-    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted">
+  <div class="relative w-full max-w-md">
+    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-subtle">
       <AppIcon name="search" class="h-4 w-4" />
     </div>
     <input
       :value="localValue"
       type="text"
       :placeholder="placeholder"
-      class="w-full rounded-lg border border-hairline bg-canvas py-2 pl-9 pr-8 text-xs text-ink placeholder-muted/60 transition-colors focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy/20 dark:focus:border-primary-400"
+      class="w-full rounded-xl border border-hairline bg-surface py-2.5 pl-10 pr-8 text-xs text-ink placeholder-subtle/70 transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
       @input="onInput"
     />
     <button
       v-if="localValue"
       type="button"
-      class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-muted hover:text-ink"
+      class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-subtle hover:text-ink"
       aria-label="Clear search"
       @click="handleClear"
     >

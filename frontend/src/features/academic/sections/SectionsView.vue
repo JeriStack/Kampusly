@@ -165,10 +165,10 @@ onMounted(() => {
     <template #actions>
       <button
         type="button"
-        class="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-navy-700"
+        class="inline-flex items-center gap-2 rounded-xl bg-action px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-action-hover active:bg-action-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
         @click="openCreateModal"
       >
-        <AppIcon name="plus" class="h-3.5 w-3.5" />
+        <AppIcon name="plus" class="h-4 w-4" />
         <span>Add Section</span>
       </button>
     </template>
@@ -184,7 +184,7 @@ onMounted(() => {
       <div class="flex items-center gap-2">
         <select
           v-model="selectedSemester"
-          class="rounded-lg border border-hairline bg-surface px-3 py-2 text-xs text-ink focus:border-navy focus:outline-none"
+          class="rounded-xl border border-hairline bg-surface px-3.5 py-2.5 text-xs font-medium text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
         >
           <option value="">All Semesters</option>
           <option value="1st">1st Semester</option>
@@ -193,7 +193,7 @@ onMounted(() => {
         </select>
         <select
           v-model="selectedStatus"
-          class="rounded-lg border border-hairline bg-surface px-3 py-2 text-xs text-ink focus:border-navy focus:outline-none"
+          class="rounded-xl border border-hairline bg-surface px-3.5 py-2.5 text-xs font-medium text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
         >
           <option value="">All Statuses</option>
           <option value="active">Active Only</option>
@@ -205,7 +205,7 @@ onMounted(() => {
     <!-- Error Alert -->
     <div
       v-if="error"
-      class="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300"
+      class="mb-4 rounded-xl border border-rose-200 bg-rose-50/90 p-4 text-xs text-rose-800 dark:border-rose-500/30 dark:bg-rose-950/40 dark:text-rose-200"
     >
       {{ error }}
     </div>
@@ -213,86 +213,95 @@ onMounted(() => {
     <!-- Data Table -->
     <div class="overflow-hidden rounded-2xl border border-hairline bg-surface shadow-card">
       <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-          <thead class="border-b border-hairline bg-canvas/60 text-muted uppercase font-semibold">
+        <table class="w-full min-w-[820px] text-center text-xs">
+          <thead class="border-b border-hairline bg-canvas/70 text-[11px] font-semibold uppercase tracking-wider text-subtle">
             <tr>
-              <th scope="col" class="px-4 py-3">Section</th>
-              <th scope="col" class="px-4 py-3">Academic Program</th>
-              <th scope="col" class="px-4 py-3">Year Level</th>
-              <th scope="col" class="px-4 py-3">Term</th>
-              <th scope="col" class="px-4 py-3">Students</th>
-              <th scope="col" class="px-4 py-3">Status</th>
-              <th scope="col" class="px-4 py-3 text-right">Actions</th>
+              <th scope="col" class="px-4 py-3.5">Section</th>
+              <th scope="col" class="px-4 py-3.5 text-left">Academic Program</th>
+              <th scope="col" class="px-4 py-3.5">Year Level</th>
+              <th scope="col" class="px-4 py-3.5">Term</th>
+              <th scope="col" class="px-4 py-3.5">Students</th>
+              <th scope="col" class="px-4 py-3.5">Status</th>
+              <th scope="col" class="px-4 py-3.5">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-hairline">
+          <tbody class="divide-y divide-hairline/70">
             <tr v-if="isLoading">
               <td colspan="7" class="py-12 text-center text-muted">
-                <AppIcon name="loader" class="mx-auto h-5 w-5 animate-spin text-navy" />
+                <AppIcon name="loader" class="mx-auto h-5 w-5 animate-spin text-action dark:text-sky-300" />
                 <span class="mt-2 block text-xs">Loading sections...</span>
               </td>
             </tr>
 
             <tr v-else-if="sections.length === 0">
               <td colspan="7" class="py-12 text-center text-muted">
-                <AppIcon name="layers" class="mx-auto h-6 w-6 text-muted/60" />
-                <p class="mt-1 font-semibold text-ink">No sections found</p>
-                <p class="text-xs">Adjust your search query or create a new section.</p>
+                <span class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-canvas text-subtle ring-1 ring-hairline">
+                  <AppIcon name="layers" class="h-5 w-5" />
+                </span>
+                <p class="mt-3 font-semibold text-ink">No sections found</p>
+                <p class="mt-0.5 text-xs text-subtle">Adjust your search query or create a new section.</p>
               </td>
             </tr>
 
             <tr
               v-for="sec in sections"
               :key="sec.id"
-              class="transition-colors hover:bg-canvas/50"
+              class="transition-colors hover:bg-canvas/60"
             >
-              <td class="px-4 py-3 font-mono font-bold text-ink">
-                {{ sec.section_name }}
+              <td class="px-4 py-3.5 whitespace-nowrap">
+                <span class="inline-block rounded-md border border-hairline bg-canvas px-2.5 py-0.5 font-mono text-xs font-bold text-ink">
+                  {{ sec.section_name }}
+                </span>
               </td>
-              <td class="px-4 py-3 font-semibold text-ink">
+              <td class="px-4 py-3.5 text-left font-semibold text-ink">
                 {{ sec.program }}
               </td>
-              <td class="px-4 py-3 text-muted">
-                Year {{ sec.year_level }}
+              <td class="px-4 py-3.5 whitespace-nowrap">
+                <span class="inline-flex rounded-full border border-hairline bg-canvas px-2.5 py-0.5 text-xs font-semibold text-muted">
+                  Year {{ sec.year_level }}
+                </span>
               </td>
-              <td class="px-4 py-3 text-muted">
+              <td class="px-4 py-3.5 whitespace-nowrap text-muted">
                 {{ sec.school_year }} &bull; {{ sec.semester }}
               </td>
-              <td class="px-4 py-3">
+              <td class="px-4 py-3.5 whitespace-nowrap">
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1 font-semibold text-navy hover:underline dark:text-primary-400"
+                  class="inline-flex items-center gap-1.5 rounded-full border border-sky-500/25 bg-sky-500/10 px-2.5 py-0.5 text-xs font-semibold text-navy transition-colors hover:bg-sky-500/20 dark:text-sky-300"
                   @click="openStudentsModal(sec)"
                 >
-                  <AppIcon name="users" class="h-3 w-3" />
+                  <AppIcon name="users" class="h-3.5 w-3.5" />
                   <span>{{ sec.enrolled_students_count ?? 0 }} enrolled</span>
                 </button>
               </td>
-              <td class="px-4 py-3">
+              <td class="px-4 py-3.5 whitespace-nowrap">
                 <StatusBadge :status="sec.status" />
               </td>
-              <td class="px-4 py-3 text-right">
-                <div class="flex items-center justify-end gap-1.5">
+              <td class="px-4 py-3.5 whitespace-nowrap">
+                <div class="inline-flex items-center justify-center gap-1.5">
                   <button
                     type="button"
-                    class="rounded p-1 text-muted hover:bg-canvas hover:text-ink"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-hairline bg-canvas text-muted transition-colors hover:border-action/40 hover:text-action dark:hover:text-sky-300"
                     title="View students"
+                    aria-label="View students"
                     @click="openStudentsModal(sec)"
                   >
                     <AppIcon name="users" class="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
-                    class="rounded p-1 text-muted hover:bg-canvas hover:text-ink"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-hairline bg-canvas text-muted transition-colors hover:border-action/40 hover:text-action dark:hover:text-sky-300"
                     title="Edit section"
+                    aria-label="Edit section"
                     @click="openEditModal(sec)"
                   >
                     <AppIcon name="edit" class="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
-                    class="rounded p-1 text-rose-500 hover:bg-rose-50 hover:text-rose-700"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-hairline bg-canvas text-rose-600 transition-colors hover:border-rose-300 hover:bg-rose-50 dark:text-rose-400 dark:hover:border-rose-500/40 dark:hover:bg-rose-950/40"
                     title="Delete section"
+                    aria-label="Delete section"
                     @click="openDeleteDialog(sec)"
                   >
                     <AppIcon name="trash" class="h-3.5 w-3.5" />
@@ -306,6 +315,7 @@ onMounted(() => {
 
       <!-- Pagination -->
       <PaginationBar
+        class="border-t border-hairline bg-canvas"
         :meta="{
           page: currentPage,
           per_page: perPage,
