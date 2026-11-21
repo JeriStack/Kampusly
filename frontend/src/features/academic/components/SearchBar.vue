@@ -56,7 +56,7 @@ function handleClear(): void {
       :value="localValue"
       type="text"
       :placeholder="placeholder"
-      class="w-full rounded-xl border border-hairline bg-surface py-2.5 pl-10 pr-8 text-xs text-ink placeholder-subtle/70 transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+      class="h-11 w-full rounded-xl border border-hairline bg-surface pl-10 pr-8 text-xs text-ink placeholder-subtle/70 transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
       @input="onInput"
     />
     <button

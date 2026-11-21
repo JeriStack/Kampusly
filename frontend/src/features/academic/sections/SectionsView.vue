@@ -165,7 +165,7 @@ onMounted(() => {
     <template #actions>
       <button
         type="button"
-        class="inline-flex items-center gap-2 rounded-xl bg-action px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-action-hover active:bg-action-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+        class="inline-flex h-11 min-w-[9.5rem] items-center justify-center gap-2 rounded-xl bg-action px-4 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-action-hover active:bg-action-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
         @click="openCreateModal"
       >
         <AppIcon name="plus" class="h-4 w-4" />
@@ -184,7 +184,7 @@ onMounted(() => {
       <div class="flex items-center gap-2">
         <select
           v-model="selectedSemester"
-          class="rounded-xl border border-hairline bg-surface px-3.5 py-2.5 text-xs font-medium text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+          class="h-11 min-w-[9.5rem] rounded-xl border border-hairline bg-surface px-3.5 text-xs font-medium text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
         >
           <option value="">All Semesters</option>
           <option value="1st">1st Semester</option>
@@ -193,7 +193,7 @@ onMounted(() => {
         </select>
         <select
           v-model="selectedStatus"
-          class="rounded-xl border border-hairline bg-surface px-3.5 py-2.5 text-xs font-medium text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+          class="h-11 min-w-[9.5rem] rounded-xl border border-hairline bg-surface px-3.5 text-xs font-medium text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
         >
           <option value="">All Statuses</option>
           <option value="active">Active Only</option>
