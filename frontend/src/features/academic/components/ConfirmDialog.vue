@@ -41,7 +41,7 @@ const emit = defineEmits<{
           :class="{
             'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400': variant === 'danger',
             'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400': variant === 'warning',
-            'bg-navy-100 text-navy-700 dark:bg-navy-900/60 dark:text-primary-300': variant === 'primary',
+            'bg-sky-500/10 text-action dark:bg-sky-500/15 dark:text-sky-300': variant === 'primary',
           }"
         >
           <AppIcon
@@ -71,7 +71,7 @@ const emit = defineEmits<{
           :class="{
             'bg-rose-600 hover:bg-rose-700': variant === 'danger',
             'bg-amber-600 hover:bg-amber-700': variant === 'warning',
-            'bg-navy hover:bg-navy-700': variant === 'primary',
+            'bg-action hover:bg-action-hover': variant === 'primary',
           }"
           @click="emit('confirm')"
         >

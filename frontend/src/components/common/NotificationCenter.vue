@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
+import { useAuth } from '@/features/auth/stores/useAuth'
 import { apiClient } from '@/services/api/client'
 import { API_ENDPOINTS } from '@/services/api/endpoints'
 import { ApiError } from '@/services/api/errors'
@@ -23,6 +24,8 @@ interface NotificationResponse {
 }
 
 const router = useRouter()
+const { user } = useAuth()
+const containerRef = ref<HTMLElement | null>(null)
 const notifications = ref<NotificationItem[]>([])
 const unreadCount = ref(0)
 const isOpen = ref(false)
@@ -57,6 +60,7 @@ async function openNotification(notification: NotificationItem): Promise<void> {
   await markRead(notification)
 
   if (
+    user.value?.role === 'student' &&
     notification.type === 'announcement' &&
     notification.reference_type === 'announcement' &&
     notification.reference_id > 0
@@ -81,18 +85,35 @@ async function markAllRead(): Promise<void> {
   }
 }
 
+function handleDocumentClick(event: MouseEvent): void {
+  if (!isOpen.value) return
+  if (containerRef.value && !containerRef.value.contains(event.target as Node)) {
+    isOpen.value = false
+  }
+}
+
+function handleDocumentKeydown(event: KeyboardEvent): void {
+  if (isOpen.value && event.key === 'Escape') {
+    isOpen.value = false
+  }
+}
+
 onMounted(() => {
   void loadNotifications()
   refreshTimer = setInterval(() => void loadNotifications(), 30_000)
+  document.addEventListener('click', handleDocumentClick)
+  document.addEventListener('keydown', handleDocumentKeydown)
 })
 
 onBeforeUnmount(() => {
   if (refreshTimer) clearInterval(refreshTimer)
+  document.removeEventListener('click', handleDocumentClick)
+  document.removeEventListener('keydown', handleDocumentKeydown)
 })
 </script>
 
 <template>
-  <div class="relative">
+  <div ref="containerRef" class="relative">
     <button
       type="button"
       class="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-hairline bg-surface text-muted transition-colors hover:text-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2 focus-visible:ring-offset-canvas dark:hover:text-white"
@@ -119,22 +140,22 @@ onBeforeUnmount(() => {
         <button
           v-if="unreadCount > 0"
           type="button"
-          class="text-xs font-semibold text-primary-700 hover:underline dark:text-primary-300"
+          class="text-xs font-semibold text-action hover:underline dark:text-sky-300"
           @click="markAllRead"
         >Mark all read</button>
       </div>
-      <p v-if="error" class="px-4 py-3 text-xs text-rose-700" role="alert">{{ error }}</p>
+      <p v-if="error" class="px-4 py-3 text-xs text-rose-600 dark:text-rose-400" role="alert">{{ error }}</p>
       <ul v-else-if="notifications.length" class="max-h-96 divide-y divide-hairline overflow-y-auto">
         <li v-for="notification in notifications" :key="notification.id">
           <button
             type="button"
-            class="block w-full px-4 py-3 text-left hover:bg-canvas"
-            :class="{ 'bg-primary-50/60 dark:bg-primary-950/20': !notification.read_at }"
+            class="block w-full px-4 py-3 text-left transition-colors hover:bg-canvas"
+            :class="{ 'bg-action/5 dark:bg-sky-500/10': !notification.read_at }"
             @click="openNotification(notification)"
           >
             <span class="flex items-center justify-between gap-2">
               <span class="text-xs font-semibold text-ink">{{ notification.title }}</span>
-              <span v-if="!notification.read_at" class="h-2 w-2 shrink-0 rounded-full bg-primary-600" aria-label="Unread" />
+              <span v-if="!notification.read_at" class="h-2 w-2 shrink-0 rounded-full bg-action dark:bg-sky-400" aria-label="Unread" />
             </span>
             <span class="mt-1 block text-xs text-muted">{{ notification.message }}</span>
             <time class="mt-1 block text-[10px] text-muted">{{ notification.created_at }}</time>
