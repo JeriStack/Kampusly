@@ -250,10 +250,10 @@ onMounted(async () => {
     <template #actions>
       <button
         type="button"
-        class="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-navy-700"
+        class="inline-flex items-center gap-2 rounded-xl bg-action px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-action-hover active:bg-action-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
         @click="openCreateForm"
       >
-        <AppIcon name="plus" class="h-3.5 w-3.5" />
+        <AppIcon name="plus" class="h-4 w-4" />
         <span>Add meeting</span>
       </button>
     </template>
@@ -261,7 +261,7 @@ onMounted(async () => {
     <div
       v-if="error"
       role="alert"
-      class="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200"
+      class="mb-5 rounded-xl border border-rose-200 bg-rose-50/90 p-4 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-950/40 dark:text-rose-200"
     >
       <div class="flex items-start justify-between gap-3">
         <p>{{ error }}</p>
@@ -272,28 +272,30 @@ onMounted(async () => {
     <div
       v-if="successMessage"
       role="status"
-      class="mb-5 rounded-xl border border-teal-200 bg-teal-50 p-3 text-sm text-teal-900 dark:border-teal-900 dark:bg-teal-950/30 dark:text-teal-200"
+      class="mb-5 rounded-xl border border-teal-200 bg-teal-50/90 p-3 text-sm text-teal-900 dark:border-teal-500/30 dark:bg-teal-950/40 dark:text-teal-200"
     >
       {{ successMessage }}
     </div>
 
     <ScheduleChangeRequestsPanel />
 
-    <section class="mb-8 rounded-2xl border border-hairline bg-surface p-5 shadow-sm sm:p-6">
-      <div class="mb-5 flex items-start gap-3">
-        <div class="rounded-xl bg-navy-50 p-2 text-navy dark:bg-navy-900/40 dark:text-primary-300">
+    <section class="mb-8 rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
+      <div class="mb-5 flex items-center gap-3 border-b border-hairline pb-4">
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300">
           <AppIcon name="calendar" class="h-5 w-5" />
-        </div>
+        </span>
         <div>
-          <h2 class="text-base font-bold text-ink">Add a class meeting</h2>
-          <p class="mt-1 text-xs text-muted">Each day/time meeting is managed as a separate entry.</p>
+          <h2 class="text-base font-bold text-ink">
+            {{ editingSchedule ? 'Edit class meeting' : 'Add a class meeting' }}
+          </h2>
+          <p class="mt-0.5 text-xs text-subtle">Each day/time meeting is managed as a separate entry.</p>
         </div>
       </div>
 
       <div
         v-if="formError"
         role="alert"
-        class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200"
+        class="mb-4 rounded-xl border border-rose-200 bg-rose-50/90 px-3.5 py-2.5 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-950/40 dark:text-rose-200"
       >
         {{ formError }}
       </div>
@@ -303,12 +305,12 @@ onMounted(async () => {
       </div>
 
       <form v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" @submit.prevent="saveSchedule">
-        <label class="text-xs font-semibold text-ink">
+        <label class="block text-xs font-semibold text-ink">
           Subject
           <select
             v-model.number="form.subject_id"
             required
-            class="mt-1.5 w-full rounded-lg border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20"
+            class="mt-1.5 w-full rounded-xl border border-hairline bg-canvas px-3 py-2.5 text-sm text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
           >
             <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
               {{ subject.subject_code }} — {{ subject.subject_name }}
@@ -316,12 +318,12 @@ onMounted(async () => {
           </select>
         </label>
 
-        <label class="text-xs font-semibold text-ink">
+        <label class="block text-xs font-semibold text-ink">
           Instructor
           <select
             v-model.number="form.instructor_id"
             required
-            class="mt-1.5 w-full rounded-lg border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20"
+            class="mt-1.5 w-full rounded-xl border border-hairline bg-canvas px-3 py-2.5 text-sm text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
           >
             <option v-for="instructor in instructors" :key="instructor.id" :value="instructor.id">
               {{ instructor.full_name }}{{ instructor.employee_number.startsWith('TEMP-') ? ' (placeholder)' : '' }}
@@ -329,12 +331,12 @@ onMounted(async () => {
           </select>
         </label>
 
-        <label class="text-xs font-semibold text-ink">
+        <label class="block text-xs font-semibold text-ink">
           Room
           <select
             v-model.number="form.room_id"
             required
-            class="mt-1.5 w-full rounded-lg border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20"
+            class="mt-1.5 w-full rounded-xl border border-hairline bg-canvas px-3 py-2.5 text-sm text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
           >
             <option v-for="room in rooms" :key="room.id" :value="room.id">
               {{ room.room_code }} — {{ room.room_name }}
@@ -342,12 +344,12 @@ onMounted(async () => {
           </select>
         </label>
 
-        <label class="text-xs font-semibold text-ink">
+        <label class="block text-xs font-semibold text-ink">
           Section
           <select
             v-model.number="form.section_id"
             required
-            class="mt-1.5 w-full rounded-lg border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20"
+            class="mt-1.5 w-full rounded-xl border border-hairline bg-canvas px-3 py-2.5 text-sm text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
             @change="updateSelectedSection"
           >
             <option v-for="section in sections" :key="section.id" :value="section.id">
@@ -356,62 +358,70 @@ onMounted(async () => {
           </select>
         </label>
 
-        <div class="rounded-lg border border-hairline bg-canvas px-3 py-2.5 text-xs text-muted">
+        <div class="block text-xs font-semibold text-ink">
           Academic term
-          <p class="mt-1 text-sm font-semibold text-ink">
+          <div class="mt-1.5 flex w-full items-center rounded-xl border border-hairline/80 bg-canvas/70 px-3 py-2.5 text-sm font-medium text-muted">
             {{ selectedSection ? `${selectedSection.school_year} · ${selectedSection.semester} semester` : 'Select a section' }}
-          </p>
+          </div>
         </div>
 
-        <label class="text-xs font-semibold text-ink">
+        <label class="block text-xs font-semibold text-ink">
           Day
           <select
             v-model="form.day_of_week"
             required
-            class="mt-1.5 w-full rounded-lg border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20"
+            class="mt-1.5 w-full rounded-xl border border-hairline bg-canvas px-3 py-2.5 text-sm text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
           >
             <option v-for="day in days" :key="day" :value="day">{{ day }}</option>
           </select>
         </label>
 
-        <label class="text-xs font-semibold text-ink">
+        <label class="block text-xs font-semibold text-ink">
           Start time
           <input
             v-model="form.start_time"
             type="time"
             required
-            class="mt-1.5 w-full rounded-lg border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20"
+            class="mt-1.5 w-full rounded-xl border border-hairline bg-canvas px-3 py-2.5 text-sm text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
           />
         </label>
 
-        <label class="text-xs font-semibold text-ink">
+        <label class="block text-xs font-semibold text-ink">
           End time
           <input
             v-model="form.end_time"
             type="time"
             required
-            class="mt-1.5 w-full rounded-lg border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20"
+            class="mt-1.5 w-full rounded-xl border border-hairline bg-canvas px-3 py-2.5 text-sm text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
           />
         </label>
 
-        <label class="text-xs font-semibold text-ink">
+        <label class="block text-xs font-semibold text-ink">
           Status
           <select
             v-model="form.status"
-            class="mt-1.5 w-full rounded-lg border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20"
+            class="mt-1.5 w-full rounded-xl border border-hairline bg-canvas px-3 py-2.5 text-sm text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
           >
             <option value="draft">Draft — not shown as confirmed</option>
             <option value="published">Published — visible to students</option>
           </select>
         </label>
 
-        <div class="flex items-end sm:col-span-2 lg:col-span-1">
+        <div class="flex items-center justify-end gap-2 pt-2 sm:col-span-2 lg:col-span-3">
+          <button
+            v-if="editingSchedule"
+            type="button"
+            class="rounded-xl border border-hairline bg-canvas px-4 py-2.5 text-sm font-semibold text-muted transition-colors hover:text-ink"
+            @click="openCreateForm"
+          >
+            Cancel edit
+          </button>
           <button
             type="submit"
             :disabled="isSubmitting || !selectedSection || !subjects.length || !instructors.length || !rooms.length"
-            class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-navy px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-navy-700 focus:outline-none focus:ring-2 focus:ring-navy focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            class="inline-flex items-center justify-center gap-2 rounded-xl bg-action px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-action-hover active:bg-action-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <AppIcon :name="isSubmitting ? 'loader' : 'plus'" class="h-4 w-4" />
+            <AppIcon :name="isSubmitting ? 'loader' : 'plus'" :class="['h-4 w-4', isSubmitting && 'animate-spin']" />
             {{ isSubmitting ? 'Saving…' : editingSchedule ? 'Save Changes' : 'Add Meeting' }}
           </button>
         </div>
@@ -419,67 +429,108 @@ onMounted(async () => {
 
       <p
         v-if="!isLoading && (!subjects.length || !instructors.length || !rooms.length || !sections.length)"
-        class="mt-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+        class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-200"
       >
         Add at least one active subject, instructor, room, and section before creating a schedule.
       </p>
     </section>
 
-    <section class="overflow-hidden rounded-2xl border border-hairline bg-surface shadow-sm">
-      <div class="border-b border-hairline px-6 py-5">
-        <h2 class="text-xl font-bold text-ink">Schedule entries</h2>
-        <p class="mt-1.5 text-sm text-muted">Use the actions to edit, publish, republish, or cancel entries.</p>
+    <section class="overflow-hidden rounded-2xl border border-hairline bg-surface shadow-card">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4 sm:px-6">
+        <div class="flex items-center gap-3">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
+            <AppIcon name="calendar" class="h-5 w-5" />
+          </span>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold text-ink">Schedule entries</h2>
+              <span class="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-blue-700 dark:text-blue-300">
+                {{ scheduleMeta.total }}
+              </span>
+            </div>
+            <p class="mt-0.5 text-xs text-subtle">Use the actions to edit, publish, republish, or cancel entries.</p>
+          </div>
+        </div>
       </div>
 
-      <div v-if="isLoading" class="p-8 text-center text-base text-muted" role="status">
-        Loading schedule entries…
+      <div v-if="isLoading" class="space-y-2.5 p-5" role="status">
+        <div v-for="n in 3" :key="n" class="h-14 animate-pulse rounded-xl bg-canvas" />
       </div>
-      <div v-else-if="scheduleMeta.total === 0" class="p-10 text-center">
-        <p class="text-lg font-semibold text-ink">No schedule entries yet</p>
-        <p class="mt-1.5 text-sm text-muted">Use the form above to add the first class meeting.</p>
+      <div v-else-if="scheduleMeta.total === 0" class="flex flex-col items-center justify-center px-6 py-12 text-center">
+        <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-canvas text-subtle ring-1 ring-hairline">
+          <AppIcon name="calendar" class="h-5 w-5" />
+        </span>
+        <p class="mt-3 text-base font-semibold text-ink">No schedule entries yet</p>
+        <p class="mt-1 text-xs text-subtle">Use the form above to add the first class meeting.</p>
       </div>
       <div v-else class="overflow-x-auto" :class="{ 'opacity-60': isSchedulesLoading }">
-        <table class="w-full min-w-[900px] text-left text-base">
-          <thead class="bg-canvas text-sm uppercase tracking-wide text-muted">
+        <table class="w-full min-w-[920px] text-center text-sm">
+          <thead class="border-b border-hairline bg-canvas/70 text-[11px] uppercase tracking-wider text-subtle">
             <tr>
-              <th scope="col" class="px-6 py-4 font-semibold">Class</th>
-              <th scope="col" class="px-6 py-4 font-semibold">Section</th>
-              <th scope="col" class="px-6 py-4 font-semibold">Meeting</th>
-              <th scope="col" class="px-6 py-4 font-semibold">Room</th>
-              <th scope="col" class="px-6 py-4 font-semibold">Instructor</th>
-              <th scope="col" class="px-6 py-4 font-semibold">Status</th>
-              <th scope="col" class="px-6 py-4 text-right font-semibold">Actions</th>
+              <th scope="col" class="px-5 py-3.5 text-left font-semibold">Class</th>
+              <th scope="col" class="px-4 py-3.5 font-semibold">Section</th>
+              <th scope="col" class="px-4 py-3.5 font-semibold">Meeting</th>
+              <th scope="col" class="px-4 py-3.5 font-semibold">Room</th>
+              <th scope="col" class="px-4 py-3.5 font-semibold">Instructor</th>
+              <th scope="col" class="px-4 py-3.5 font-semibold">Status</th>
+              <th scope="col" class="px-5 py-3.5 font-semibold">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-hairline">
-            <tr v-for="schedule in schedules" :key="schedule.id">
-              <td class="px-6 py-4">
-                <p class="font-semibold text-ink">{{ schedule.subject_code }}</p>
-                <p class="mt-0.5 text-sm text-muted">{{ schedule.subject_name }}</p>
+          <tbody class="divide-y divide-hairline/70">
+            <tr
+              v-for="schedule in schedules"
+              :key="schedule.id"
+              class="transition-colors hover:bg-canvas/60"
+            >
+              <td class="px-5 py-3.5 text-left">
+                <span class="inline-block rounded-md border border-hairline bg-canvas px-2 py-0.5 font-mono text-xs font-bold text-ink">
+                  {{ schedule.subject_code }}
+                </span>
+                <p class="mt-1 text-xs font-medium text-muted">{{ schedule.subject_name }}</p>
               </td>
-              <td class="px-6 py-4 text-ink">{{ schedule.section_name }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-ink">
-                {{ schedule.day_of_week }}, {{ schedule.start_time.slice(0, 5) }}–{{ schedule.end_time.slice(0, 5) }}
+              <td class="px-4 py-3.5 whitespace-nowrap">
+                <span class="inline-flex rounded-md border border-hairline bg-canvas px-2.5 py-1 text-xs font-semibold text-ink">
+                  {{ schedule.section_name }}
+                </span>
               </td>
-              <td class="px-6 py-4 text-ink">{{ schedule.room_code }}</td>
-              <td class="px-6 py-4 text-ink">{{ schedule.instructor_name }}</td>
-              <td class="px-6 py-4">
+              <td class="px-4 py-3.5 whitespace-nowrap">
+                <span class="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold tabular-nums text-navy dark:text-sky-300">
+                  <AppIcon name="clock" class="h-3.5 w-3.5" />
+                  {{ schedule.day_of_week }}, {{ schedule.start_time.slice(0, 5) }}–{{ schedule.end_time.slice(0, 5) }}
+                </span>
+              </td>
+              <td class="px-4 py-3.5 whitespace-nowrap">
+                <span class="inline-block rounded-md border border-hairline bg-canvas px-2.5 py-1 font-mono text-xs font-semibold text-ink">
+                  {{ schedule.room_code }}
+                </span>
+              </td>
+              <td class="px-4 py-3.5 whitespace-nowrap font-medium text-ink">{{ schedule.instructor_name }}</td>
+              <td class="px-4 py-3.5 whitespace-nowrap">
                 <span
-                  class="inline-flex rounded-full border px-3 py-1 text-sm font-semibold capitalize"
+                  class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize"
                   :class="{
-                    'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200': schedule.status === 'draft',
-                    'border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-200': schedule.status === 'published',
-                    'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200': schedule.status === 'cancelled',
+                    'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300': schedule.status === 'draft',
+                    'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300': schedule.status === 'published',
+                    'border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300': schedule.status === 'cancelled',
                   }"
                 >
+                  <span
+                    class="h-1.5 w-1.5 rounded-full"
+                    :class="{
+                      'bg-amber-500': schedule.status === 'draft',
+                      'bg-emerald-500': schedule.status === 'published',
+                      'bg-rose-500': schedule.status === 'cancelled',
+                    }"
+                    aria-hidden="true"
+                  />
                   {{ schedule.status }}
                 </span>
               </td>
-              <td class="px-6 py-4">
-                <div class="flex justify-end gap-2">
+              <td class="px-5 py-3.5 whitespace-nowrap">
+                <div class="inline-flex items-center justify-center gap-2">
                   <button
                     type="button"
-                    class="rounded-md border border-hairline px-3 py-2 text-sm font-semibold text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy"
+                    class="rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:border-action/40 hover:text-action dark:hover:text-sky-300"
                     @click="openEditForm(schedule)"
                   >
                     Edit
@@ -487,7 +538,7 @@ onMounted(async () => {
                   <button
                     v-if="schedule.status !== 'published'"
                     type="button"
-                    class="rounded-md border border-teal-300 px-3 py-2 text-sm font-semibold text-teal-800 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:border-teal-800 dark:text-teal-200 dark:hover:bg-teal-950/40"
+                    class="rounded-lg border border-emerald-500/30 bg-canvas px-3 py-1.5 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
                     @click="changeScheduleStatus(schedule, 'published')"
                   >
                     {{ schedule.status === 'cancelled' ? 'Republish' : 'Publish' }}
@@ -495,7 +546,7 @@ onMounted(async () => {
                   <button
                     v-if="schedule.status === 'published'"
                     type="button"
-                    class="rounded-md border border-rose-300 px-3 py-2 text-sm font-semibold text-rose-800 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 dark:border-rose-800 dark:text-rose-200 dark:hover:bg-rose-950/40"
+                    class="rounded-lg border border-rose-500/30 bg-canvas px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
                     @click="changeScheduleStatus(schedule, 'cancelled')"
                   >
                     Cancel
@@ -508,7 +559,7 @@ onMounted(async () => {
       </div>
       <PaginationBar
         v-if="!isLoading && scheduleMeta.total > 0"
-        class="bg-canvas"
+        class="border-t border-hairline bg-canvas"
         :meta="scheduleMeta"
         :disabled="isSchedulesLoading"
         @change-page="handleSchedulePageChange"
