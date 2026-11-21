@@ -2,9 +2,18 @@
 
 <div align="justify">
 
-Central index for all Kampusly project documentation, organized by category so contributors and maintainers can quickly locate requirements, architecture diagrams, design specifications, database schemas, API contracts, and operational runbooks.
+Central index for all Kampusly project documentation, organized by category so contributors and maintainers can quickly locate requirements, architecture diagrams, design specifications, database schemas, API contracts, operational runbooks, and the consolidated capstone system documentation.
 
 </div>
+
+---
+
+## Consolidated System Documentation
+
+| Document | Description |
+| :--- | :--- |
+| [system-documentation.md](./system-documentation.md) | Complete consolidated capstone System Documentation (Preliminary Pages, Chapters 1–5, ERD, Data Dictionary, Verified Stack, UML Diagrams, API Inventory, User Manuals, and References). |
+| [Kampusly-System-Documentation.docx](./Kampusly-System-Documentation.docx) | Ready-to-submit Microsoft Word (`.docx`) build generated from `system-documentation.md` with cover page, auto-TOC field, styled tables, headers, and page-numbered footers. |
 
 ---
 

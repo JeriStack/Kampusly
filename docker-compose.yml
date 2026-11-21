@@ -62,6 +62,7 @@ services:
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Kampusly}
     volumes:
       - ./backend:/var/www/backend
+      - ./docs:/var/www/docs:ro
     healthcheck:
       test: ["CMD", "php", "/var/www/backend/bin/health-check.php", "--live-only"]
       interval: 15s

@@ -168,7 +168,7 @@ return static function (Router $router, Container $container): void {
         /** @var StudentController $controller */
         $controller = $container->get(StudentController::class);
         return $controller->listStudents($request);
-    }, [$authenticate]);
+    }, [$authenticate, $authorizeRoles(['admin', 'instructor'])]);
 
     $router->post('/students', static function (HttpRequest $request) use ($container): JsonResponse {
         /** @var StudentController $controller */
@@ -180,7 +180,7 @@ return static function (Router $router, Container $container): void {
         /** @var StudentController $controller */
         $controller = $container->get(StudentController::class);
         return $controller->getStudent($request, $params);
-    }, [$authenticate]);
+    }, [$authenticate, $authorizeRoles(['admin', 'instructor'])]);
 
     $router->put('/students/{id}', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
         /** @var StudentController $controller */
@@ -199,7 +199,7 @@ return static function (Router $router, Container $container): void {
         /** @var InstructorController $controller */
         $controller = $container->get(InstructorController::class);
         return $controller->listInstructors($request);
-    }, [$authenticate]);
+    }, [$authenticate, $authorizeRoles(['admin'])]);
 
     $router->post('/instructors', static function (HttpRequest $request) use ($container): JsonResponse {
         /** @var InstructorController $controller */
@@ -211,7 +211,7 @@ return static function (Router $router, Container $container): void {
         /** @var InstructorController $controller */
         $controller = $container->get(InstructorController::class);
         return $controller->getInstructor($request, $params);
-    }, [$authenticate]);
+    }, [$authenticate, $authorizeRoles(['admin'])]);
 
     $router->put('/instructors/{id}', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
         /** @var InstructorController $controller */
@@ -230,7 +230,7 @@ return static function (Router $router, Container $container): void {
         /** @var AcademicCatalogController $academicController */
         $academicController = $container->get(AcademicCatalogController::class);
         return $academicController->listSubjects($request);
-    });
+    }, [$authenticate]);
 
     $router->post('/subjects', static function (HttpRequest $request) use ($container): JsonResponse {
         /** @var AcademicCatalogController $academicController */
@@ -242,7 +242,7 @@ return static function (Router $router, Container $container): void {
         /** @var AcademicCatalogController $academicController */
         $academicController = $container->get(AcademicCatalogController::class);
         return $academicController->getSubject($request, $params);
-    });
+    }, [$authenticate]);
 
     $router->put('/subjects/{id}', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
         /** @var AcademicCatalogController $academicController */
@@ -261,7 +261,7 @@ return static function (Router $router, Container $container): void {
         /** @var AcademicCatalogController $academicController */
         $academicController = $container->get(AcademicCatalogController::class);
         return $academicController->listRooms($request);
-    });
+    }, [$authenticate]);
 
     $router->post('/rooms', static function (HttpRequest $request) use ($container): JsonResponse {
         /** @var AcademicCatalogController $academicController */
@@ -273,7 +273,7 @@ return static function (Router $router, Container $container): void {
         /** @var AcademicCatalogController $academicController */
         $academicController = $container->get(AcademicCatalogController::class);
         return $academicController->getRoom($request, $params);
-    });
+    }, [$authenticate]);
 
     $router->put('/rooms/{id}', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
         /** @var AcademicCatalogController $academicController */
@@ -292,7 +292,7 @@ return static function (Router $router, Container $container): void {
         /** @var AcademicCatalogController $academicController */
         $academicController = $container->get(AcademicCatalogController::class);
         return $academicController->listSections($request);
-    });
+    }, [$authenticate]);
 
     $router->post('/sections', static function (HttpRequest $request) use ($container): JsonResponse {
         /** @var AcademicCatalogController $academicController */
@@ -304,7 +304,7 @@ return static function (Router $router, Container $container): void {
         /** @var AcademicCatalogController $academicController */
         $academicController = $container->get(AcademicCatalogController::class);
         return $academicController->getSection($request, $params);
-    });
+    }, [$authenticate]);
 
     $router->put('/sections/{id}', static function (HttpRequest $request, array $params) use ($container): JsonResponse {
         /** @var AcademicCatalogController $academicController */
@@ -322,7 +322,7 @@ return static function (Router $router, Container $container): void {
         /** @var AcademicCatalogController $academicController */
         $academicController = $container->get(AcademicCatalogController::class);
         return $academicController->listSectionStudents($request, $params);
-    }, [$authenticate]);
+    }, [$authenticate, $authorizeRoles(['admin', 'instructor'])]);
 
     // --- Schedules ---
     $router->get('/schedules', static function (HttpRequest $request) use ($container): JsonResponse {
