@@ -22,5 +22,5 @@ Briefly describe what this pull request changes and why.
 - [ ] **Security & RBAC:** Server-side authorization and input validation are enforced where applicable; no secrets or `.env` files are committed.
 - [ ] **Frontend Checks Passed:** `npm --prefix frontend run lint`, `format:check`, `type-check`, `test`, and `build` succeed.
 - [ ] **Backend Checks Passed:** `composer --working-dir=backend check` (`lint`, `cs`, `stan`, `test`) succeeds.
-- [ ] **Database & API Contract:** Any schema or endpoint changes match `docs/phase-2/phase-2-database-design.md` and `docs/phase-2/phase-2-api-contract.yaml`.
+- [ ] **Database & API Contract:** Any schema or endpoint changes match `docs/database/database-design.md` and `docs/api/openapi.yaml`.
 

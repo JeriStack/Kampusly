@@ -3,6 +3,8 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuth } from '@/features/auth/stores/useAuth'
 import KampuslyLogo from '@/components/common/KampuslyLogo.vue'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
+import NotificationCenter from '@/components/common/NotificationCenter.vue'
+import UserSessionPopover from '@/components/common/UserSessionPopover.vue'
 import AppIcon, { type IconName } from '@/components/common/AppIcon.vue'
 
 defineProps<{
@@ -33,48 +35,60 @@ async function handleLogout(): Promise<void> {
 <template>
   <div class="dashboard-readable min-h-screen bg-canvas text-ink flex flex-col">
     <!-- Top Navigation Header -->
-    <header class="sticky top-0 z-30 border-b border-hairline bg-surface/90 backdrop-blur-md">
-      <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        <div class="flex items-center gap-4">
-          <RouterLink to="/admin/dashboard" class="flex items-center gap-2">
+    <header class="sticky top-0 z-30 border-b border-hairline bg-surface/95 backdrop-blur-md">
+      <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+        <div class="flex min-w-0 items-center gap-3">
+          <RouterLink to="/admin/dashboard" class="flex shrink-0 items-center gap-2">
             <KampuslyLogo size="sm" />
           </RouterLink>
-          <span class="rounded-full bg-navy-100 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-navy-800 dark:bg-navy-900/60 dark:text-primary-300">
-            Admin Portal
+          <span class="hidden sm:inline-flex items-center rounded-full border border-navy/15 bg-navy-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-navy-800 dark:border-sky-400/25 dark:bg-sky-500/15 dark:text-sky-200">
+            Administrator Portal
           </span>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2.5">
+          <NotificationCenter />
           <ThemeToggle />
-          <div class="hidden text-right sm:block">
-            <div class="text-xs font-bold text-ink">{{ user?.name }}</div>
-            <div class="text-[11px] text-muted">{{ user?.email }}</div>
-          </div>
+          <div aria-hidden="true" class="hidden h-6 w-px bg-hairline sm:block" />
+          <UserSessionPopover :subtitle="user?.email" />
           <button
             type="button"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/40"
+            aria-label="Sign out"
+            title="Sign out"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-hairline bg-surface text-rose-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:border-rose-500/40 dark:hover:bg-rose-950/50 dark:hover:text-rose-300"
             @click="handleLogout"
           >
-            <AppIcon name="logout" class="h-3.5 w-3.5" />
-            <span>Sign Out</span>
+            <AppIcon name="logout" class="h-5 w-5" />
           </button>
         </div>
       </div>
 
       <!-- Navigation Tabs -->
-      <nav class="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 sm:px-6 lg:px-8">
+      <nav
+        class="mx-auto flex max-w-7xl items-center gap-1.5 overflow-x-auto border-t border-hairline/60 px-4 py-2 sm:px-6 lg:px-8"
+        aria-label="Admin navigation"
+      >
         <RouterLink
           v-for="tab in tabs"
           :key="tab.path"
           :to="tab.path"
-          class="relative flex items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-xs font-semibold transition-colors whitespace-nowrap"
-          :class="[
+          :aria-current="route.path.startsWith(tab.path) ? 'page' : undefined"
+          class="group inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
+          :class="
             route.path.startsWith(tab.path)
-              ? 'border-navy text-navy dark:border-primary-400 dark:text-primary-400 font-bold'
-              : 'border-transparent text-muted hover:text-ink',
-          ]"
+              ? 'bg-action/10 text-navy ring-1 ring-inset ring-action/20 shadow-sm dark:bg-sky-500/15 dark:text-sky-200 dark:ring-sky-400/30'
+              : 'text-muted hover:bg-canvas hover:text-ink'
+          "
         >
-          <AppIcon :name="tab.icon" class="h-4 w-4" />
+          <AppIcon
+            :name="tab.icon"
+            class="h-4 w-4 transition-colors"
+            :class="
+              route.path.startsWith(tab.path)
+                ? 'text-action dark:text-sky-300'
+                : 'text-subtle group-hover:text-ink'
+            "
+          />
           <span>{{ tab.name }}</span>
         </RouterLink>
       </nav>

@@ -270,46 +270,105 @@ async function setAnnouncementArchived(announcement: Announcement, archive: bool
 
 <template>
   <div class="space-y-6">
-    <div v-if="error" class="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800" role="alert">
+    <div
+      v-if="error"
+      class="rounded-xl border border-rose-200 bg-rose-50/90 p-3.5 text-xs text-rose-800 dark:border-rose-500/30 dark:bg-rose-950/40 dark:text-rose-200"
+      role="alert"
+    >
       {{ error }}
       <button type="button" class="ml-2 font-semibold underline" @click="loadData">Retry</button>
     </div>
-    <p v-if="success" class="rounded-lg border border-teal-200 bg-teal-50 p-3 text-xs text-teal-900" role="status">{{ success }}</p>
-    <p v-if="isLoading" class="py-8 text-center text-sm text-muted" role="status">Loading your teaching schedule…</p>
+    <p
+      v-if="success"
+      class="rounded-xl border border-teal-200 bg-teal-50/90 p-3.5 text-xs text-teal-900 dark:border-teal-500/30 dark:bg-teal-950/40 dark:text-teal-200"
+      role="status"
+    >
+      {{ success }}
+    </p>
+    <div v-if="isLoading" class="space-y-3 rounded-2xl border border-hairline bg-surface p-6 shadow-card" role="status">
+      <div class="h-6 w-48 animate-pulse rounded-lg bg-canvas" />
+      <div class="h-24 animate-pulse rounded-xl bg-canvas" />
+    </div>
 
-    <section v-else class="rounded-xl border border-hairline bg-surface">
-      <div class="flex flex-wrap items-end justify-between gap-3 border-b border-hairline p-4">
-        <div>
-          <h2 class="text-sm font-bold text-ink">My Teaching Schedule</h2>
-          <p class="mt-1 text-xs text-muted">Only classes assigned to your instructor account are shown.</p>
+    <section v-else class="overflow-hidden rounded-2xl border border-hairline bg-surface shadow-card">
+      <div class="flex flex-wrap items-center justify-between gap-4 border-b border-hairline px-5 py-4 sm:px-6">
+        <div class="flex items-center gap-3">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300">
+            <AppIcon name="calendar" class="h-5 w-5" />
+          </span>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold text-ink">My Teaching Schedule</h2>
+              <span class="inline-flex items-center rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-sky-700 dark:text-sky-300">
+                {{ schedules.length }}
+              </span>
+            </div>
+            <p class="mt-0.5 text-xs text-subtle">Only classes assigned to your instructor account are shown.</p>
+          </div>
         </div>
-        <div class="flex gap-2">
-          <label class="text-[11px] font-semibold text-muted">Day
-            <select v-model="dayFilter" class="ml-1 rounded-lg border border-hairline bg-canvas px-2 py-1.5 text-xs text-ink">
-              <option value="">All days</option>
-              <option v-for="day in days" :key="day" :value="day">{{ day }}</option>
-            </select>
-          </label>
-          <label class="text-[11px] font-semibold text-muted">Section
-            <select v-model="sectionFilter" class="ml-1 rounded-lg border border-hairline bg-canvas px-2 py-1.5 text-xs text-ink">
-              <option value="">All</option>
-              <option v-for="section in sections" :key="section.id" :value="section.id">{{ section.name }}</option>
-            </select>
-          </label>
+        <div class="flex flex-wrap items-center gap-2">
+          <select
+            v-model="dayFilter"
+            aria-label="Filter by day"
+            class="h-10 rounded-xl border border-hairline bg-canvas px-3 text-xs font-medium text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+          >
+            <option value="">All days</option>
+            <option v-for="day in days" :key="day" :value="day">{{ day }}</option>
+          </select>
+          <select
+            v-model="sectionFilter"
+            aria-label="Filter by section"
+            class="h-10 rounded-xl border border-hairline bg-canvas px-3 text-xs font-medium text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+          >
+            <option value="">All sections</option>
+            <option v-for="section in sections" :key="section.id" :value="section.id">{{ section.name }}</option>
+          </select>
         </div>
       </div>
-      <p v-if="schedules.length === 0" class="p-6 text-center text-xs text-muted">No teaching schedules are assigned to your account.</p>
-      <div v-else class="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
-        <section v-for="group in scheduleGroups" :key="group.day" class="overflow-hidden rounded-lg border border-hairline">
-          <h3 class="bg-canvas px-3 py-2 text-xs font-bold text-ink">{{ group.day }}</h3>
-          <ul class="divide-y divide-hairline">
-            <li v-for="schedule in group.entries" :key="schedule.id" class="p-3">
-              <p class="text-xs font-semibold text-ink">{{ schedule.subject_code }} · {{ schedule.subject_name }}</p>
-              <p class="mt-1 text-[11px] text-muted">{{ schedule.section_name }} · {{ schedule.room_code }}</p>
-              <div class="mt-2 flex items-center justify-between gap-2">
-                <span class="text-xs font-semibold tabular-nums text-ink">{{ schedule.start_time.slice(0, 5) }}–{{ schedule.end_time.slice(0, 5) }}</span>
-                <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize"
-                  :class="schedule.status === 'published' ? 'border-teal-300 bg-teal-50 text-teal-900' : schedule.status === 'draft' ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-rose-300 bg-rose-50 text-rose-900'">{{ schedule.status }}</span>
+
+      <div
+        v-if="schedules.length === 0"
+        class="flex flex-col items-center justify-center px-6 py-10 text-center"
+      >
+        <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-canvas text-subtle ring-1 ring-hairline">
+          <AppIcon name="calendar" class="h-5 w-5" />
+        </span>
+        <p class="mt-3 text-sm font-semibold text-ink">No teaching schedules assigned</p>
+        <p class="mt-1 max-w-sm text-xs text-subtle">
+          Classes assigned to your instructor account will appear here automatically.
+        </p>
+      </div>
+      <div v-else class="grid gap-3 p-5 sm:px-6 md:grid-cols-2">
+        <section v-for="group in scheduleGroups" :key="group.day" class="overflow-hidden rounded-xl border border-hairline">
+          <h3 class="border-b border-hairline bg-canvas/70 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-ink">
+            {{ group.day }}
+          </h3>
+          <ul class="divide-y divide-hairline/70">
+            <li v-for="schedule in group.entries" :key="schedule.id" class="p-3.5">
+              <div class="flex items-center gap-2">
+                <span class="rounded-md border border-hairline bg-canvas px-2 py-0.5 font-mono text-[11px] font-bold text-ink">
+                  {{ schedule.subject_code }}
+                </span>
+                <p class="truncate text-xs font-semibold text-ink">{{ schedule.subject_name }}</p>
+              </div>
+              <p class="mt-1.5 text-xs text-muted">{{ schedule.section_name }} &middot; {{ schedule.room_code }}</p>
+              <div class="mt-2.5 flex items-center justify-between gap-2">
+                <span class="inline-flex items-center gap-1 text-xs font-semibold tabular-nums text-navy dark:text-sky-300">
+                  <AppIcon name="clock" class="h-3.5 w-3.5" />
+                  {{ schedule.start_time.slice(0, 5) }}–{{ schedule.end_time.slice(0, 5) }}
+                </span>
+                <span
+                  class="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold capitalize"
+                  :class="
+                    schedule.status === 'published'
+                      ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                      : schedule.status === 'draft'
+                        ? 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                        : 'border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300'
+                  "
+                >
+                  {{ schedule.status }}
+                </span>
               </div>
             </li>
           </ul>
@@ -317,32 +376,65 @@ async function setAnnouncementArchived(announcement: Announcement, archive: bool
       </div>
     </section>
 
-    <section class="rounded-xl border border-hairline bg-surface">
-      <div class="border-b border-hairline p-4">
-        <h2 class="text-sm font-bold text-ink">Section Announcements</h2>
-        <p class="mt-1 text-xs text-muted">Students enrolled in the selected section receive an in-app notification.</p>
+    <section class="overflow-hidden rounded-2xl border border-hairline bg-surface shadow-card">
+      <div class="flex items-center gap-3 border-b border-hairline px-5 py-4 sm:px-6">
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600 dark:bg-teal-500/15 dark:text-teal-300">
+          <AppIcon name="megaphone" class="h-5 w-5" />
+        </span>
+        <div>
+          <h2 class="text-base font-bold text-ink">Section Announcements</h2>
+          <p class="mt-0.5 text-xs text-subtle">Students enrolled in the selected section receive an in-app notification.</p>
+        </div>
       </div>
-      <form class="grid gap-3 p-4" @submit.prevent="saveAnnouncement">
-        <label class="text-xs font-semibold text-ink">Assigned section and subject
-          <select v-model="form.target" required :disabled="!assignedClasses.length || editingAnnouncementId !== null" class="mt-1 w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-xs">
+
+      <form class="space-y-4 p-5 sm:px-6" @submit.prevent="saveAnnouncement">
+        <label class="block text-xs font-semibold text-ink">
+          Assigned section and subject
+          <select
+            v-model="form.target"
+            required
+            :disabled="!assignedClasses.length || editingAnnouncementId !== null"
+            class="mt-1.5 w-full rounded-xl border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <option v-if="!assignedClasses.length" value="" disabled>No assigned classes available</option>
             <option v-for="assignment in assignedClasses" :key="`${assignment.section_id}:${assignment.subject_id}`" :value="`${assignment.section_id}:${assignment.subject_id}`">
               {{ assignment.section_name }} · {{ assignment.subject_code }} — {{ assignment.subject_name }}
             </option>
           </select>
         </label>
-        <label class="text-xs font-semibold text-ink">Title
-          <input v-model="form.title" required minlength="3" maxlength="180" class="mt-1 w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-xs" />
+        <label class="block text-xs font-semibold text-ink">
+          Title
+          <input
+            v-model="form.title"
+            required
+            minlength="3"
+            maxlength="180"
+            placeholder="e.g. Midterm project guidelines"
+            class="mt-1.5 w-full rounded-xl border border-hairline bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder-subtle/60 transition-colors focus:border-action focus:outline-none focus:ring-2 focus:ring-action/25"
+          />
         </label>
         <RichTextEditor v-model="form.message" />
-        <div class="flex flex-wrap gap-2">
-          <button type="submit" :disabled="isSaving || !assignedClasses.length" class="rounded-lg bg-navy px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
-            {{ isSaving ? 'Saving…' : editingAnnouncementId ? 'Save announcement' : 'Publish announcement' }}
+        <div class="flex flex-wrap items-center justify-end gap-2.5 pt-1">
+          <button
+            v-if="editingAnnouncementId"
+            type="button"
+            class="rounded-xl border border-hairline bg-canvas px-4 py-2.5 text-xs font-semibold text-ink transition-colors hover:bg-surface"
+            @click="resetForm"
+          >
+            Cancel edit
           </button>
-          <button v-if="editingAnnouncementId" type="button" class="rounded-lg border border-hairline px-4 py-2 text-xs font-semibold" @click="resetForm">Cancel edit</button>
+          <button
+            type="submit"
+            :disabled="isSaving || !assignedClasses.length"
+            class="inline-flex items-center gap-2 rounded-xl bg-action px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-action-hover active:bg-action-active disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <AppIcon v-if="isSaving" name="loader" class="h-4 w-4 animate-spin" />
+            <span>{{ isSaving ? 'Saving…' : editingAnnouncementId ? 'Save announcement' : 'Publish announcement' }}</span>
+          </button>
         </div>
       </form>
 
-      <div class="border-t border-hairline p-4">
+      <div class="border-t border-hairline px-5 py-4 sm:px-6">
         <h3>
           <button
             type="button"
@@ -358,66 +450,80 @@ async function setAnnouncementArchived(announcement: Announcement, archive: bool
               />
               Announcement history
             </span>
-            <span class="rounded-full border border-hairline bg-canvas px-2 py-0.5 text-[10px] font-semibold text-muted">
+            <span class="rounded-full border border-hairline bg-canvas px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-muted">
               {{ activeMeta.total }}
             </span>
           </button>
         </h3>
         <div v-show="isHistoryOpen">
-        <div class="mt-3 flex gap-1 rounded-lg bg-canvas p-1 text-xs font-semibold" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            class="flex-1 rounded-md px-3 py-1.5 transition-colors"
-            :class="announcementTab === 'active' ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'"
-            :aria-selected="announcementTab === 'active'"
-            @click="announcementTab = 'active'"
-          >Active ({{ activeMeta.total }})</button>
-          <button
-            type="button"
-            role="tab"
-            class="flex-1 rounded-md px-3 py-1.5 transition-colors"
-            :class="announcementTab === 'archived' ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'"
-            :aria-selected="announcementTab === 'archived'"
-            @click="announcementTab = 'archived'"
-          >Archived ({{ archivedMeta.total }})</button>
-        </div>
-        <p v-if="announcementTab === 'archived'" class="mt-3 text-[11px] text-muted">
-          Archived announcements are hidden from students and deleted automatically after 7 days.
-        </p>
-        <ul v-if="visibleAnnouncements.length" class="mt-3 divide-y divide-hairline">
-          <li v-for="announcement in visibleAnnouncements" :key="announcement.id" class="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
-            <div class="min-w-0 flex-1">
-              <p class="text-xs font-semibold text-ink">{{ announcement.title }}</p>
-              <FormattedText :text="announcement.message" class="mt-1 text-xs text-muted" />
-              <p class="mt-1 text-[10px] text-muted">
-                {{ assignedClasses.find((item) => item.section_id === announcement.section_id && item.subject_id === announcement.subject_id)?.section_name || 'Assigned section' }}
-                · {{ announcement.status === 'withdrawn' ? 'Deleted' : announcement.status }}
-              </p>
-            </div>
-            <div v-if="announcementTab === 'archived'" class="flex gap-2">
-              <button
-                type="button"
-                class="text-xs font-semibold text-primary-700 hover:underline disabled:opacity-50"
-                :disabled="busyAnnouncementId === announcement.id"
-                @click="setAnnouncementArchived(announcement, false)"
-              >Restore</button>
-            </div>
-            <div v-else-if="announcement.status !== 'withdrawn'" class="flex gap-2">
-              <button type="button" class="text-xs font-semibold text-primary-700 hover:underline" @click="editAnnouncement(announcement)">Edit</button>
-              <button
-                type="button"
-                class="text-xs font-semibold text-rose-700 hover:underline disabled:opacity-50"
-                :disabled="busyAnnouncementId === announcement.id"
-                @click="setAnnouncementArchived(announcement, true)"
-              >Archive</button>
-            </div>
-          </li>
-        </ul>
-        <p v-else-if="isAnnouncementsLoading" class="mt-2 text-xs text-muted">Loading announcements…</p>
-        <p v-else class="mt-2 text-xs text-muted">
-          {{ announcementTab === 'active' ? 'No announcements published yet.' : 'No archived announcements.' }}
-        </p>
+          <div class="mt-3 flex gap-1 rounded-xl bg-canvas p-1 text-xs font-semibold" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              class="flex-1 rounded-lg px-3 py-1.5 transition-colors"
+              :class="announcementTab === 'active' ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'"
+              :aria-selected="announcementTab === 'active'"
+              @click="announcementTab = 'active'"
+            >
+              Active ({{ activeMeta.total }})
+            </button>
+            <button
+              type="button"
+              role="tab"
+              class="flex-1 rounded-lg px-3 py-1.5 transition-colors"
+              :class="announcementTab === 'archived' ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'"
+              :aria-selected="announcementTab === 'archived'"
+              @click="announcementTab = 'archived'"
+            >
+              Archived ({{ archivedMeta.total }})
+            </button>
+          </div>
+          <p v-if="announcementTab === 'archived'" class="mt-3 text-[11px] text-subtle">
+            Archived announcements are hidden from students and deleted automatically after 7 days.
+          </p>
+          <ul v-if="visibleAnnouncements.length" class="mt-3 divide-y divide-hairline">
+            <li v-for="announcement in visibleAnnouncements" :key="announcement.id" class="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-semibold text-ink">{{ announcement.title }}</p>
+                <FormattedText :text="announcement.message" class="mt-1 text-xs text-muted" />
+                <p class="mt-1 text-[11px] text-subtle">
+                  {{ assignedClasses.find((item) => item.section_id === announcement.section_id && item.subject_id === announcement.subject_id)?.section_name || 'Assigned section' }}
+                  &middot; {{ announcement.status === 'withdrawn' ? 'Deleted' : announcement.status }}
+                </p>
+              </div>
+              <div v-if="announcementTab === 'archived'" class="flex gap-2">
+                <button
+                  type="button"
+                  class="text-xs font-semibold text-action hover:underline disabled:opacity-50 dark:text-sky-300"
+                  :disabled="busyAnnouncementId === announcement.id"
+                  @click="setAnnouncementArchived(announcement, false)"
+                >
+                  Restore
+                </button>
+              </div>
+              <div v-else-if="announcement.status !== 'withdrawn'" class="flex gap-2">
+                <button
+                  type="button"
+                  class="text-xs font-semibold text-action hover:underline dark:text-sky-300"
+                  @click="editAnnouncement(announcement)"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  class="text-xs font-semibold text-rose-600 hover:underline disabled:opacity-50 dark:text-rose-400"
+                  :disabled="busyAnnouncementId === announcement.id"
+                  @click="setAnnouncementArchived(announcement, true)"
+                >
+                  Archive
+                </button>
+              </div>
+            </li>
+          </ul>
+          <p v-else-if="isAnnouncementsLoading" class="mt-3 text-xs text-muted">Loading announcements…</p>
+          <p v-else class="mt-3 text-xs text-subtle">
+            {{ announcementTab === 'active' ? 'No announcements published yet.' : 'No archived announcements.' }}
+          </p>
         <PaginationBar
           v-if="currentMeta.total > 0"
           class="mt-4 rounded-lg border border-hairline bg-canvas"
