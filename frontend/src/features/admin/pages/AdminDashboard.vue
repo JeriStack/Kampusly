@@ -7,6 +7,7 @@ import { API_ENDPOINTS } from '@/services/api/endpoints'
 import KampuslyLogo from '@/components/common/KampuslyLogo.vue'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import NotificationCenter from '@/components/common/NotificationCenter.vue'
+import UserSessionPopover from '@/components/common/UserSessionPopover.vue'
 import AppIcon, { type IconName } from '@/components/common/AppIcon.vue'
 import PaginationBar from '@/features/academic/components/PaginationBar.vue'
 
@@ -504,10 +505,7 @@ watch(accountRoleFilter, () => {
           <NotificationCenter />
           <ThemeToggle />
           <div aria-hidden="true" class="hidden h-6 w-px bg-hairline sm:block" />
-          <div class="hidden text-right leading-tight sm:block">
-            <div class="text-xs font-semibold text-ink">{{ user?.name }}</div>
-            <div class="text-[11px] text-subtle">{{ user?.email }}</div>
-          </div>
+          <UserSessionPopover :subtitle="user?.email" />
           <button
             type="button"
             aria-label="Sign out"
@@ -567,29 +565,78 @@ watch(accountRoleFilter, () => {
         />
       </div>
 
-      <div v-else-if="summary" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="rounded-2xl border border-hairline bg-surface p-5 shadow-card">
-          <div class="text-xs font-semibold uppercase tracking-wider text-muted">Total Students</div>
-          <div class="mt-2 text-3xl font-bold text-ink">{{ summary.total_students }}</div>
-          <div class="mt-1 text-xs text-muted">Registered student profiles</div>
-        </div>
-        <div class="rounded-2xl border border-hairline bg-surface p-5 shadow-card">
-          <div class="text-xs font-semibold uppercase tracking-wider text-muted">Instructors</div>
-          <div class="mt-2 text-3xl font-bold text-ink">{{ summary.total_instructors }}</div>
-          <div class="mt-1 text-xs text-muted">Registered faculty profiles</div>
-        </div>
-        <div class="rounded-2xl border border-hairline bg-surface p-5 shadow-card">
-          <div class="text-xs font-semibold uppercase tracking-wider text-muted">Today's Classes</div>
-          <div class="mt-2 text-3xl font-bold text-primary-600 dark:text-primary-400">
-            {{ summary.todays_classes }}
+      <div v-else-if="summary" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <RouterLink
+          to="/admin/students"
+          class="group rounded-2xl border border-hairline bg-surface p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-500/35 hover:shadow-card-hover"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-xs font-semibold uppercase tracking-wider text-muted">Total Students</div>
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
+              <AppIcon name="student" class="h-5 w-5" />
+            </span>
           </div>
-          <div class="mt-1 text-xs text-muted">Published for today</div>
-        </div>
-        <div class="rounded-2xl border border-hairline bg-surface p-5 shadow-card">
-          <div class="text-xs font-semibold uppercase tracking-wider text-muted">Active Subjects</div>
-          <div class="mt-2 text-3xl font-bold text-ink">{{ summary.total_subjects }}</div>
-          <div class="mt-1 text-xs text-muted">Available in the curriculum</div>
-        </div>
+          <div class="mt-3 text-center">
+            <div class="text-3xl font-bold tracking-tight tabular-nums text-ink">
+              {{ summary.total_students }}
+            </div>
+            <div class="mt-1 text-xs text-subtle">Registered student profiles</div>
+          </div>
+        </RouterLink>
+
+        <RouterLink
+          to="/admin/instructors"
+          class="group rounded-2xl border border-hairline bg-surface p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-teal-500/35 hover:shadow-card-hover"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-xs font-semibold uppercase tracking-wider text-muted">Instructors</div>
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600 dark:bg-teal-500/15 dark:text-teal-300">
+              <AppIcon name="instructor" class="h-5 w-5" />
+            </span>
+          </div>
+          <div class="mt-3 text-center">
+            <div class="text-3xl font-bold tracking-tight tabular-nums text-ink">
+              {{ summary.total_instructors }}
+            </div>
+            <div class="mt-1 text-xs text-subtle">Registered faculty profiles</div>
+          </div>
+        </RouterLink>
+
+        <RouterLink
+          to="/admin/schedules"
+          class="group rounded-2xl border border-hairline bg-surface p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-sky-500/35 hover:shadow-card-hover"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-xs font-semibold uppercase tracking-wider text-muted">Today's Classes</div>
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300">
+              <AppIcon name="calendar" class="h-5 w-5" />
+            </span>
+          </div>
+          <div class="mt-3 text-center">
+            <div class="text-3xl font-bold tracking-tight tabular-nums text-action dark:text-sky-300">
+              {{ summary.todays_classes }}
+            </div>
+            <div class="mt-1 text-xs text-subtle">Published for today</div>
+          </div>
+        </RouterLink>
+
+        <RouterLink
+          to="/admin/subjects"
+          class="group rounded-2xl border border-hairline bg-surface p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-violet-500/35 hover:shadow-card-hover"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-xs font-semibold uppercase tracking-wider text-muted">Active Subjects</div>
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300">
+              <AppIcon name="book" class="h-5 w-5" />
+            </span>
+          </div>
+          <div class="mt-3 text-center">
+            <div class="text-3xl font-bold tracking-tight tabular-nums text-ink">
+              {{ summary.total_subjects }}
+            </div>
+            <div class="mt-1 text-xs text-subtle">Available in the curriculum</div>
+          </div>
+        </RouterLink>
       </div>
       <div
         v-else-if="error"
@@ -767,26 +814,6 @@ watch(accountRoleFilter, () => {
             </li>
           </ul>
         </section>
-      </div>
-
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div class="rounded-2xl border border-hairline bg-surface p-6 shadow-card">
-          <h2 class="text-base font-semibold text-ink">Your Session</h2>
-          <div class="mt-4 space-y-2 text-xs">
-            <div class="flex justify-between border-b border-hairline py-1.5">
-              <span class="text-muted">Account Role</span>
-              <span class="font-bold uppercase text-navy dark:text-primary-400">{{ user?.role }}</span>
-            </div>
-            <div class="flex justify-between border-b border-hairline py-1.5">
-              <span class="text-muted">Status</span>
-              <span class="font-semibold capitalize text-emerald-600 dark:text-emerald-400">{{ user?.status }}</span>
-            </div>
-            <div class="flex justify-between py-1.5">
-              <span class="text-muted">User ID</span>
-              <span class="font-mono">{{ user?.id }}</span>
-            </div>
-          </div>
-        </div>
       </div>
     </main>
 

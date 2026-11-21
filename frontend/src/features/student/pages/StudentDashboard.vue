@@ -6,6 +6,7 @@ import KampuslyLogo from '@/components/common/KampuslyLogo.vue'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import NotificationCenter from '@/components/common/NotificationCenter.vue'
+import UserSessionPopover from '@/components/common/UserSessionPopover.vue'
 import FormattedText from '@/components/common/FormattedText.vue'
 import { apiClient } from '@/services/api/client'
 import { API_ENDPOINTS } from '@/services/api/endpoints'
@@ -368,10 +369,9 @@ onBeforeUnmount(() => {
           <NotificationCenter />
           <ThemeToggle />
           <div aria-hidden="true" class="hidden h-6 w-px bg-hairline sm:block" />
-          <div class="hidden text-right leading-tight sm:block">
-            <div class="text-xs font-semibold text-ink">{{ user?.name }}</div>
-            <div class="text-[11px] text-subtle">{{ user?.profile?.program || 'BSIT' }} &bull; {{ user?.profile?.section_name || 'Section' }}</div>
-          </div>
+          <UserSessionPopover
+            :subtitle="`${user?.profile?.program || 'BSIT'} • ${user?.profile?.section_name || 'Section'}`"
+          />
           <button
             type="button"
             aria-label="Sign out"

@@ -5,6 +5,7 @@ import KampuslyLogo from '@/components/common/KampuslyLogo.vue'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import NotificationCenter from '@/components/common/NotificationCenter.vue'
+import UserSessionPopover from '@/components/common/UserSessionPopover.vue'
 import InstructorWorkPanel from '@/features/instructor/components/InstructorWorkPanel.vue'
 
 const router = useRouter()
@@ -31,10 +32,7 @@ async function handleLogout(): Promise<void> {
           <NotificationCenter />
           <ThemeToggle />
           <div aria-hidden="true" class="hidden h-6 w-px bg-hairline sm:block" />
-          <div class="hidden text-right leading-tight sm:block">
-            <div class="text-xs font-semibold text-ink">{{ user?.name }}</div>
-            <div class="text-[11px] text-subtle">{{ user?.profile?.department || 'Faculty' }}</div>
-          </div>
+          <UserSessionPopover :subtitle="String(user?.profile?.department || 'Faculty')" />
           <button
             type="button"
             aria-label="Sign out"
