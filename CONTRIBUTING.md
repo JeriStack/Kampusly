@@ -98,15 +98,23 @@ docs(database): align schema design spec with migrations 000600-000800
    ```
 3. Check `git status` to ensure no `.env` files, secrets, or temporary artifacts are staged.
 
-### PR Requirements
+<details>
+<summary><strong>PR Requirements</strong></summary>
+
 - Complete `.github/PULL_REQUEST_TEMPLATE.md` and reference relevant requirement IDs (`FR-*`, `NFR-*`) or issues.
 - Keep schema and API changes aligned with [`docs/database/database-design.md`](./docs/database/database-design.md) and [`docs/api/openapi.yaml`](./docs/api/openapi.yaml).
 - Open a **Draft PR** for work in progress.
 
-### Code Review & Merging
+</details>
+
+<details>
+<summary><strong>Code Review &amp; Merging</strong></summary>
+
 - Every PR requires **at least 1 approving review** from a maintainer or teammate.
 - Reviewers check requirements alignment, server-side RBAC enforcement, prepared PDO statements, error/edge-case handling, and test coverage.
 - Use **Squash and Merge** with a clean Conventional Commit title.
+
+</details>
 
 ---
 
@@ -114,9 +122,12 @@ docs(database): align schema design spec with migrations 000600-000800
 
 <div align="justify">
 
-`main` requires all status checks to pass and all review conversations to be resolved before merging:
+`main` requires all status checks to pass and all review conversations to be resolved before merging.
 
 </div>
+
+<details>
+<summary><strong>View Required CI Checks &amp; Merge Conflict Policy</strong></summary>
 
 - `Vue 3 + TypeScript Quality & Build` (`.github/workflows/frontend-ci.yml`)
 - `Native PHP 8.3 Quality, Tests & OpenAPI Contract` (`.github/workflows/backend-ci.yml`)
@@ -127,3 +138,5 @@ docs(database): align schema design spec with migrations 000600-000800
 Never bypass failing checks. If a merge conflict occurs, rebase onto `origin/main`, resolve conflicts file-by-file, re-run the checks above, and push with `git push --force-with-lease`.
 
 </div>
+
+</details>
