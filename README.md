@@ -106,7 +106,7 @@ docker compose exec php composer migrate
 ### Local Service URLs
 
 | Service | URL / Address | Purpose |
-| :--- | :--- | :--- |
+| :---: | :---: | :---: |
 | **Frontend (Vite)** | `http://localhost:5173` | Vue 3 SPA (proxies `/api/*` to Nginx) |
 | **API Gateway (Nginx)** | `http://localhost:8080/api/v1` | REST API entry point |
 | **Swagger / OpenAPI** | `http://localhost:8080/api/v1/docs` | Interactive API docs (`openapi.yaml` at `/api/v1/openapi.yaml`) |
