@@ -27,7 +27,8 @@ Security fixes are applied to the latest code on the `main` branch of [JeriStack
 - **Lead Maintainer:** Jeril Mark Estinsu
 - **Core Maintainer:** Kevin Quijano
 
-### What to Include
+<details>
+<summary><strong>What to Include</strong></summary>
 
 <div align="justify">
 
@@ -40,13 +41,20 @@ To help us investigate and resolve the issue quickly, please include the followi
 - Affected endpoints, files, or components (e.g., auth/session handling, RBAC, SQL queries, file uploads, frontend XSS).
 - Any suggested remediation or mitigation, if known.
 
+</details>
+
 ---
 
 ## Response & Disclosure Process
 
+<details>
+<summary><strong>View Response &amp; Disclosure Timeline</strong></summary>
+
 - **Acknowledgment:** We aim to acknowledge receipt of your report within **48 hours**.
 - **Triage & Updates:** We will assess severity and provide status updates as we work on a fix.
 - **Coordinated Disclosure:** Please allow us reasonable time to develop, verify, and release a patch before publicly disclosing details.
+
+</details>
 
 ---
 
