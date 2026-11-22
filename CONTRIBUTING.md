@@ -38,7 +38,7 @@ Kampusly uses short-lived branches merged via Pull Requests. Direct pushes to `m
 </div>
 
 | Branch Pattern | Purpose | Target |
-| :--- | :--- | :--- |
+| :---: | :---: | :---: |
 | `main` | Stable, reviewed, release-ready code (protected). | — |
 | `develop` / `development` | Integration branch for staging ongoing work before release. | `main` |
 | `feature/<scope>-<slug>` | New feature work (e.g., `feature/schedules-conflict-engine`). | `development` / `main` |
@@ -47,10 +47,14 @@ Kampusly uses short-lived branches merged via Pull Requests. Direct pushes to `m
 | `docs/<slug>` | Documentation or OpenAPI contract updates. | `main` |
 | `chore/<slug>` | Docker, CI/CD, tooling, or dependency maintenance. | `main` |
 
-**Rules:**
+<details>
+<summary><strong>Rules</strong></summary>
+
 - Use lowercase `kebab-case` (`a-z`, `0-9`, `-`).
 - Keep each branch focused on a single task so PRs stay small and reviewable.
 - Delete branches after merge.
+
+</details>
 
 ---
 
