@@ -39,12 +39,32 @@ Kampusly is a web-based class schedule management and notification system for hi
 
 ## Technology Stack
 
-| Layer | Technology |
-| :--- | :--- |
-| **Frontend** | Vue 3 (Composition API), TypeScript, Vite, Tailwind CSS, ESLint, Prettier |
-| **Backend** | Native PHP 8.2+ REST API (no framework), Composer PSR-4 (`Kampusly\`), PDO MySQL with prepared statements, OpenAPI 3.1 contract |
-| **Database** | MySQL 8.4 (`InnoDB`, `utf8mb4_unicode_ci`), versioned forward-only SQL migrations (`schema_migrations`) |
-| **Infrastructure** | Docker & Docker Compose, Nginx `1.27-alpine`, PHP-FPM `8.3-alpine`, Mailpit `v1.21`, GitHub Actions CI |
+<table>
+  <thead>
+    <tr>
+      <th align="center">Layer</th>
+      <th align="center">Technology</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><strong>Frontend</strong></td>
+      <td align="justify"><div align="justify">Vue 3 (Composition API), TypeScript, Vite, Tailwind CSS, ESLint, Prettier</div></td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Backend</strong></td>
+      <td align="justify"><div align="justify">Native PHP 8.2+ REST API (no framework), Composer PSR-4 (<code>Kampusly\</code>), PDO MySQL with prepared statements, OpenAPI 3.1 contract</div></td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Database</strong></td>
+      <td align="justify"><div align="justify">MySQL 8.4 (<code>InnoDB</code>, <code>utf8mb4_unicode_ci</code>), versioned forward-only SQL migrations (<code>schema_migrations</code>)</div></td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Infrastructure</strong></td>
+      <td align="justify"><div align="justify">Docker &amp; Docker Compose, Nginx <code>1.27-alpine</code>, PHP-FPM <code>8.3-alpine</code>, Mailpit <code>v1.21</code>, GitHub Actions CI</div></td>
+    </tr>
+  </tbody>
+</table>
 
 <div align="justify">
 
