@@ -54,6 +54,11 @@ export const API_ENDPOINTS = {
   },
   admin: {
     dashboardSummary: '/admin/dashboard-summary',
+    archives: '/admin/archives',
+    archiveRecord: (type: 'users' | 'subjects' | 'rooms' | 'sections' | 'schedules', id: number | string) =>
+      `/admin/archives/${type}/${id}`,
+    restoreRecord: (type: 'users' | 'subjects' | 'rooms' | 'sections' | 'schedules', id: number | string) =>
+      `/admin/archives/${type}/${id}/restore`,
   },
   academic: {
     students: '/students',

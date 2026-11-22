@@ -34,20 +34,24 @@ final class AdminDashboardController
             throw new ForbiddenException();
         }
 
-        $totalStudents = (int) $this->fetchCount('students');
-        $totalInstructors = (int) $this->fetchCount('instructors');
-        $totalSubjects = (int) $this->fetchCount('subjects', "`status` = 'active'");
-        $totalRooms = (int) $this->fetchCount('rooms', "`status` = 'active'");
+        $totalStudents = $this->fetchSqlCount(
+            'SELECT COUNT(*) FROM `students` s INNER JOIN `users` u ON u.`id` = s.`user_id` WHERE u.`archived_at` IS NULL'
+        );
+        $totalInstructors = $this->fetchSqlCount(
+            'SELECT COUNT(*) FROM `instructors` i INNER JOIN `users` u ON u.`id` = i.`user_id` WHERE u.`archived_at` IS NULL'
+        );
+        $totalSubjects = $this->fetchCount('subjects', "`status` = 'active' AND `archived_at` IS NULL");
+        $totalRooms = $this->fetchCount('rooms', "`status` = 'active' AND `archived_at` IS NULL");
 
         $dayOfWeek = date('l');
-        $todaysClasses = (int) $this->fetchCount(
+        $todaysClasses = $this->fetchCount(
             'schedules',
-            "`status` = 'published' AND `day_of_week` = " . $this->pdo->quote($dayOfWeek)
+            "`status` = 'published' AND `archived_at` IS NULL AND `day_of_week` = " . $this->pdo->quote($dayOfWeek)
         );
 
-        $upcomingClasses = (int) $this->fetchCount(
+        $upcomingClasses = $this->fetchCount(
             'schedules',
-            "`status` = 'published'"
+            "`status` = 'published' AND `archived_at` IS NULL"
         );
 
         $activeAnnouncements = (int) $this->fetchCount(
@@ -81,8 +85,13 @@ final class AdminDashboardController
 
     private function fetchCount(string $table, string $where = '1=1'): int
     {
+        return $this->fetchSqlCount("SELECT COUNT(*) FROM `{$table}` WHERE {$where}");
+    }
+
+    private function fetchSqlCount(string $sql): int
+    {
         try {
-            $stmt = $this->pdo->query("SELECT COUNT(*) FROM `{$table}` WHERE {$where}");
+            $stmt = $this->pdo->query($sql);
             return $stmt !== false ? (int) $stmt->fetchColumn() : 0;
         } catch (\Throwable) {
             return 0;

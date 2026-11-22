@@ -72,6 +72,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Instructor Accounts — Kampusly', requiresAuth: true, allowedRoles: ['admin'] },
   },
   {
+    path: '/admin/archives',
+    name: 'admin-archives',
+    component: () => import('@/features/admin/pages/AdminArchives.vue'),
+    meta: { title: 'Archive Records — Kampusly', requiresAuth: true, allowedRoles: ['admin'] },
+  },
+  {
     path: '/instructor/dashboard',
     name: 'instructor-dashboard',
     component: () => import('@/features/instructor/pages/InstructorDashboard.vue'),

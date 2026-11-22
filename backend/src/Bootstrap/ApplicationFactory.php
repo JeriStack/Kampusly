@@ -29,14 +29,18 @@ use Kampusly\Announcements\Presentation\Http\Controller\StudentAnnouncementContr
 use Kampusly\ClassNotices\Application\Service\ClassNoticeFoundationService;
 use Kampusly\ClassNotices\Domain\Repository\ClassNoticeRepositoryInterface;
 use Kampusly\ClassNotices\Infrastructure\Persistence\PdoClassNoticeRepository;
+use Kampusly\IdentityAccess\Application\Service\AdminArchiveService;
 use Kampusly\IdentityAccess\Application\Service\AuthenticationService;
 use Kampusly\IdentityAccess\Application\Service\UserAdministrationService;
 use Kampusly\IdentityAccess\Domain\Policy\AdminPolicy;
 use Kampusly\IdentityAccess\Domain\Policy\InstructorPolicy;
 use Kampusly\IdentityAccess\Domain\Policy\StudentPolicy;
+use Kampusly\IdentityAccess\Domain\Repository\AdminArchiveRepositoryInterface;
 use Kampusly\IdentityAccess\Domain\Repository\UserRepositoryInterface;
 use Kampusly\IdentityAccess\Domain\Service\PasswordHasher;
+use Kampusly\IdentityAccess\Infrastructure\Persistence\PdoAdminArchiveRepository;
 use Kampusly\IdentityAccess\Infrastructure\Persistence\PdoUserRepository;
+use Kampusly\IdentityAccess\Presentation\Http\Controller\AdminArchiveController;
 use Kampusly\IdentityAccess\Presentation\Http\Controller\AdminDashboardController;
 use Kampusly\IdentityAccess\Presentation\Http\Controller\AuthController;
 use Kampusly\IdentityAccess\Presentation\Http\Controller\UserController;
@@ -473,6 +477,32 @@ final class ApplicationFactory
             static fn (Container $c): StudentAnnouncementController => new StudentAnnouncementController(
                 $c->get(InstructorAnnouncementService::class),
                 $c->get(StudentRepositoryInterface::class)
+            )
+        );
+
+        $container->singleton(
+            AdminArchiveRepositoryInterface::class,
+            static fn (Container $c): AdminArchiveRepositoryInterface => new PdoAdminArchiveRepository(
+                $c->get(PdoConnectionFactory::class)->getConnection(),
+                $c->get(ScheduleRepositoryInterface::class),
+                $c->get(ScheduleConflictChecker::class)
+            )
+        );
+
+        $container->singleton(
+            AdminArchiveService::class,
+            static fn (Container $c): AdminArchiveService => new AdminArchiveService(
+                $c->get(AdminArchiveRepositoryInterface::class),
+                $c->get(AdminPolicy::class),
+                $c->get(TransactionManagerInterface::class),
+                $c->get(AuditLoggerInterface::class)
+            )
+        );
+
+        $container->singleton(
+            AdminArchiveController::class,
+            static fn (Container $c): AdminArchiveController => new AdminArchiveController(
+                $c->get(AdminArchiveService::class)
             )
         );
 

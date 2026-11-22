@@ -12,22 +12,59 @@ Kampusly is a web-based class schedule management and notification system for hi
 
 ## Core Roles & Capabilities
 
-| Role | Capabilities |
-| :--- | :--- |
-| **Administrator** | Manages users, students, instructors, subjects, rooms, sections, and terms; builds and publishes conflict-free schedules; reviews schedule-change requests and instructor class notices. |
-| **Instructor** | Views assigned teaching schedules; publishes targeted class announcements (with archive retention); submits class-unavailability or change notices and tracks review decisions. |
-| **Student** | Views published section timetables; receives in-app and optional email alerts for schedule updates, announcements, and class notices; submits schedule-change requests; exports schedules. |
+<table>
+  <thead>
+    <tr>
+      <th align="center">Role</th>
+      <th align="center">Capabilities</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><strong>Administrator</strong></td>
+      <td align="justify"><div align="justify">Manages users, students, instructors, subjects, rooms, sections, and terms; builds and publishes conflict-free schedules; reviews schedule-change requests and instructor class notices; manages archived records.</div></td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Instructor</strong></td>
+      <td align="justify"><div align="justify">Views assigned teaching schedules; publishes targeted class announcements (with archive retention); submits class-unavailability or change notices and tracks review decisions.</div></td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Student</strong></td>
+      <td align="justify"><div align="justify">Views published section timetables; receives in-app and optional email alerts for schedule updates, announcements, and class notices; submits schedule-change requests; exports schedules.</div></td>
+    </tr>
+  </tbody>
+</table>
 
 ---
 
 ## Technology Stack
 
-| Layer | Technology |
-| :--- | :--- |
-| **Frontend** | Vue 3 (Composition API), TypeScript, Vite, Tailwind CSS, ESLint, Prettier |
-| **Backend** | Native PHP 8.2+ REST API (no framework), Composer PSR-4 (`Kampusly\`), PDO MySQL with prepared statements, OpenAPI 3.1 contract |
-| **Database** | MySQL 8.4 (`InnoDB`, `utf8mb4_unicode_ci`), versioned forward-only SQL migrations (`schema_migrations`) |
-| **Infrastructure** | Docker & Docker Compose, Nginx `1.27-alpine`, PHP-FPM `8.3-alpine`, Mailpit `v1.21`, GitHub Actions CI |
+<table>
+  <thead>
+    <tr>
+      <th align="center">Layer</th>
+      <th align="center">Technology</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><strong>Frontend</strong></td>
+      <td align="justify"><div align="justify">Vue 3 (Composition API), TypeScript, Vite, Tailwind CSS, ESLint, Prettier</div></td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Backend</strong></td>
+      <td align="justify"><div align="justify">Native PHP 8.2+ REST API (no framework), Composer PSR-4 (<code>Kampusly\</code>), PDO MySQL with prepared statements, OpenAPI 3.1 contract</div></td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Database</strong></td>
+      <td align="justify"><div align="justify">MySQL 8.4 (<code>InnoDB</code>, <code>utf8mb4_unicode_ci</code>), versioned forward-only SQL migrations (<code>schema_migrations</code>)</div></td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Infrastructure</strong></td>
+      <td align="justify"><div align="justify">Docker &amp; Docker Compose, Nginx <code>1.27-alpine</code>, PHP-FPM <code>8.3-alpine</code>, Mailpit <code>v1.21</code>, GitHub Actions CI</div></td>
+    </tr>
+  </tbody>
+</table>
 
 <div align="justify">
 
@@ -69,7 +106,7 @@ docker compose exec php composer migrate
 ### Local Service URLs
 
 | Service | URL / Address | Purpose |
-| :--- | :--- | :--- |
+| :---: | :---: | :---: |
 | **Frontend (Vite)** | `http://localhost:5173` | Vue 3 SPA (proxies `/api/*` to Nginx) |
 | **API Gateway (Nginx)** | `http://localhost:8080/api/v1` | REST API entry point |
 | **Swagger / OpenAPI** | `http://localhost:8080/api/v1/docs` | Interactive API docs (`openapi.yaml` at `/api/v1/openapi.yaml`) |

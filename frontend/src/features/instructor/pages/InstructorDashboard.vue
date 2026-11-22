@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/features/auth/stores/useAuth'
 import KampuslyLogo from '@/components/common/KampuslyLogo.vue'
@@ -8,8 +9,29 @@ import NotificationCenter from '@/components/common/NotificationCenter.vue'
 import UserSessionPopover from '@/components/common/UserSessionPopover.vue'
 import InstructorWorkPanel from '@/features/instructor/components/InstructorWorkPanel.vue'
 
+const PROFILE_STORAGE_KEY = 'kampusly-instructor-profile-minimized'
+
+function readInitialMinimized(): boolean {
+  try {
+    const saved = window.localStorage.getItem(PROFILE_STORAGE_KEY)
+    return saved === null ? true : saved === 'true'
+  } catch {
+    return true
+  }
+}
+
 const router = useRouter()
 const { user, logout } = useAuth()
+const isProfileMinimized = ref<boolean>(readInitialMinimized())
+
+function toggleProfileCard(): void {
+  isProfileMinimized.value = !isProfileMinimized.value
+  try {
+    window.localStorage.setItem(PROFILE_STORAGE_KEY, String(isProfileMinimized.value))
+  } catch {
+    // Ignore storage quota or private-mode restrictions
+  }
+}
 
 async function handleLogout(): Promise<void> {
   await logout()
@@ -59,20 +81,56 @@ async function handleLogout(): Promise<void> {
 
       <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
         <!-- Faculty Information Card -->
-        <section class="overflow-hidden rounded-2xl border border-hairline bg-surface shadow-card lg:col-span-4">
+        <section
+          class="overflow-hidden rounded-2xl border border-hairline bg-surface shadow-card transition-all"
+          :class="isProfileMinimized ? 'lg:col-span-12' : 'lg:col-span-4'"
+        >
           <div class="h-1 w-full bg-gradient-to-r from-navy via-action to-accent" />
-          <div class="p-5 sm:p-6">
-            <div class="flex items-center gap-3 border-b border-hairline pb-4">
-              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600 dark:bg-teal-500/15 dark:text-teal-300">
-                <AppIcon name="instructor" class="h-5 w-5" />
-              </span>
-              <div class="min-w-0">
-                <h2 class="text-base font-bold text-ink">Faculty Profile</h2>
-                <p class="truncate text-xs text-subtle">Assigned instructor credentials</p>
+          <div :class="isProfileMinimized ? 'px-5 py-3.5 sm:px-6' : 'p-5 sm:p-6'">
+            <div
+              class="flex items-center justify-between gap-3"
+              :class="!isProfileMinimized && 'border-b border-hairline pb-4'"
+            >
+              <div class="flex min-w-0 items-center gap-3">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600 dark:bg-teal-500/15 dark:text-teal-300">
+                  <AppIcon name="instructor" class="h-5 w-5" />
+                </span>
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h2 class="text-base font-bold text-ink">Faculty Profile</h2>
+                    <span
+                      v-if="isProfileMinimized"
+                      class="rounded-md border border-hairline bg-canvas px-2 py-0.5 font-mono text-[11px] font-semibold text-ink"
+                    >
+                      {{ user?.profile?.employee_number || 'EMP-001' }}
+                    </span>
+                    <span
+                      v-if="isProfileMinimized"
+                      class="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold capitalize text-emerald-700 dark:text-emerald-300"
+                    >
+                      <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                      {{ user?.status }}
+                    </span>
+                  </div>
+                  <p v-if="!isProfileMinimized" class="truncate text-xs text-subtle">
+                    Assigned instructor credentials
+                  </p>
+                </div>
               </div>
+              <button
+                type="button"
+                :aria-expanded="!isProfileMinimized"
+                :aria-label="isProfileMinimized ? 'Expand Faculty Profile' : 'Minimize Faculty Profile'"
+                :title="isProfileMinimized ? 'Expand profile' : 'Minimize profile'"
+                class="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-hairline bg-canvas px-2.5 text-xs font-semibold text-muted transition-colors hover:border-action/40 hover:text-action dark:hover:text-sky-300"
+                @click="toggleProfileCard"
+              >
+                <AppIcon :name="isProfileMinimized ? 'chevron-right' : 'chevron-left'" class="h-3.5 w-3.5" />
+                <span class="hidden sm:inline">{{ isProfileMinimized ? 'Expand' : 'Minimize' }}</span>
+              </button>
             </div>
 
-            <dl class="mt-4 space-y-3.5 text-xs">
+            <dl v-if="!isProfileMinimized" class="mt-4 space-y-3.5 text-xs">
               <div class="flex items-center justify-between gap-3 border-b border-hairline/70 pb-3">
                 <dt class="text-muted">Employee ID</dt>
                 <dd class="rounded-md border border-hairline bg-canvas px-2.5 py-0.5 font-mono font-semibold text-ink">
@@ -106,7 +164,7 @@ async function handleLogout(): Promise<void> {
         </section>
 
         <!-- Instructor Workspace -->
-        <div class="lg:col-span-8">
+        <div :class="isProfileMinimized ? 'lg:col-span-12' : 'lg:col-span-8'">
           <InstructorWorkPanel />
         </div>
       </div>

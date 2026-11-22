@@ -1,29 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { useAuth } from '@/features/auth/stores/useAuth'
 import { apiClient } from '@/services/api/client'
 import { API_ENDPOINTS } from '@/services/api/endpoints'
-import KampuslyLogo from '@/components/common/KampuslyLogo.vue'
-import ThemeToggle from '@/components/common/ThemeToggle.vue'
-import NotificationCenter from '@/components/common/NotificationCenter.vue'
-import UserSessionPopover from '@/components/common/UserSessionPopover.vue'
-import AppIcon, { type IconName } from '@/components/common/AppIcon.vue'
+import AcademicLayout from '@/features/academic/components/AcademicLayout.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import PaginationBar from '@/features/academic/components/PaginationBar.vue'
+import ConfirmDialog from '@/features/academic/components/ConfirmDialog.vue'
 
-const router = useRouter()
 const route = useRoute()
-const { user, logout } = useAuth()
-
-const adminNavTabs: { name: string; path: string; icon: IconName }[] = [
-  { name: 'Dashboard', path: '/admin/dashboard', icon: 'admin' },
-  { name: 'Students', path: '/admin/students', icon: 'student' },
-  { name: 'Instructors', path: '/admin/instructors', icon: 'instructor' },
-  { name: 'Schedules', path: '/admin/schedules', icon: 'calendar' },
-  { name: 'Subjects', path: '/admin/subjects', icon: 'book' },
-  { name: 'Rooms', path: '/admin/rooms', icon: 'grid' },
-  { name: 'Sections', path: '/admin/sections', icon: 'layers' },
-]
+const { user } = useAuth()
 
 interface DashboardSummary {
   total_students: number
@@ -418,6 +405,40 @@ async function createAccount(): Promise<void> {
   }
 }
 
+const isArchiveDialogOpen = ref(false)
+const archivingAccount = ref<UserAccount | null>(null)
+const isArchivingAccount = ref(false)
+
+function openArchiveAccountDialog(account: UserAccount): void {
+  if (account.id === user.value?.id) return
+  archivingAccount.value = account
+  isArchiveDialogOpen.value = true
+}
+
+async function handleConfirmArchiveAccount(): Promise<void> {
+  if (!archivingAccount.value) return
+  isArchivingAccount.value = true
+  accountError.value = null
+  successMessage.value = null
+
+  const target = archivingAccount.value
+  try {
+    await apiClient.post(API_ENDPOINTS.admin.archiveRecord('users', target.id), {})
+    isArchiveDialogOpen.value = false
+    archivingAccount.value = null
+    successMessage.value = `${target.full_name} has been moved to Archives.`
+    if (accounts.value.length === 1 && accountPage.value > 1) {
+      accountPage.value -= 1
+    }
+    await Promise.all([fetchAccounts(), fetchSummary()])
+  } catch (err: unknown) {
+    accountError.value = messageFromError(err, 'Failed to archive user account.')
+    isArchiveDialogOpen.value = false
+  } finally {
+    isArchivingAccount.value = false
+  }
+}
+
 async function toggleAccountStatus(account: UserAccount): Promise<void> {
   if (account.id === user.value?.id) return
 
@@ -471,16 +492,27 @@ function formatTime(value: string): string {
   return new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit' }).format(date)
 }
 
-async function handleLogout(): Promise<void> {
-  await logout()
-  await router.push('/login')
-}
-
 onMounted(() => {
   void fetchSummary()
   void fetchAccounts()
   void fetchActiveSubjects()
   void fetchTodaysClasses()
+})
+
+const isDashboardView = computed(() => !accountRoleFilter.value)
+const pageTitle = computed(() => {
+  if (accountRoleFilter.value === 'student') return 'Student Accounts'
+  if (accountRoleFilter.value === 'instructor') return 'Instructor Accounts'
+  return user.value?.name || 'Administrator'
+})
+const pageSubtitle = computed(() => {
+  if (accountRoleFilter.value === 'student') {
+    return 'Manage registered student accounts, passwords, status, and archives.'
+  }
+  if (accountRoleFilter.value === 'instructor') {
+    return 'Manage registered faculty accounts, passwords, status, and archives.'
+  }
+  return 'Kampusly Administration System • Schedule & User Overview'
 })
 
 watch(accountRoleFilter, () => {
@@ -490,74 +522,13 @@ watch(accountRoleFilter, () => {
 </script>
 
 <template>
-  <div class="dashboard-readable min-h-screen bg-canvas text-ink">
-    <header class="sticky top-0 z-20 border-b border-hairline bg-surface/95 backdrop-blur-md">
-      <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <div class="flex min-w-0 items-center gap-3">
-          <RouterLink to="/admin/dashboard" class="flex shrink-0 items-center gap-2">
-            <KampuslyLogo size="sm" />
-          </RouterLink>
-          <span class="hidden sm:inline-flex items-center rounded-full border border-navy/15 bg-navy-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-navy-800 dark:border-sky-400/25 dark:bg-sky-500/15 dark:text-sky-200">
-            Administrator Portal
-          </span>
-        </div>
-        <div class="flex items-center gap-2.5">
-          <NotificationCenter />
-          <ThemeToggle />
-          <div aria-hidden="true" class="hidden h-6 w-px bg-hairline sm:block" />
-          <UserSessionPopover :subtitle="user?.email" />
-          <button
-            type="button"
-            aria-label="Sign out"
-            title="Sign out"
-            class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-hairline bg-surface text-rose-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:border-rose-500/40 dark:hover:bg-rose-950/50 dark:hover:text-rose-300"
-            @click="handleLogout"
-          >
-            <AppIcon name="logout" class="h-5 w-5" />
-          </button>
-        </div>
-      </div>
-      <nav
-        class="mx-auto flex max-w-7xl items-center gap-1.5 overflow-x-auto border-t border-hairline/60 px-4 py-2 sm:px-6 lg:px-8"
-        aria-label="Admin navigation"
-      >
-        <RouterLink
-          v-for="tab in adminNavTabs"
-          :key="tab.path"
-          :to="tab.path"
-          :aria-current="route.path === tab.path ? 'page' : undefined"
-          class="group inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
-          :class="
-            route.path === tab.path
-              ? 'bg-action/10 text-navy ring-1 ring-inset ring-action/20 shadow-sm dark:bg-sky-500/15 dark:text-sky-200 dark:ring-sky-400/30'
-              : 'text-muted hover:bg-canvas hover:text-ink'
-          "
-        >
-          <AppIcon
-            :name="tab.icon"
-            class="h-4 w-4 transition-colors"
-            :class="
-              route.path === tab.path
-                ? 'text-action dark:text-sky-300'
-                : 'text-subtle group-hover:text-ink'
-            "
-          />
-          <span>{{ tab.name }}</span>
-        </RouterLink>
-      </nav>
-    </header>
-
-    <main class="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-      <div>
-        <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-          {{ user?.name }}
-        </h1>
-        <p class="mt-1 text-sm text-muted">
-          Kampusly Administration System &bull; Schedule &amp; User Overview
-        </p>
-      </div>
-
-      <div v-if="isLoading" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+  <AcademicLayout
+    :title="pageTitle"
+    :subtitle="pageSubtitle"
+  >
+    <div class="space-y-8">
+      <template v-if="isDashboardView">
+        <div v-if="isLoading" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <div
           v-for="i in 4"
           :key="i"
@@ -646,6 +617,7 @@ watch(accountRoleFilter, () => {
         {{ error }}
         <button type="button" class="ml-3 font-semibold underline" @click="fetchSummary">Retry</button>
       </div>
+      </template>
 
       <section class="rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
         <div class="flex flex-wrap items-center justify-between gap-4 border-b border-hairline pb-4">
@@ -746,7 +718,7 @@ watch(accountRoleFilter, () => {
                     </span>
                   </td>
                   <td class="px-4 py-3.5">
-                    <div class="inline-grid grid-cols-[10.5rem_7.75rem] items-center gap-2">
+                    <div class="inline-grid grid-cols-[10.5rem_7.75rem_2.25rem] items-center gap-2">
                       <button
                         v-if="account.role !== 'admin' && account.id !== user?.id"
                         type="button"
@@ -768,6 +740,16 @@ watch(accountRoleFilter, () => {
                         @click="toggleAccountStatus(account)"
                       >
                         {{ account.status === 'active' ? 'Deactivate' : 'Activate' }}
+                      </button>
+                      <button
+                        type="button"
+                        title="Archive account"
+                        aria-label="Archive account"
+                        :disabled="account.id === user?.id"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-hairline bg-canvas text-amber-600 transition-colors hover:border-amber-300 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400 dark:hover:border-amber-500/40 dark:hover:bg-amber-950/40"
+                        @click="openArchiveAccountDialog(account)"
+                      >
+                        <AppIcon name="archive" class="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </td>
@@ -796,7 +778,7 @@ watch(accountRoleFilter, () => {
         </div>
       </section>
 
-      <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <div v-if="isDashboardView" class="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <!-- Active Subjects -->
         <section class="flex flex-col rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
           <div class="flex items-start justify-between gap-3 border-b border-hairline pb-4">
@@ -953,7 +935,7 @@ watch(accountRoleFilter, () => {
           </ul>
         </section>
       </div>
-    </main>
+    </div>
 
     <div
       v-if="isCreateFormOpen"
@@ -1254,5 +1236,16 @@ watch(accountRoleFilter, () => {
         </div>
       </section>
     </div>
-  </div>
+
+    <ConfirmDialog
+      :open="isArchiveDialogOpen"
+      title="Archive User Account"
+      :message="`Move ${archivingAccount?.full_name} (${archivingAccount?.email}) to Archives? The account will be deactivated and hidden from active lists until restored.`"
+      confirm-label="Archive Account"
+      variant="warning"
+      :is-loading="isArchivingAccount"
+      @confirm="handleConfirmArchiveAccount"
+      @cancel="isArchiveDialogOpen = false"
+    />
+  </AcademicLayout>
 </template>

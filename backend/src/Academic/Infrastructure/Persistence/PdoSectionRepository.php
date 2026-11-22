@@ -52,26 +52,26 @@ final class PdoSectionRepository implements SectionRepositoryInterface
         ?string $status = null,
         ?string $search = null
     ): PaginatedResult {
-        $conditions = [];
+        $conditions = ['s.`archived_at` IS NULL'];
         $params = [];
 
         if ($schoolYear !== null && trim($schoolYear) !== '') {
-            $conditions[] = '`school_year` = :school_year';
+            $conditions[] = 's.`school_year` = :school_year';
             $params[':school_year'] = trim($schoolYear);
         }
 
         if ($semester !== null && trim($semester) !== '') {
-            $conditions[] = '`semester` = :semester';
+            $conditions[] = 's.`semester` = :semester';
             $params[':semester'] = trim($semester);
         }
 
         if ($status !== null && trim($status) !== '') {
-            $conditions[] = '`status` = :status';
+            $conditions[] = 's.`status` = :status';
             $params[':status'] = trim($status);
         }
 
         if ($search !== null && trim($search) !== '') {
-            $conditions[] = '(`section_name` LIKE :search OR `program` LIKE :search_program)';
+            $conditions[] = '(s.`section_name` LIKE :search OR s.`program` LIKE :search_program)';
             $wildcard = '%' . trim($search) . '%';
             $params[':search'] = $wildcard;
             $params[':search_program'] = $wildcard;
@@ -79,7 +79,7 @@ final class PdoSectionRepository implements SectionRepositoryInterface
 
         $whereSql = $conditions !== [] ? 'WHERE ' . implode(' AND ', $conditions) : '';
 
-        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM `sections` {$whereSql}");
+        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM `sections` s {$whereSql}");
         $countStmt->execute($params);
         $total = (int) $countStmt->fetchColumn();
 
@@ -191,6 +191,7 @@ final class PdoSectionRepository implements SectionRepositoryInterface
              FROM `students` s
              INNER JOIN `users` u ON u.id = s.user_id
              WHERE s.section_id = :section_id
+               AND u.archived_at IS NULL
              ORDER BY s.last_name ASC, s.first_name ASC'
         );
         $stmt->execute([':section_id' => $sectionId]);

@@ -70,7 +70,7 @@ final class PdoInstructorRepository implements InstructorRepositoryInterface
         ?string $status = null,
         ?string $search = null
     ): PaginatedResult {
-        $conditions = [];
+        $conditions = ['u.`archived_at` IS NULL'];
         $params = [];
 
         if ($department !== null && trim($department) !== '') {

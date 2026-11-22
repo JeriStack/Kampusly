@@ -43,7 +43,7 @@ final class PdoRoomRepository implements RoomRepositoryInterface
         ?string $building = null,
         ?string $search = null
     ): PaginatedResult {
-        $conditions = [];
+        $conditions = ['`archived_at` IS NULL'];
         $params = [];
 
         if ($status !== null && $status !== '') {
