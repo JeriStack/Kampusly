@@ -13,9 +13,10 @@ const PROFILE_STORAGE_KEY = 'kampusly-instructor-profile-minimized'
 
 function readInitialMinimized(): boolean {
   try {
-    return window.localStorage.getItem(PROFILE_STORAGE_KEY) === 'true'
+    const saved = window.localStorage.getItem(PROFILE_STORAGE_KEY)
+    return saved === null ? true : saved === 'true'
   } catch {
-    return false
+    return true
   }
 }
 
