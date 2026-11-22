@@ -12,11 +12,28 @@ Kampusly is a web-based class schedule management and notification system for hi
 
 ## Core Roles & Capabilities
 
-| Role | Capabilities |
-| :--- | :--- |
-| **Administrator** | Manages users, students, instructors, subjects, rooms, sections, and terms; builds and publishes conflict-free schedules; reviews schedule-change requests and instructor class notices. |
-| **Instructor** | Views assigned teaching schedules; publishes targeted class announcements (with archive retention); submits class-unavailability or change notices and tracks review decisions. |
-| **Student** | Views published section timetables; receives in-app and optional email alerts for schedule updates, announcements, and class notices; submits schedule-change requests; exports schedules. |
+<table>
+  <thead>
+    <tr>
+      <th align="center">Role</th>
+      <th align="center">Capabilities</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><strong>Administrator</strong></td>
+      <td align="justify"><div align="justify">Manages users, students, instructors, subjects, rooms, sections, and terms; builds and publishes conflict-free schedules; reviews schedule-change requests and instructor class notices; manages archived records.</div></td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Instructor</strong></td>
+      <td align="justify"><div align="justify">Views assigned teaching schedules; publishes targeted class announcements (with archive retention); submits class-unavailability or change notices and tracks review decisions.</div></td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Student</strong></td>
+      <td align="justify"><div align="justify">Views published section timetables; receives in-app and optional email alerts for schedule updates, announcements, and class notices; submits schedule-change requests; exports schedules.</div></td>
+    </tr>
+  </tbody>
+</table>
 
 ---
 
