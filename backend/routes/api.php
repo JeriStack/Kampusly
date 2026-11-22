@@ -11,6 +11,7 @@ use Kampusly\Bootstrap\Config;
 use Kampusly\Bootstrap\Container;
 use Kampusly\Bootstrap\Router;
 use Kampusly\IdentityAccess\Domain\Repository\UserRepositoryInterface;
+use Kampusly\IdentityAccess\Presentation\Http\Controller\AdminArchiveController;
 use Kampusly\IdentityAccess\Presentation\Http\Controller\AdminDashboardController;
 use Kampusly\IdentityAccess\Presentation\Http\Controller\AuthController;
 use Kampusly\IdentityAccess\Presentation\Http\Controller\UserController;
@@ -158,6 +159,43 @@ return static function (Router $router, Container $container): void {
         $adminController = $container->get(AdminDashboardController::class);
         return $adminController->dashboardSummary($request);
     }, [$authenticate, $authorizeRoles(['admin'])]);
+
+    // Admin archive record system
+    $router->get('/admin/archives', static function (HttpRequest $request) use ($container): JsonResponse {
+        /** @var AdminArchiveController $archiveController */
+        $archiveController = $container->get(AdminArchiveController::class);
+        return $archiveController->listArchived($request);
+    }, [$authenticate, $authorizeRoles(['admin'])]);
+
+    $router->post(
+        '/admin/archives/{type}/{id}',
+        static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+            /** @var AdminArchiveController $archiveController */
+            $archiveController = $container->get(AdminArchiveController::class);
+            return $archiveController->archive($request, $params);
+        },
+        [$authenticate, $authorizeRoles(['admin'])]
+    );
+
+    $router->post(
+        '/admin/archives/{type}/{id}/restore',
+        static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+            /** @var AdminArchiveController $archiveController */
+            $archiveController = $container->get(AdminArchiveController::class);
+            return $archiveController->restore($request, $params);
+        },
+        [$authenticate, $authorizeRoles(['admin'])]
+    );
+
+    $router->delete(
+        '/admin/archives/{type}/{id}',
+        static function (HttpRequest $request, array $params) use ($container): JsonResponse {
+            /** @var AdminArchiveController $archiveController */
+            $archiveController = $container->get(AdminArchiveController::class);
+            return $archiveController->permanentlyDelete($request, $params);
+        },
+        [$authenticate, $authorizeRoles(['admin'])]
+    );
 
     // =========================================================================
     // Phase 6: Academic Management Endpoints

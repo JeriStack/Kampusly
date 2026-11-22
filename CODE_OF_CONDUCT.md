@@ -12,19 +12,27 @@ We pledge to act and interact in ways that contribute to an open, welcoming, div
 
 ## Our Standards
 
-Examples of behavior that contributes to a positive environment include:
+<details>
+<summary><strong>Examples of behavior that contributes to a positive environment</strong></summary>
+
 - Demonstrating empathy and kindness toward other people
 - Being respectful of differing opinions, viewpoints, and experiences
 - Giving and gracefully accepting constructive feedback
 - Accepting responsibility, apologizing to those affected by our mistakes, and learning from the experience
 - Focusing on what is best not just for us as individuals, but for the overall community
 
-Examples of unacceptable behavior include:
+</details>
+
+<details>
+<summary><strong>Examples of unacceptable behavior</strong></summary>
+
 - The use of sexualized language or imagery, and sexual attention or advances of any kind
 - Trolling, insulting or derogatory comments, and personal or political attacks
 - Public or private harassment
 - Publishing others' private information, such as a physical or email address, without their explicit permission
 - Other conduct which could reasonably be considered inappropriate in a professional setting
+
+</details>
 
 ## Enforcement Responsibilities
 
@@ -70,10 +78,15 @@ Maintainers will follow these Community Impact Guidelines in determining the con
 
 </div>
 
+<details>
+<summary><strong>View Community Impact Guidelines</strong></summary>
+
 1. **Correction:** A private, written warning providing clarity around the nature of the violation and an explanation of why the behavior was inappropriate.
 2. **Warning:** A warning with consequences for continued behavior, including no interaction with the people involved for a specified period.
 3. **Temporary Ban:** A temporary ban from any sort of interaction or public communication with the community for a specified period.
 4. **Permanent Ban:** A permanent ban from any sort of public interaction within the community.
+
+</details>
 
 ## Attribution
 

@@ -4,6 +4,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import ScheduleChangeRequestsPanel from '@/features/admin/components/ScheduleChangeRequestsPanel.vue'
 import AcademicLayout from '@/features/academic/components/AcademicLayout.vue'
 import PaginationBar from '@/features/academic/components/PaginationBar.vue'
+import ConfirmDialog from '@/features/academic/components/ConfirmDialog.vue'
 import { API_ENDPOINTS } from '@/services/api/endpoints'
 import { apiClient } from '@/services/api/client'
 import { ApiError } from '@/services/api/errors'
@@ -233,6 +234,36 @@ async function changeScheduleStatus(schedule: Schedule, status: Schedule['status
     successMessage.value = `${response.data.subject_code ?? 'Class'} ${status}.`
   } catch (err) {
     formError.value = err instanceof ApiError ? err.message : `Failed to ${action} the class.`
+  }
+}
+
+const isArchiveDialogOpen = ref(false)
+const archivingSchedule = ref<Schedule | null>(null)
+const isArchivingSchedule = ref(false)
+
+function openArchiveScheduleDialog(schedule: Schedule): void {
+  archivingSchedule.value = schedule
+  isArchiveDialogOpen.value = true
+}
+
+async function handleConfirmArchiveSchedule(): Promise<void> {
+  if (!archivingSchedule.value) return
+  isArchivingSchedule.value = true
+  formError.value = null
+  successMessage.value = null
+
+  const target = archivingSchedule.value
+  try {
+    await apiClient.post(API_ENDPOINTS.admin.archiveRecord('schedules', target.id), {})
+    isArchiveDialogOpen.value = false
+    archivingSchedule.value = null
+    successMessage.value = `${target.subject_code ?? 'Schedule'} (${target.section_name ?? ''}) moved to Archives.`
+    await refreshSchedules()
+  } catch (err) {
+    formError.value = err instanceof ApiError ? err.message : 'Failed to archive schedule.'
+    isArchiveDialogOpen.value = false
+  } finally {
+    isArchivingSchedule.value = false
   }
 }
 
@@ -551,6 +582,15 @@ onMounted(async () => {
                   >
                     Cancel
                   </button>
+                  <button
+                    type="button"
+                    title="Archive schedule"
+                    aria-label="Archive schedule"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-hairline bg-canvas text-amber-600 transition-colors hover:border-amber-300 hover:bg-amber-50 dark:text-amber-400 dark:hover:border-amber-500/40 dark:hover:bg-amber-950/40"
+                    @click="openArchiveScheduleDialog(schedule)"
+                  >
+                    <AppIcon name="archive" class="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </td>
             </tr>
@@ -566,5 +606,16 @@ onMounted(async () => {
         @change-per-page="handleSchedulePerPageChange"
       />
     </section>
+
+    <ConfirmDialog
+      :open="isArchiveDialogOpen"
+      title="Archive Schedule"
+      :message="`Move ${archivingSchedule?.subject_code ?? 'this schedule'} (${archivingSchedule?.section_name ?? ''}) on ${archivingSchedule?.day_of_week ?? ''} to Archives? It will be hidden from timetables and freed from conflict checks until restored.`"
+      confirm-label="Archive Schedule"
+      variant="warning"
+      :is-loading="isArchivingSchedule"
+      @confirm="handleConfirmArchiveSchedule"
+      @cancel="isArchiveDialogOpen = false"
+    />
   </AcademicLayout>
 </template>

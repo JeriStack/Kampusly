@@ -27,7 +27,8 @@ Security fixes are applied to the latest code on the `main` branch of [JeriStack
 - **Lead Maintainer:** Jeril Mark Estinsu
 - **Core Maintainer:** Kevin Quijano
 
-### What to Include
+<details>
+<summary><strong>What to Include</strong></summary>
 
 <div align="justify">
 
@@ -40,13 +41,20 @@ To help us investigate and resolve the issue quickly, please include the followi
 - Affected endpoints, files, or components (e.g., auth/session handling, RBAC, SQL queries, file uploads, frontend XSS).
 - Any suggested remediation or mitigation, if known.
 
+</details>
+
 ---
 
 ## Response & Disclosure Process
 
+<details>
+<summary><strong>View Response &amp; Disclosure Timeline</strong></summary>
+
 - **Acknowledgment:** We aim to acknowledge receipt of your report within **48 hours**.
 - **Triage & Updates:** We will assess severity and provide status updates as we work on a fix.
 - **Coordinated Disclosure:** Please allow us reasonable time to develop, verify, and release a patch before publicly disclosing details.
+
+</details>
 
 ---
 
@@ -56,11 +64,11 @@ To help us investigate and resolve the issue quickly, please include the followi
 
 Contributors must adhere to the following baseline security controls across all pull requests and local development workflows:
 
-</div>
-
 - **No Committed Secrets:** Never commit `.env` files, database passwords, SMTP credentials, API tokens, or private keys (enforced by `.github/workflows/repo-hygiene.yml`).
 - **Prepared Statements:** Use parameterized PDO statements for all database queries; never interpolate user input into SQL.
 - **Server-Side RBAC:** Enforce role-based access control (`admin`, `instructor`, `student`) on the backend for every protected route.
 - **Session & CSRF Protection:** Preserve `HttpOnly`, `SameSite`, and CSRF token validation on all state-changing endpoints.
 - **Input Validation & Output Encoding:** Validate and sanitize user-supplied data (including announcement markup and file uploads) and never trust client-only checks.
 - **Local Binding in Development:** Keep Docker Compose development ports bound to `127.0.0.1`.
+
+</div>
