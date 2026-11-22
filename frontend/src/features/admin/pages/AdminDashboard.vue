@@ -499,6 +499,22 @@ onMounted(() => {
   void fetchTodaysClasses()
 })
 
+const isDashboardView = computed(() => !accountRoleFilter.value)
+const pageTitle = computed(() => {
+  if (accountRoleFilter.value === 'student') return 'Student Accounts'
+  if (accountRoleFilter.value === 'instructor') return 'Instructor Accounts'
+  return user.value?.name || 'Administrator'
+})
+const pageSubtitle = computed(() => {
+  if (accountRoleFilter.value === 'student') {
+    return 'Manage registered student accounts, passwords, status, and archives.'
+  }
+  if (accountRoleFilter.value === 'instructor') {
+    return 'Manage registered faculty accounts, passwords, status, and archives.'
+  }
+  return 'Kampusly Administration System • Schedule & User Overview'
+})
+
 watch(accountRoleFilter, () => {
   accountPage.value = 1
   void fetchAccounts()
@@ -507,12 +523,12 @@ watch(accountRoleFilter, () => {
 
 <template>
   <AcademicLayout
-    :title="user?.name || 'Administrator'"
-    subtitle="Kampusly Administration System • Schedule & User Overview"
+    :title="pageTitle"
+    :subtitle="pageSubtitle"
   >
     <div class="space-y-8">
-
-      <div v-if="isLoading" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <template v-if="isDashboardView">
+        <div v-if="isLoading" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <div
           v-for="i in 4"
           :key="i"
@@ -601,6 +617,7 @@ watch(accountRoleFilter, () => {
         {{ error }}
         <button type="button" class="ml-3 font-semibold underline" @click="fetchSummary">Retry</button>
       </div>
+      </template>
 
       <section class="rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
         <div class="flex flex-wrap items-center justify-between gap-4 border-b border-hairline pb-4">
@@ -761,7 +778,7 @@ watch(accountRoleFilter, () => {
         </div>
       </section>
 
-      <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <div v-if="isDashboardView" class="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <!-- Active Subjects -->
         <section class="flex flex-col rounded-2xl border border-hairline bg-surface p-5 shadow-card sm:p-6">
           <div class="flex items-start justify-between gap-3 border-b border-hairline pb-4">
