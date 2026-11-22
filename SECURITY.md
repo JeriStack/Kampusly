@@ -64,11 +64,11 @@ To help us investigate and resolve the issue quickly, please include the followi
 
 Contributors must adhere to the following baseline security controls across all pull requests and local development workflows:
 
-</div>
-
 - **No Committed Secrets:** Never commit `.env` files, database passwords, SMTP credentials, API tokens, or private keys (enforced by `.github/workflows/repo-hygiene.yml`).
 - **Prepared Statements:** Use parameterized PDO statements for all database queries; never interpolate user input into SQL.
 - **Server-Side RBAC:** Enforce role-based access control (`admin`, `instructor`, `student`) on the backend for every protected route.
 - **Session & CSRF Protection:** Preserve `HttpOnly`, `SameSite`, and CSRF token validation on all state-changing endpoints.
 - **Input Validation & Output Encoding:** Validate and sanitize user-supplied data (including announcement markup and file uploads) and never trust client-only checks.
 - **Local Binding in Development:** Keep Docker Compose development ports bound to `127.0.0.1`.
+
+</div>
