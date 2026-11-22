@@ -10,6 +10,7 @@ import NotificationCenter from '@/components/common/NotificationCenter.vue'
 import UserSessionPopover from '@/components/common/UserSessionPopover.vue'
 import AppIcon, { type IconName } from '@/components/common/AppIcon.vue'
 import PaginationBar from '@/features/academic/components/PaginationBar.vue'
+import ConfirmDialog from '@/features/academic/components/ConfirmDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -23,6 +24,7 @@ const adminNavTabs: { name: string; path: string; icon: IconName }[] = [
   { name: 'Subjects', path: '/admin/subjects', icon: 'book' },
   { name: 'Rooms', path: '/admin/rooms', icon: 'grid' },
   { name: 'Sections', path: '/admin/sections', icon: 'layers' },
+  { name: 'Archives', path: '/admin/archives', icon: 'archive' },
 ]
 
 interface DashboardSummary {
@@ -418,6 +420,40 @@ async function createAccount(): Promise<void> {
   }
 }
 
+const isArchiveDialogOpen = ref(false)
+const archivingAccount = ref<UserAccount | null>(null)
+const isArchivingAccount = ref(false)
+
+function openArchiveAccountDialog(account: UserAccount): void {
+  if (account.id === user.value?.id) return
+  archivingAccount.value = account
+  isArchiveDialogOpen.value = true
+}
+
+async function handleConfirmArchiveAccount(): Promise<void> {
+  if (!archivingAccount.value) return
+  isArchivingAccount.value = true
+  accountError.value = null
+  successMessage.value = null
+
+  const target = archivingAccount.value
+  try {
+    await apiClient.post(API_ENDPOINTS.admin.archiveRecord('users', target.id), {})
+    isArchiveDialogOpen.value = false
+    archivingAccount.value = null
+    successMessage.value = `${target.full_name} has been moved to Archives.`
+    if (accounts.value.length === 1 && accountPage.value > 1) {
+      accountPage.value -= 1
+    }
+    await Promise.all([fetchAccounts(), fetchSummary()])
+  } catch (err: unknown) {
+    accountError.value = messageFromError(err, 'Failed to archive user account.')
+    isArchiveDialogOpen.value = false
+  } finally {
+    isArchivingAccount.value = false
+  }
+}
+
 async function toggleAccountStatus(account: UserAccount): Promise<void> {
   if (account.id === user.value?.id) return
 
@@ -746,7 +782,7 @@ watch(accountRoleFilter, () => {
                     </span>
                   </td>
                   <td class="px-4 py-3.5">
-                    <div class="inline-grid grid-cols-[10.5rem_7.75rem] items-center gap-2">
+                    <div class="inline-grid grid-cols-[10.5rem_7.75rem_2.25rem] items-center gap-2">
                       <button
                         v-if="account.role !== 'admin' && account.id !== user?.id"
                         type="button"
@@ -768,6 +804,16 @@ watch(accountRoleFilter, () => {
                         @click="toggleAccountStatus(account)"
                       >
                         {{ account.status === 'active' ? 'Deactivate' : 'Activate' }}
+                      </button>
+                      <button
+                        type="button"
+                        title="Archive account"
+                        aria-label="Archive account"
+                        :disabled="account.id === user?.id"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-hairline bg-canvas text-amber-600 transition-colors hover:border-amber-300 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400 dark:hover:border-amber-500/40 dark:hover:bg-amber-950/40"
+                        @click="openArchiveAccountDialog(account)"
+                      >
+                        <AppIcon name="archive" class="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </td>
@@ -1254,5 +1300,16 @@ watch(accountRoleFilter, () => {
         </div>
       </section>
     </div>
+
+    <ConfirmDialog
+      :open="isArchiveDialogOpen"
+      title="Archive User Account"
+      :message="`Move ${archivingAccount?.full_name} (${archivingAccount?.email}) to Archives? The account will be deactivated and hidden from active lists until restored.`"
+      confirm-label="Archive Account"
+      variant="warning"
+      :is-loading="isArchivingAccount"
+      @confirm="handleConfirmArchiveAccount"
+      @cancel="isArchiveDialogOpen = false"
+    />
   </div>
 </template>

@@ -73,7 +73,7 @@ final class PdoStudentRepository implements StudentRepositoryInterface
         ?string $status = null,
         ?string $search = null
     ): PaginatedResult {
-        $conditions = [];
+        $conditions = ['u.`archived_at` IS NULL'];
         $params = [];
 
         if ($sectionId !== null && $sectionId > 0) {

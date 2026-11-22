@@ -41,7 +41,8 @@ final class PdoScheduleRepository implements ScheduleRepositoryInterface
             WHERE s.`school_year` = :school_year
               AND s.`semester` = :semester
               AND s.`day_of_week` = :day_of_week
-              AND s.`status` != :cancelled_status';
+              AND s.`status` != :cancelled_status
+              AND s.`archived_at` IS NULL';
 
         $params = [
             ':school_year' => trim($schoolYear),
@@ -73,7 +74,7 @@ final class PdoScheduleRepository implements ScheduleRepositoryInterface
 
     public function paginate(PaginationQuery $pagination, array $filters = []): PaginatedResult
     {
-        $conditions = [];
+        $conditions = ['s.`archived_at` IS NULL'];
         $params = [];
 
         if (isset($filters['school_year']) && is_string($filters['school_year']) && $filters['school_year'] !== '') {

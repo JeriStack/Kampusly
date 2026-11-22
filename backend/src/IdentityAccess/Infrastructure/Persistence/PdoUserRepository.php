@@ -44,7 +44,7 @@ final class PdoUserRepository implements UserRepositoryInterface
         ?string $status = null,
         ?string $search = null
     ): PaginatedResult {
-        $conditions = [];
+        $conditions = ['`archived_at` IS NULL'];
         $params = [];
 
         if ($role !== null && $role !== '') {

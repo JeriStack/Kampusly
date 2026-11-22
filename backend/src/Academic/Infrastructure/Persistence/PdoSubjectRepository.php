@@ -42,7 +42,7 @@ final class PdoSubjectRepository implements SubjectRepositoryInterface
         ?string $status = null,
         ?string $search = null
     ): PaginatedResult {
-        $conditions = [];
+        $conditions = ['`archived_at` IS NULL'];
         $params = [];
 
         if ($status !== null && $status !== '') {

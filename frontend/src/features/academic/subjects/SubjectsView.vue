@@ -126,12 +126,15 @@ async function handleConfirmDelete(): Promise<void> {
   isDeleting.value = true
 
   try {
-    await apiClient.delete(API_ENDPOINTS.academic.subject(deletingSubject.value.id))
+    await apiClient.post(API_ENDPOINTS.admin.archiveRecord('subjects', deletingSubject.value.id), {})
     isConfirmOpen.value = false
     deletingSubject.value = null
+    if (subjects.value.length === 1 && currentPage.value > 1) {
+      currentPage.value -= 1
+    }
     await fetchSubjects()
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'Failed to delete subject.'
+    error.value = err instanceof ApiError ? err.message : 'Failed to archive subject.'
     isConfirmOpen.value = false
   } finally {
     isDeleting.value = false
@@ -255,12 +258,12 @@ onMounted(() => {
                   </button>
                   <button
                     type="button"
-                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-hairline bg-canvas text-rose-600 transition-colors hover:border-rose-300 hover:bg-rose-50 dark:text-rose-400 dark:hover:border-rose-500/40 dark:hover:bg-rose-950/40"
-                    title="Delete subject"
-                    aria-label="Delete subject"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-hairline bg-canvas text-amber-600 transition-colors hover:border-amber-300 hover:bg-amber-50 dark:text-amber-400 dark:hover:border-amber-500/40 dark:hover:bg-amber-950/40"
+                    title="Archive subject"
+                    aria-label="Archive subject"
                     @click="openDeleteDialog(sub)"
                   >
-                    <AppIcon name="trash" class="h-3.5 w-3.5" />
+                    <AppIcon name="archive" class="h-3.5 w-3.5" />
                   </button>
                 </div>
               </td>
@@ -295,9 +298,10 @@ onMounted(() => {
 
     <ConfirmDialog
       :open="isConfirmOpen"
-      title="Delete Subject"
-      :message="`Are you sure you want to delete ${deletingSubject?.subject_code} (${deletingSubject?.subject_name})? Subjects tied to active schedules cannot be deleted.`"
-      confirm-label="Delete Subject"
+      title="Archive Subject"
+      :message="`Move ${deletingSubject?.subject_code} (${deletingSubject?.subject_name}) to Archives? You can restore it or permanently delete it later from the Archives tab.`"
+      confirm-label="Archive Subject"
+      variant="warning"
       :is-loading="isDeleting"
       @confirm="handleConfirmDelete"
       @cancel="isConfirmOpen = false"

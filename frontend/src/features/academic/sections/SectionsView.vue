@@ -140,12 +140,15 @@ async function handleConfirmDelete(): Promise<void> {
   isDeleting.value = true
 
   try {
-    await apiClient.delete(API_ENDPOINTS.academic.section(deletingSection.value.id))
+    await apiClient.post(API_ENDPOINTS.admin.archiveRecord('sections', deletingSection.value.id), {})
     isConfirmOpen.value = false
     deletingSection.value = null
+    if (sections.value.length === 1 && currentPage.value > 1) {
+      currentPage.value -= 1
+    }
     await fetchSections()
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'Failed to delete section.'
+    error.value = err instanceof ApiError ? err.message : 'Failed to archive section.'
     isConfirmOpen.value = false
   } finally {
     isDeleting.value = false
@@ -299,12 +302,12 @@ onMounted(() => {
                   </button>
                   <button
                     type="button"
-                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-hairline bg-canvas text-rose-600 transition-colors hover:border-rose-300 hover:bg-rose-50 dark:text-rose-400 dark:hover:border-rose-500/40 dark:hover:bg-rose-950/40"
-                    title="Delete section"
-                    aria-label="Delete section"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-hairline bg-canvas text-amber-600 transition-colors hover:border-amber-300 hover:bg-amber-50 dark:text-amber-400 dark:hover:border-amber-500/40 dark:hover:bg-amber-950/40"
+                    title="Archive section"
+                    aria-label="Archive section"
                     @click="openDeleteDialog(sec)"
                   >
-                    <AppIcon name="trash" class="h-3.5 w-3.5" />
+                    <AppIcon name="archive" class="h-3.5 w-3.5" />
                   </button>
                 </div>
               </td>
@@ -345,9 +348,10 @@ onMounted(() => {
 
     <ConfirmDialog
       :open="isConfirmOpen"
-      title="Delete Section"
-      :message="`Are you sure you want to delete section ${deletingSection?.section_name}? Sections referenced by schedules or student enrollments cannot be deleted.`"
-      confirm-label="Delete Section"
+      title="Archive Section"
+      :message="`Move section ${deletingSection?.section_name} to Archives? You can restore it or permanently delete it later from the Archives tab.`"
+      confirm-label="Archive Section"
+      variant="warning"
       :is-loading="isDeleting"
       @confirm="handleConfirmDelete"
       @cancel="isConfirmOpen = false"
